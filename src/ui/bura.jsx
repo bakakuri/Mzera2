@@ -238,9 +238,20 @@ export function BuraGame({ onExit }) {
   const selCards = myHand.filter(c => sel.includes(cardId(c)));
   const canPlay = iLead ? canThrow(myHand, selCards) : false;
   const canClose = iDefend && sel.length === g.attackCards.length && isValidCover(g.attackCards, selCards, trump);
+  const leadSuit = iLead && sel.length ? myHand.find(h => cardId(h) === sel[0])?.s : null;
   const toggle = (c) => {
     const id = cardId(c);
-    setSel(s => { if (s.includes(id)) return s.filter(x => x !== id); const cap = iDefend ? g.attackCards.length : 5; if (s.length >= cap) return s; return [...s, id]; });
+    setSel(s => {
+      if (s.includes(id)) return s.filter(x => x !== id);
+      if (iDefend) {
+        const cap = g.attackCards.length;
+        if (s.length >= cap) return s;
+        return [...s, id];
+      }
+      if (s.length >= 5) return s;
+      if (leadSuit && c.s !== leadSuit) return s; // multi-card lead must share one suit
+      return [...s, id];
+    });
   };
 
   const oppWord = online ? oppName : "ბოტმა";
@@ -293,7 +304,7 @@ export function BuraGame({ onExit }) {
       <div className="px-4 pb-1 text-center"><span className="text-[11.5px]" style={{ color: "rgba(255,255,255,.55)", fontFamily: MONO }}>შენი ქულა: {g.captured[meIdx]}</span></div>
 
       <div className="px-3 pt-1 flex items-end justify-center flex-wrap gap-1.5" style={{ minHeight: 96 }}>
-        {myHand.map((c) => { const id = cardId(c); const lifted = sel.includes(id); const selectable = (iLead || iDefend); return <div key={id} style={{ marginTop: 6 }}><CardFace card={c} size="md" lifted={lifted} onClick={selectable ? () => toggle(c) : undefined} /></div>; })}
+        {myHand.map((c) => { const id = cardId(c); const lifted = sel.includes(id); const selectable = (iLead || iDefend); const blocked = iLead && !lifted && leadSuit && c.s !== leadSuit; return <div key={id} style={{ marginTop: 6 }}><CardFace card={c} size="md" lifted={lifted} dim={blocked} onClick={selectable ? () => toggle(c) : undefined} /></div>; })}
         {myHand.length === 0 && <span style={{ color: "rgba(255,255,255,.4)", fontSize: 13 }}>ხელი ცარიელია</span>}
       </div>
 
