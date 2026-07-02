@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { C, GRADS, DISPLAY, MONO, GBRAND, Avatar, USERS, ME, Tilt } from "./core";
+import { C, GRADS, DISPLAY, MONO, GBRAND, Avatar, USERS, ME, Tilt, Title, card, ChevronRight } from "./core";
 import { ArrowLeft, MessageCircle, Send, X } from "./core";
 import { calls as callsApi } from "../lib/api";
 import { newGame, throwCards, cover, take, resolve, botMove, canThrow, isValidCover, cardId, cardPts, handPts, SUIT_SYM, SUIT_RED } from "../lib/bura";
@@ -7,6 +7,25 @@ import { newGame, throwCards, cover, take, resolve, botMove, canThrow, isValidCo
 const DIFFS = [{ k: "easy", t: "მარტივი" }, { k: "normal", t: "საშუალო" }, { k: "hard", t: "რთული" }];
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const genCode = () => Array.from({ length: 4 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join("");
+
+// list screen for the "თამაშები" nav tab — only ბურა exists so far
+export function GamesList({ onOpenBura }) {
+  return (
+    <div className="pb-10">
+      <div className="px-4 pt-5 pb-3"><Title>თამაშები</Title></div>
+      <div className="px-4">
+        <button onClick={onOpenBura} className="w-full flex items-center gap-3.5 p-4 text-left active:scale-[.98] transition" style={card()}>
+          <div className="rounded-2xl flex items-center justify-center shrink-0" style={{ width: 56, height: 56, backgroundImage: GBRAND, fontSize: 28 }}>🃏</div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[16px] font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>ბურა</div>
+            <div className="text-[13px] mt-0.5" style={{ color: C.muted }}>1-ზე-1 ქართული კარტების თამაში · 36 კარტი</div>
+          </div>
+          <ChevronRight size={20} style={{ color: C.faint }} />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function CardFace({ card, size = "md", down = false, dim = false, lifted = false, onClick, disabled }) {
   const dims = size === "sm" ? { w: 34, h: 48, f: 15, sym: 13 } : size === "xs" ? { w: 24, h: 34, f: 11, sym: 10 } : { w: 52, h: 74, f: 22, sym: 20 };
