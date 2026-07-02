@@ -562,18 +562,27 @@ create policy orders_insert on public.orders for insert with check (auth.uid() =
 -- FILMS: public read, own write/edit/delete
 drop policy if exists films_read on public.films;
 create policy films_read on public.films for select using (true);
+drop policy if exists films_insert on public.films;
 create policy films_insert on public.films for insert with check (auth.uid() = author_id);
+drop policy if exists films_update on public.films;
 create policy films_update on public.films for update using (auth.uid() = author_id);
+drop policy if exists films_delete on public.films;
 create policy films_delete on public.films for delete using (auth.uid() = author_id);
 
+drop policy if exists film_reviews_read on public.film_reviews;
 create policy film_reviews_read on public.film_reviews for select using (true);
+drop policy if exists film_reviews_insert on public.film_reviews;
 create policy film_reviews_insert on public.film_reviews for insert with check (auth.uid() = author_id);
 
 -- FILM WATCH STATUS: read own + status is visible to everyone (like/rating parity),
 -- but only the owner can set/change/clear their own status
+drop policy if exists film_watch_read on public.film_watch;
 create policy film_watch_read on public.film_watch for select using (true);
+drop policy if exists film_watch_insert on public.film_watch;
 create policy film_watch_insert on public.film_watch for insert with check (auth.uid() = user_id);
+drop policy if exists film_watch_update on public.film_watch;
 create policy film_watch_update on public.film_watch for update using (auth.uid() = user_id);
+drop policy if exists film_watch_delete on public.film_watch;
 create policy film_watch_delete on public.film_watch for delete using (auth.uid() = user_id);
 
 -- NOTIFICATIONS: მხოლოდ შენი
