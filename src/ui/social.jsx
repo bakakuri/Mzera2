@@ -372,9 +372,9 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
 
 /* ─────────────────────────  DRAWER  ───────────────────────── */
 
-export function Drawer({ open, onClose, nav, onNav, onCreate, flash, tab, mode, setMode, xp, followers, following, onSettings, onSignOut, onBura }) {
+export function Drawer({ open, onClose, nav, onNav, onCreate, flash, tab, mode, setMode, xp, followers, following, onSettings, onSignOut }) {
   const me = USERS[ME]; const { lvl, into } = levelInfo(xp);
-  const extras = [{ label: "ბურა 🃏", icon: Zap, act: () => { onClose(); onBura && onBura(); } }, { label: "შენახული", icon: Bookmark, act: () => onNav("profile") }, { label: "პარამეტრები", icon: Settings, act: () => onSettings() }, { label: "დახმარება", icon: HelpCircle, act: () => flash("დახმარება — მალე ✨") }, { label: "გასვლა", icon: LogOut, act: () => onSignOut(), danger: true }];
+  const extras = [{ label: "შენახული", icon: Bookmark, act: () => onNav("profile") }, { label: "პარამეტრები", icon: Settings, act: () => onSettings() }, { label: "დახმარება", icon: HelpCircle, act: () => flash("დახმარება — მალე ✨") }, { label: "გასვლა", icon: LogOut, act: () => onSignOut(), danger: true }];
   return (
     <div className="fixed inset-0 z-[55] md:hidden" style={{ pointerEvents: open ? "auto" : "none" }}>
       <div onClick={onClose} className="absolute inset-0" style={{ background: "rgba(6,7,12,.5)", opacity: open ? 1 : 0, transition: "opacity .3s ease" }} />
