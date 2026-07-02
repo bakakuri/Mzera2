@@ -1,5 +1,5 @@
 import {
-  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Gamepad2, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, questsApi, xpApi, adminApi, pushApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, KA_MONS, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, NOTIF_VERB, levelInfo, kfmt, RSVP_OPTS, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, FILTERS, STORY_STICKERS, setTheme, setME, compressImage, POST_BGS} from "./ui/core";
+  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Gamepad2, Clapperboard, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, filmsApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, questsApi, xpApi, adminApi, pushApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, KA_MONS, mapDbListing, mapDbReview, mapDbFilm, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, NOTIF_VERB, levelInfo, kfmt, RSVP_OPTS, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, FILTERS, STORY_STICKERS, setTheme, setME, compressImage, POST_BGS} from "./ui/core";
 import { PostCard, StoryViewer, CreateSheet, Explore, StoryEditor } from "./ui/feed";
 import { Profile, Notifications, Admin, Drawer, OnlinePage, Progress, SettingsView, Leaderboard, SearchView, SuggestedPeople, Onboarding } from "./ui/social";
 import { registerPush, unregisterPush, currentPushState, pushSupported } from "./lib/push";
@@ -16,6 +16,7 @@ const CallLayer = lazy(() => import("./ui/call").then(m => ({ default: m.CallLay
 const BuraGame = lazy(() => import("./ui/bura").then(m => ({ default: m.BuraGame })));
 const GamesList = lazy(() => import("./ui/bura").then(m => ({ default: m.GamesList })));
 const NardiGame = lazy(() => import("./ui/nardi").then(m => ({ default: m.NardiGame })));
+const Movies = lazy(() => import("./ui/movies").then(m => ({ default: m.Movies })));
 
 const lsGet = (k, def) => { try { const v = typeof localStorage !== "undefined" && localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch (e) { return def; } };
 const lsSet = (k, v) => { try { if (typeof localStorage !== "undefined") localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
@@ -58,6 +59,12 @@ export default function App() {
   const [listMore, setListMore] = useState(true);
   const [listLoadingMore, setListLoadingMore] = useState(false);
   const listSentinelRef = useRef(null);
+  const [filmCursor, setFilmCursor] = useState(null);
+  const [filmMore, setFilmMore] = useState(true);
+  const [filmLoadingMore, setFilmLoadingMore] = useState(false);
+  const filmSentinelRef = useRef(null);
+  const [films, setFilms] = useState([]);
+  const [filmWatch, setFilmWatch] = useState({});
   const [stories, setStories] = useState([]);
   const [convos, setConvos] = useState([]);
   const [notifs, setNotifs] = useState([]);
@@ -200,7 +207,7 @@ export default function App() {
       profilesApi.listCollections().then(cols => { if (!cancelled) setCollections(cols); }).catch(() => {});
       postsApi.memories().then(mem => { if (!cancelled && mem.length) setMemories(mem.map(mapDbPost)); }).catch(() => {});
       profilesApi.suggested().then(sug => { sug.forEach(mergeProfile); if (!cancelled) setSuggested(sug); }).catch(() => {});
-      loadNotifs().catch(() => {}); loadConvos().catch(() => {}); loadStories().catch(() => {}); loadReels().catch(() => {}); loadListings().catch(() => {}); loadGroups().catch(() => {}); loadEvents().catch(() => {}); loadThreads().catch(() => {});
+      loadNotifs().catch(() => {}); loadConvos().catch(() => {}); loadStories().catch(() => {}); loadReels().catch(() => {}); loadListings().catch(() => {}); loadFilms().catch(() => {}); loadFilmWatch().catch(() => {}); loadGroups().catch(() => {}); loadEvents().catch(() => {}); loadThreads().catch(() => {});
     })();
     return () => { cancelled = true; };
   }, [session]);
@@ -273,6 +280,13 @@ export default function App() {
     return () => obs.disconnect();
   }, [tab, listMore, listCursor, listLoadingMore]);
   useEffect(() => {
+    const el = filmSentinelRef.current;
+    if (!el || tab !== "movies" || !filmMore) return;
+    const obs = new IntersectionObserver((e) => { if (e[0] && e[0].isIntersecting) loadMoreFilms(); }, { rootMargin: "700px 0px" });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [tab, filmMore, filmCursor, filmLoadingMore]);
+  useEffect(() => {
     if (!activeTag || !hasSupabase) { setTagPosts([]); return; }
     let cancelled = false;
     setTagLoading(true);
@@ -320,6 +334,23 @@ export default function App() {
       setListMore(rows.length >= 10);
     } catch (e) {} finally { setListLoadingMore(false); }
   };
+  // films/film_reviews/film_watch are a new schema addition — fail silently
+  // (no setDbError banner) until the migration in supabase/schema.sql has
+  // actually been run against the live project
+  const loadFilms = async () => { if (!hasSupabase) return; try { const rows = await filmsApi.page(null, {}, 12); const mapped = rows.map(mapDbFilm); setFilms(mapped); setFilmCursor(mapped.length ? mapped[mapped.length - 1].createdAt : null); setFilmMore(mapped.length >= 12); } catch (e) { console.error("films:", e); } };
+  const loadMoreFilms = async () => {
+    if (filmLoadingMore || !filmMore || !filmCursor || !hasSupabase) return;
+    setFilmLoadingMore(true);
+    try {
+      const rows = await filmsApi.page(filmCursor, {}, 12);
+      if (!rows.length) { setFilmMore(false); return; }
+      const mapped = rows.map(mapDbFilm);
+      setFilms(prev => { const seen = new Set(prev.map(f => f.id)); return [...prev, ...mapped.filter(f => !seen.has(f.id))]; });
+      setFilmCursor(mapped[mapped.length - 1].createdAt);
+      setFilmMore(rows.length >= 12);
+    } catch (e) {} finally { setFilmLoadingMore(false); }
+  };
+  const loadFilmWatch = async () => { if (!hasSupabase || !session) return; try { const rows = await filmsApi.myWatch(); const map = {}; rows.forEach(r => { map[r.film_id] = r.status; }); setFilmWatch(map); } catch (e) {} };
   const loadGroups = async () => { if (!hasSupabase || !session) return; try { const rows = await groupsApi.list(); setGroups(rows.map(r => mapDbGroup(r, session.user.id))); } catch (e) { console.error("groups:", e); setDbError("groups: " + (e.message || JSON.stringify(e)) + (e.hint ? " · hint: " + e.hint : "") + (e.code ? " · code: " + e.code : "")); } };
   const loadEvents = async () => { if (!hasSupabase || !session) return; try { const rows = await eventsApi.list(); setEvents(rows.map(r => mapDbEvent(r, session.user.id))); } catch (e) { console.error("events:", e); setDbError("events: " + (e.message || JSON.stringify(e)) + (e.hint ? " · hint: " + e.hint : "") + (e.code ? " · code: " + e.code : "")); } };
   const loadThreads = async () => { if (!hasSupabase || !session) return; try { const rows = await forumApi.list(); setThreads(rows.map(r => mapDbThread(r, session.user.id))); } catch (e) { console.error("forum:", e); setDbError("forum: " + (e.message || JSON.stringify(e)) + (e.hint ? " · hint: " + e.hint : "") + (e.code ? " · code: " + e.code : "")); } };
@@ -515,6 +546,13 @@ export default function App() {
   const onNewThread = (d) => { flash("თემა გამოქვეყნდა 🎉"); forumApi.create({ title: d.title, body: d.body, category: d.cat }).then(loadThreads).catch(dbErr("თემა")); };
   const onListingSave = (id) => setListings(ls => ls.map(l => l.id === id ? { ...l, savedByMe: !l.savedByMe } : l));
   const onNewListing = (d) => { flash("განცხადება დაიდო 🛍️"); marketApi.create({ title: d.title, price: d.price, description: d.desc, category: d.cat, image_url: d.image, video_url: d.video || null, location: "თბილისი" }).then(loadListings).catch(dbErr("განცხადება")); };
+  const onNewFilm = (d) => { flash("ფილმი დაემატა 🎬"); filmsApi.create({ title: d.title, year: d.year, genre: d.genre, description: d.desc, poster_url: d.poster || null }).then(loadFilms).catch(dbErr("ფილმი")); };
+  const onEditFilm = (id, patch) => { setFilms(fs => fs.map(f => f.id === id ? { ...f, ...(patch.title != null ? { title: patch.title } : {}), ...(patch.year !== undefined ? { year: patch.year } : {}), ...(patch.genre != null ? { genre: patch.genre } : {}), ...(patch.description != null ? { desc: patch.description } : {}), ...(patch.poster_url !== undefined ? { poster: patch.poster_url || img("film" + id, 480, 720) } : {}) } : f)); filmsApi.update(id, patch).then(loadFilms).then(() => flash("ფილმი განახლდა ✏️")).catch(dbErr("რედაქტირება")); };
+  const onDeleteFilm = (id) => { setFilms(fs => fs.filter(f => f.id !== id)); filmsApi.remove(id).then(loadFilms).then(() => flash("ფილმი წაიშალა")).catch(dbErr("წაშლა")); };
+  const getFilmReviews = (filmId) => filmsApi.reviews(filmId).then(rows => rows.map(mapDbReview));
+  const addFilmReviewApi = (filmId, rating, text) => filmsApi.addReview(filmId, rating, text);
+  const onSetFilmWatch = (filmId, status) => { setFilmWatch(w => ({ ...w, [filmId]: status })); filmsApi.setWatch(filmId, status).catch(dbErr("სტატუსი")); };
+  const onClearFilmWatch = (filmId) => { setFilmWatch(w => { const n = { ...w }; delete n[filmId]; return n; }); filmsApi.clearWatch(filmId).catch(dbErr("სტატუსი")); };
   const onMessageUser = (uid) => { setTab("messages"); const ex = convos.find(c => { const m = c.members || (c.withId ? [c.withId] : []); return m.length === 1 && m[0] === uid; }); setOpenConvoId(ex ? ex.id : onCreateConvo([uid])); };
   const onReelLike = (id) => { setReels(rs => rs.map(r => r.id === id ? { ...r, likedByMe: !r.likedByMe } : r)); reelsApi.toggleLike(id).catch(dbErr("reel მოწონება")); };
   const onReelSave = (id) => { setReels(rs => rs.map(r => r.id === id ? { ...r, savedByMe: !r.savedByMe } : r)); reelsApi.toggleSave(id).catch(dbErr("reel შენახვა")); };
@@ -618,7 +656,7 @@ export default function App() {
   const NAV = [
     { key: "home", label: "მთავარი", icon: Home }, { key: "explore", label: "აღმოჩენა", icon: Compass },
     { key: "reels", label: "Reels", icon: Film }, { key: "forum", label: "ფორუმი", icon: MessageSquare },
-    { key: "market", label: "მარკეტი", icon: ShoppingBag }, { key: "games", label: "თამაშები", icon: Gamepad2 }, { key: "groups", label: "ჯგუფები", icon: Users },
+    { key: "market", label: "მარკეტი", icon: ShoppingBag }, { key: "games", label: "თამაშები", icon: Gamepad2 }, { key: "movies", label: "ფილმები", icon: Clapperboard }, { key: "groups", label: "ჯგუფები", icon: Users },
     { key: "map", label: "რუკა", icon: Map }, { key: "create", label: "შექმნა", icon: PlusSquare },
     { key: "messages", label: "შეტყობინებები", icon: Send, badge: unreadMsgs }, { key: "notifications", label: "აქტივობა", icon: Bell, badge: unreadNotifs },
     { key: "progress", label: "პროგრესი", icon: Zap }, { key: "leaderboard", label: "რეიტინგი", icon: Trophy }, { key: "profile", label: "პროფილი", icon: User },
@@ -705,6 +743,7 @@ export default function App() {
             {tab === "forum" && <Forum threads={threads} onReply={onThreadReply} onVote={onThreadVote} onNew={onNewThread} onOpenProfile={openProfile} onEdit={onEditThread} onDelete={onDeleteThread} />}
             {tab === "market" && <Market listings={listings} onSave={onListingSave} onNew={onNewListing} onMessage={onMessageUser} onOpenProfile={openProfile} flash={flash} live={live} onOrder={onOrder} getReviews={getReviews} onAddReview={addReviewApi} onUpload={(f) => uploadImage(f, "market")} onEdit={onEditListing} onDelete={onDeleteListing} sentinelRef={listSentinelRef} hasMore={listMore} loadingMore={listLoadingMore} />}
             {tab === "games" && <GamesList onOpenBura={() => setBuraOpen(true)} onOpenNardi={() => setNardiOpen(true)} />}
+            {tab === "movies" && <Movies films={films} watch={filmWatch} onNew={onNewFilm} onEdit={onEditFilm} onDelete={onDeleteFilm} onOpenProfile={openProfile} flash={flash} onUpload={(f) => uploadImage(f, "films")} getReviews={getFilmReviews} onAddReview={addFilmReviewApi} onSetWatch={onSetFilmWatch} onClearWatch={onClearFilmWatch} sentinelRef={filmSentinelRef} hasMore={filmMore} loadingMore={filmLoadingMore} />}
             {tab === "map" && <MapView onMessage={onMessageUser} onMenu={() => setDrawerOpen(true)} onOpenProfile={openProfile} />}
             {tab === "reels" && <Reels reels={reels} onLike={onReelLike} onSave={onReelSave} onView={onReelView} onOpenProfile={openProfile} onMenu={() => setDrawerOpen(true)} flash={flash} onCreate={() => setReelCreateOpen(true)} onComments={openReelComments} sentinelRef={reelsSentinelRef} hasMore={reelsMore} loadingMore={reelsLoadingMore} />}
             {tab === "groups" && <Groups groups={groups} events={events} onJoin={onJoinGroup} onRsvp={onRsvp} onOpenProfile={openProfile} onMessage={onMessageUser} live={live} onGroupPost={onGroupPost} onUpload={(f) => uploadImage(f, "groups")} onUploadVideo={(f) => storageApi.upload(f, "groups")} onCreateGroup={onCreateGroup} onCreateEvent={onCreateEvent} pendingOpen={pendingGroup} clearPending={() => setPendingGroup(null)} onEditPost={onEditGroupPost} onDeletePost={onDeleteGroupPost} onEditGroup={onEditGroup} onDeleteGroup={onDeleteGroup} onEditEvent={onEditEvent} onDeleteEvent={onDeleteEvent} allPosts={posts} loadGroupPosts={mergeGroupPosts} loadMembers={(gid) => groupsApi.members(gid).then(rows => { rows.forEach(r => { if (r.profile) mergeProfile(r.profile); }); return rows; })} onApproveMember={onApproveMember} onKickMember={onKickMember} onSetGroupPrivate={onSetGroupPrivate} taggable={following} postProps={{ onLike, onReact, onSave, onComment, onPollVote, onTag, onReport, onRemove: onRemovePost, onOpenProfile: openProfile, isAdmin: me.admin, onEdit: onEditPost, onDelete: onDeletePost, onEditComment, onDeleteComment, onLikeComment, onRepost, onReactors: (pid) => reactionsApi.listForPost(pid) }} />}

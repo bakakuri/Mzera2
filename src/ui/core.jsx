@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, Image as ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Phone, Video, PhoneOff, VideoOff, MicOff, Gamepad2,
+  Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, Image as ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Phone, Video, PhoneOff, VideoOff, MicOff, Gamepad2, Clapperboard,
 } from "lucide-react";
-import { auth as authApi, profiles as profilesApi, posts as postsApi, reactions as reactionsApi, comments as commentsApi, follows as followsApi, chat as chatApi, notifications as notifsApi, storage as storageApi, stories as storiesApi, reels as reelsApi, market as marketApi, groups as groupsApi, events as eventsApi, forum as forumApi, highlights as highlightsApi, presence as presenceApi, locations as locationsApi, polls as pollsApi, quests as questsApi, xp as xpApi, admin as adminApi, push as pushApi } from "../lib/api";
+import { auth as authApi, profiles as profilesApi, posts as postsApi, reactions as reactionsApi, comments as commentsApi, follows as followsApi, chat as chatApi, notifications as notifsApi, storage as storageApi, stories as storiesApi, reels as reelsApi, market as marketApi, films as filmsApi, groups as groupsApi, events as eventsApi, forum as forumApi, highlights as highlightsApi, presence as presenceApi, locations as locationsApi, polls as pollsApi, quests as questsApi, xp as xpApi, admin as adminApi, push as pushApi } from "../lib/api";
 import { hasSupabase } from "../lib/supabase";
 
 export const PAL = {
@@ -128,6 +128,8 @@ export const REPLIES = ["👍", "ჰო, ნახე 👀", "კარგი!",
 export const MARKET_CATS = ["ყველა", "ელექტრონიკა", "ავეჯი", "ტანსაცმელი", "ტრანსპორტი", "სახლი", "სხვა"];
 
 export const FORUM_CATS = ["ყველა", "ტექ", "დიზაინი", "კითხვა", "ბაზარი", "ცხოვრება"];
+
+export const FILM_GENRES = ["ყველა", "დრამა", "კომედია", "სათავგადასავლო", "საშინელება", "თრილერი", "ფანტასტიკა", "ანიმაცია", "დოკუმენტური", "რომანტიკული", "სხვა"];
 
 
 /* ─────────────────────────  PRIMITIVES  ───────────────────────── */
@@ -570,6 +572,11 @@ export function mapDbListing(row) {
 
 export function mapDbReview(r) { if (r.author) mergeProfile(r.author); return { id: r.id, authorId: r.author_id, rating: r.rating, text: r.text || "", time: timeAgo(r.created_at) }; }
 
+export function mapDbFilm(row) {
+  if (row.author) mergeProfile(row.author);
+  return { id: row.id, authorId: row.author_id, title: row.title, year: row.year || null, genre: row.genre || "სხვა", poster: row.poster_url || img("film" + row.id, 480, 720), desc: row.description || "", time: timeAgo(row.created_at), createdAt: row.created_at };
+}
+
 export function mapDbGroup(row, uid) {
   const mem = row.group_members || [];
   const mine = mem.find(m => m.user_id === uid);
@@ -907,8 +914,8 @@ export const FILTERS = [["ნორმ", "none"], ["მონო", "grayscale(1)
 export const STORY_STICKERS = ["❤️", "🔥", "😎", "✨", "🎉", "📍", "☕", "🌅", "💯", "👀", "🥳", "🙌"];
 
 export { useState, useEffect, useRef };
-export { Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Phone, Video, PhoneOff, VideoOff, MicOff, Gamepad2 };
-export { authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, questsApi, xpApi, adminApi, pushApi };
+export { Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Phone, Video, PhoneOff, VideoOff, MicOff, Gamepad2, Clapperboard };
+export { authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, filmsApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, questsApi, xpApi, adminApi, pushApi };
 export { hasSupabase };
 export function setTheme(d) { C = d ? PAL.dark : PAL.light; DARK = d; }
 export function setME(v) { ME = v; }

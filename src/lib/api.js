@@ -670,6 +670,70 @@ export const market = {
   },
 };
 
+/* ───────────── FILMS (user-submitted movie catalog) ───────────── */
+export const films = {
+  update: async (id, patch) => { const { error } = await need().from("films").update(patch).eq("id", id); if (error) throw error; },
+  remove: async (id) => { const { error } = await need().from("films").delete().eq("id", id); if (error) throw error; },
+  byId: async (id) => {
+    const { data, error } = await need().from("films").select("*, author:profiles!films_author_id_fkey(*)").eq("id", id).maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+  // filters are applied as plain eq/ilike — no or() here (fragile with PostgREST, see git history)
+  page: async (before, { genre, year, search } = {}, limit = 12) => {
+    let q = need().from("films").select("*, author:profiles!films_author_id_fkey(*)").order("created_at", { ascending: false }).limit(limit);
+    if (genre && genre !== "ყველა") q = q.eq("genre", genre);
+    if (year) q = q.eq("year", year);
+    if (search && search.trim()) q = q.ilike("title", "%" + search.trim().replace(/[%]/g, "") + "%");
+    if (before) q = q.lt("created_at", before);
+    const { data, error } = await q;
+    if (error) throw error;
+    return data;
+  },
+  create: async (film) => {
+    const sb = need();
+    const uid = (await sb.auth.getUser()).data.user.id;
+    const { data, error } = await sb.from("films").insert({ ...film, author_id: uid }).select().single();
+    if (error) throw error;
+    return data;
+  },
+  reviews: async (filmId) => {
+    const { data, error } = await need()
+      .from("film_reviews")
+      .select("*, author:profiles!film_reviews_author_id_fkey(*)")
+      .eq("film_id", filmId)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data;
+  },
+  addReview: async (filmId, rating, text) => {
+    const sb = need();
+    const uid = (await sb.auth.getUser()).data.user.id;
+    const { data, error } = await sb.from("film_reviews").insert({ film_id: filmId, author_id: uid, rating, text }).select().single();
+    if (error) throw error;
+    return data;
+  },
+  myWatch: async () => {
+    const sb = need();
+    const uid = (await sb.auth.getUser()).data.user.id;
+    const { data, error } = await sb.from("film_watch").select("film_id, status").eq("user_id", uid);
+    if (error) throw error;
+    return data || [];
+  },
+  setWatch: async (filmId, status) => {
+    const sb = need();
+    const uid = (await sb.auth.getUser()).data.user.id;
+    const { error } = await sb.from("film_watch").upsert({ film_id: filmId, user_id: uid, status }, { onConflict: "film_id,user_id" });
+    if (error) throw error;
+  },
+  clearWatch: async (filmId) => {
+    const sb = need();
+    const uid = (await sb.auth.getUser()).data.user.id;
+    const { error } = await sb.from("film_watch").delete().eq("film_id", filmId).eq("user_id", uid);
+    if (error) throw error;
+  },
+};
+
 /* ───────────── STORIES ───────────── */
 export const stories = {
   list: async () => {

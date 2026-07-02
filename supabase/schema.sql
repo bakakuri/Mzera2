@@ -264,6 +264,38 @@ create table if not exists public.orders (
 );
 
 -- ============================================================================
+--  FILMS  (user-submitted movie catalog: reviews + watchlist, Letterboxd-style)
+-- ============================================================================
+create table if not exists public.films (
+  id          uuid primary key default gen_random_uuid(),
+  author_id   uuid not null references public.profiles(id) on delete cascade,
+  title       text not null,
+  year        int,
+  genre       text,
+  poster_url  text,
+  description text,
+  created_at  timestamptz not null default now()
+);
+
+create table if not exists public.film_reviews (
+  id         uuid primary key default gen_random_uuid(),
+  film_id    uuid not null references public.films(id) on delete cascade,
+  author_id  uuid not null references public.profiles(id) on delete cascade,
+  rating     int not null check (rating between 1 and 5),
+  text       text,
+  created_at timestamptz not null default now()
+);
+
+-- one row per (film, user): status flips between watchlist/watched
+create table if not exists public.film_watch (
+  film_id    uuid not null references public.films(id) on delete cascade,
+  user_id    uuid not null references public.profiles(id) on delete cascade,
+  status     text not null check (status in ('watchlist', 'watched')),
+  created_at timestamptz not null default now(),
+  primary key (film_id, user_id)
+);
+
+-- ============================================================================
 --  NOTIFICATIONS  (ავტომატური триггерებით)
 -- ============================================================================
 create table if not exists public.notifications (
@@ -416,6 +448,9 @@ alter table public.reviews             enable row level security;
 alter table public.orders              enable row level security;
 alter table public.notifications       enable row level security;
 alter table public.reports             enable row level security;
+alter table public.films               enable row level security;
+alter table public.film_reviews        enable row level security;
+alter table public.film_watch          enable row level security;
 
 -- helper: ფლობს თუ არა მომხმარებელი row-ს ველის მიხედვით
 -- (პოლისები ცალ-ცალკე იწერება ქვემოთ)
@@ -523,6 +558,23 @@ create policy reviews_read on public.reviews for select using (true);
 create policy reviews_insert on public.reviews for insert with check (auth.uid() = author_id);
 create policy orders_read on public.orders for select using (auth.uid() = buyer_id);
 create policy orders_insert on public.orders for insert with check (auth.uid() = buyer_id);
+
+-- FILMS: public read, own write/edit/delete
+drop policy if exists films_read on public.films;
+create policy films_read on public.films for select using (true);
+create policy films_insert on public.films for insert with check (auth.uid() = author_id);
+create policy films_update on public.films for update using (auth.uid() = author_id);
+create policy films_delete on public.films for delete using (auth.uid() = author_id);
+
+create policy film_reviews_read on public.film_reviews for select using (true);
+create policy film_reviews_insert on public.film_reviews for insert with check (auth.uid() = author_id);
+
+-- FILM WATCH STATUS: read own + status is visible to everyone (like/rating parity),
+-- but only the owner can set/change/clear their own status
+create policy film_watch_read on public.film_watch for select using (true);
+create policy film_watch_insert on public.film_watch for insert with check (auth.uid() = user_id);
+create policy film_watch_update on public.film_watch for update using (auth.uid() = user_id);
+create policy film_watch_delete on public.film_watch for delete using (auth.uid() = user_id);
 
 -- NOTIFICATIONS: მხოლოდ შენი
 drop policy if exists notif_read on public.notifications;
