@@ -273,9 +273,12 @@ create table if not exists public.films (
   year        int,
   genre       text,
   poster_url  text,
+  video_url   text,
   description text,
   created_at  timestamptz not null default now()
 );
+-- covers installs where films already existed before video_url was added
+alter table public.films add column if not exists video_url text;
 
 create table if not exists public.film_reviews (
   id         uuid primary key default gen_random_uuid(),

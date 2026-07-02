@@ -574,7 +574,7 @@ export function mapDbReview(r) { if (r.author) mergeProfile(r.author); return { 
 
 export function mapDbFilm(row) {
   if (row.author) mergeProfile(row.author);
-  return { id: row.id, authorId: row.author_id, title: row.title, year: row.year || null, genre: row.genre || "სხვა", poster: row.poster_url || img("film" + row.id, 480, 720), desc: row.description || "", time: timeAgo(row.created_at), createdAt: row.created_at };
+  return { id: row.id, authorId: row.author_id, title: row.title, year: row.year || null, genre: row.genre || "სხვა", poster: row.poster_url || img("film" + row.id, 480, 720), video: row.video_url || null, desc: row.description || "", time: timeAgo(row.created_at), createdAt: row.created_at };
 }
 
 export function mapDbGroup(row, uid) {

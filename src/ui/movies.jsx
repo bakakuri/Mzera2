@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  ArrowLeft, X, Star, Plus, Pencil, Trash2, Bookmark, Check, Upload, ChevronRight, Clapperboard,
+  ArrowLeft, X, Star, Plus, Pencil, Trash2, Bookmark, Check, Upload, ChevronRight, Clapperboard, Play,
   C, SH, card, Tilt, DISPLAY, MONO, GBRAND, Mono, GRADS, hashIdx, Pic, Avatar, Name, Title, Chips, Empty, Stars, FILM_GENRES, USERS, ME,
 } from "./core";
 
@@ -20,14 +20,17 @@ function ConfirmDialog({ title, msg, confirmText = "წაშლა", onCancel, 
   );
 }
 
-function NewFilm({ onClose, onCreate, onUpload, initial }) {
+function NewFilm({ onClose, onCreate, onUpload, onUploadVideo, initial }) {
   const [title, setTitle] = useState(initial ? initial.title : "");
   const [year, setYear] = useState(initial ? String(initial.year || "") : "");
   const [genre, setGenre] = useState(initial ? initial.genre : "დრამა");
   const [desc, setDesc] = useState(initial ? initial.desc : "");
   const [picked, setPicked] = useState(initial && initial.poster ? initial.poster : "");
+  const [video, setVideo] = useState(initial && initial.video ? initial.video : "");
   const fileRef = useRef(null);
+  const videoRef = useRef(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
   const [vph, setVph] = useState(null);
   useEffect(() => { const vv = window.visualViewport; if (!vv) return; const onR = () => setVph(vv.height); onR(); vv.addEventListener("resize", onR); vv.addEventListener("scroll", onR); return () => { vv.removeEventListener("resize", onR); vv.removeEventListener("scroll", onR); }; }, []);
   const pickFile = async (e) => {
@@ -36,6 +39,12 @@ function NewFilm({ onClose, onCreate, onUpload, initial }) {
     try { setPicked(await onUpload(f)); } catch (err) {}
     setUploading(false); e.target.value = "";
   };
+  const pickVideo = async (e) => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    setUploadingVideo(true);
+    try { setVideo(await onUploadVideo(f)); } catch (err) {}
+    setUploadingVideo(false); e.target.value = "";
+  };
   const ok = title.trim().length > 0;
   return (
     <div className="fixed inset-0 z-[60] flex sm:items-center justify-center items-end" style={{ background: "rgba(6,7,12,.55)", backdropFilter: "blur(4px)", height: vph ? vph + "px" : "100dvh" }} onClick={onClose}>
@@ -43,7 +52,7 @@ function NewFilm({ onClose, onCreate, onUpload, initial }) {
         <div className="flex items-center justify-between px-4 py-3.5 sticky top-0" style={{ background: C.surface, borderBottom: `1px solid ${C.lineSoft}` }}>
           <button onClick={onClose} style={{ color: C.muted }}><X size={22} /></button>
           <span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{initial ? "ფილმის რედაქტირება" : "ფილმის დამატება"}</span>
-          <button disabled={!ok} onClick={() => onCreate({ title: title.trim(), year: year ? Number(year) : null, genre, desc: desc.trim(), poster: picked })} className="px-4 py-1.5 rounded-full text-sm font-bold" style={{ backgroundImage: GBRAND, color: "#fff", opacity: ok ? 1 : 0.4 }}>{initial ? "შენახვა" : "დამატება"}</button>
+          <button disabled={!ok} onClick={() => onCreate({ title: title.trim(), year: year ? Number(year) : null, genre, desc: desc.trim(), poster: picked, video: video || null })} className="px-4 py-1.5 rounded-full text-sm font-bold" style={{ backgroundImage: GBRAND, color: "#fff", opacity: ok ? 1 : 0.4 }}>{initial ? "შენახვა" : "დამატება"}</button>
         </div>
         <div className="p-4 space-y-3.5" style={{ paddingBottom: "calc(var(--mz-nav, 64px) + 1.25rem)" }}>
           <div className="flex gap-2 items-center flex-wrap">
@@ -51,6 +60,12 @@ function NewFilm({ onClose, onCreate, onUpload, initial }) {
             <button onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading} className="rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95" style={{ width: 72, height: 96, background: C.accentSoft, color: C.accentText }}>{uploading ? <span className="text-[10px] font-bold">…</span> : <><Upload size={20} /><span className="text-[10px] font-bold mt-0.5 text-center">პოსტერი</span></>}</button>
             {picked && <div className="rounded-xl overflow-hidden shrink-0 relative" style={{ width: 72, height: 96, outline: `2.5px solid ${C.accent}`, outlineOffset: 2 }}><Pic src={picked} className="w-full h-full" /><button onClick={() => setPicked("")} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div>}
             {!picked && <span className="text-[12px]" style={{ color: C.faint }}>დაამატე პოსტერი (არასავალდებულო) 🎬</span>}
+          </div>
+          <div className="flex gap-2 items-center flex-wrap">
+            <input ref={videoRef} type="file" accept="video/*" hidden onChange={pickVideo} />
+            <button onClick={() => videoRef.current && videoRef.current.click()} disabled={uploadingVideo} className="rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95" style={{ width: 72, height: 72, background: C.accentSoft, color: C.accentText }}>{uploadingVideo ? <span className="text-[10px] font-bold">…</span> : <><Play size={20} /><span className="text-[10px] font-bold mt-0.5 text-center">ფილმი</span></>}</button>
+            {video && <div className="rounded-xl overflow-hidden shrink-0 relative flex items-center justify-center" style={{ width: 72, height: 72, background: "#000", outline: `2.5px solid ${C.accent}`, outlineOffset: 2 }}><Play size={22} color="#fff" fill="#fff" /><button onClick={() => setVideo("")} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div>}
+            {!video && <span className="text-[12px]" style={{ color: C.faint }}>ატვირთე ფილმის ვიდეო (არასავალდებულო) ▶️</span>}
           </div>
           <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="ფილმის სახელი" className="w-full px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
           <input value={year} onChange={(e) => setYear(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" placeholder="გამოშვების წელი" className="w-full px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, fontFamily: MONO, border: `1px solid ${C.line}` }} />
@@ -62,7 +77,7 @@ function NewFilm({ onClose, onCreate, onUpload, initial }) {
   );
 }
 
-export function Movies({ films, watch, onNew, onEdit, onDelete, onOpenProfile, flash, onUpload, getReviews, onAddReview, onSetWatch, onClearWatch, sentinelRef, hasMore, loadingMore }) {
+export function Movies({ films, watch, onNew, onEdit, onDelete, onOpenProfile, flash, onUpload, onUploadVideo, getReviews, onAddReview, onSetWatch, onClearWatch, sentinelRef, hasMore, loadingMore }) {
   const [genre, setGenre] = useState("ყველა");
   const [year, setYear] = useState("");
   const [q, setQ] = useState("");
@@ -121,6 +136,11 @@ export function Movies({ films, watch, onNew, onEdit, onDelete, onOpenProfile, f
         </div>
         <div className="px-4 mt-4">
           {it.desc && <div className="text-[14.5px]" style={{ color: C.ink2, lineHeight: 1.6 }}>{it.desc}</div>}
+          {it.video && (
+            <div className="mt-4 rounded-2xl overflow-hidden" style={{ background: "#000" }}>
+              <video src={it.video} controls playsInline className="w-full" style={{ aspectRatio: "16/9", display: "block" }} />
+            </div>
+          )}
           <button onClick={() => onOpenProfile(u.id)} className="w-full flex items-center gap-3 mt-4 p-3.5" style={card()}><Avatar id={u.id} size={40} /><div className="flex-1 text-left"><Name id={u.id} className="text-[14px]" /><div className="text-[12px]" style={{ color: C.faint }}>დაამატა {it.time}</div></div><ChevronRight size={20} style={{ color: C.faint }} /></button>
 
           <div className="flex items-center justify-between mt-6 mb-3"><h3 className="text-[16px]" style={{ color: C.ink, fontFamily: DISPLAY, fontWeight: 700 }}>შეფასებები</h3><button onClick={() => setWriting((w) => !w)} className="text-sm font-bold flex items-center gap-1" style={{ color: C.accent }}><Plus size={16} /> დაწერე</button></div>
@@ -140,7 +160,7 @@ export function Movies({ films, watch, onNew, onEdit, onDelete, onOpenProfile, f
             )) : <Empty icon={Star} t="ჯერ შეფასება არ არის" s="იყავი პირველი." />}
           </div>
         </div>
-        {editing && <NewFilm initial={editing} onClose={() => setEditing(null)} onUpload={onUpload} onCreate={(d) => { onEdit && onEdit(editing.id, { title: d.title, year: d.year, genre: d.genre, description: d.desc, poster_url: d.poster || null }); setEditing(null); }} />}
+        {editing && <NewFilm initial={editing} onClose={() => setEditing(null)} onUpload={onUpload} onUploadVideo={onUploadVideo} onCreate={(d) => { onEdit && onEdit(editing.id, { title: d.title, year: d.year, genre: d.genre, description: d.desc, poster_url: d.poster || null, video_url: d.video || null }); setEditing(null); }} />}
         {confirmDel && <ConfirmDialog title="ფილმის წაშლა" msg="ნამდვილად წაშლი ამ ფილმს? შეფასებებიც წაიშლება." onCancel={() => setConfirmDel(false)} onConfirm={() => { onDelete && onDelete(it.id); setConfirmDel(false); setOpenId(null); }} />}
       </div>
     );
@@ -189,7 +209,7 @@ export function Movies({ films, watch, onNew, onEdit, onDelete, onOpenProfile, f
         <Empty icon={Clapperboard} t="ფილმი ვერ მოიძებნა" s="დაამატე პირველი ფილმი ან შეცვალე ფილტრი." />
       )}
       {hasMore && <div ref={sentinelRef} className="flex justify-center items-center" style={{ minHeight: 60, paddingTop: 8 }}><div style={{ width: 24, height: 24, border: `3px solid ${C.lineSoft}`, borderTopColor: C.accent, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} /></div>}
-      {creating && <NewFilm onClose={() => setCreating(false)} onUpload={onUpload} onCreate={(d) => { onNew(d); setCreating(false); }} />}
+      {creating && <NewFilm onClose={() => setCreating(false)} onUpload={onUpload} onUploadVideo={onUploadVideo} onCreate={(d) => { onNew(d); setCreating(false); }} />}
     </div>
   );
 }
