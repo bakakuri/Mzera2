@@ -321,6 +321,7 @@ export function BuraGame({ onExit }) {
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center" style={{ background: "rgba(0,0,0,.72)", backdropFilter: "blur(3px)" }}>
           <div style={{ fontSize: 60 }}>{g.winner === meIdx ? "🏆" : g.winner === "draw" ? "🤝" : "😔"}</div>
           <h2 className="text-[26px] font-bold mt-1" style={{ color: "#fff", fontFamily: DISPLAY }}>{g.winner === meIdx ? "მოიგე!" : g.winner === "draw" ? "ფრე" : "წააგე"}</h2>
+          {g.combo && <p className="text-[15px] font-bold mt-1" style={{ color: "#ffd166" }}>{g.combo} 🃏 — {g.winner === "draw" ? "ორივეს ერთდროულად!" : "მყისიერი გამარჯვება!"}</p>}
           <p className="text-[14px] mt-1 mb-7" style={{ color: "rgba(255,255,255,.7)", fontFamily: MONO }}>{g.captured[meIdx]} – {g.captured[oppIdx]}</p>
           {(!online || role === "host") && <button onClick={rematch} className="px-8 py-3 rounded-2xl text-[15px] font-bold text-white active:scale-95" style={{ backgroundImage: GBRAND }}>თავიდან</button>}
           {online && role === "guest" && <div className="text-[13px]" style={{ color: "rgba(255,255,255,.6)" }}>ახალი თამაშისთვის ჰოსტი აჭერს „თავიდან"</div>}

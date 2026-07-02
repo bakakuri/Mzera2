@@ -48,7 +48,7 @@ export function newGame(opts = {}) {
   const rest = deck.slice(10);          // 26 cards
   const trumpCard = rest[0];            // shown, drawn last
   const talon = rest.slice(1).concat([trumpCard]); // 25 + trump at bottom
-  return {
+  const s = {
     players: 2,
     hands,
     talon,
@@ -64,8 +64,11 @@ export function newGame(opts = {}) {
     phase: "lead",            // lead | defend | reveal | over
     turn: opts.starter || 0,
     winner: null,             // 0 | 1 | "draw"
+    combo: null,               // "ბურა" | "მოსკვა" when won by instant combo
     last: null,               // {type, by, cards} for animation/log
   };
+  checkInstantWin(s);
+  return s;
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────
@@ -209,12 +212,27 @@ export function resolve(state) {
   return s;
 }
 
+// check both hands for an instant-win combo (4 trumps = ბურა, 4 aces = მოსკვა);
+// mutates `s` and returns true if the deal just ended this way
+function checkInstantWin(s) {
+  const c0 = winCombo(s.hands[0], s.trumpSuit);
+  const c1 = winCombo(s.hands[1], s.trumpSuit);
+  if (!c0 && !c1) return false;
+  if (c0 && c1) { s.winner = "draw"; s.combo = c0; }
+  else if (c0) { s.winner = 0; s.combo = c0; }
+  else { s.winner = 1; s.combo = c1; }
+  s.phase = "over";
+  return true;
+}
+
 // draw back to 5 (winner first), then set up next lead / detect end
 function finishTrick(s, winner) {
   const order = [winner, 1 - winner];
   for (const p of order) {
     while (s.hands[p].length < 5 && s.talon.length > 0) s.hands[p].push(s.talon.shift());
   }
+  // instant win combo — checked whenever a hand freshly returns to 5 cards
+  if (checkInstantWin(s)) return;
   // win by points?
   if (s.captured[0] >= 61 || s.captured[1] >= 61) {
     s.winner = s.captured[0] >= 61 ? 0 : 1;
