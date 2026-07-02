@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { C, GRADS, DISPLAY, MONO, GBRAND, Avatar, USERS, ME, Tilt } from "./core";
-import { ArrowLeft } from "./core";
+import { ArrowLeft, MessageCircle, Send, X } from "./core";
 import { calls as callsApi } from "../lib/api";
 import { newGame, throwCards, cover, take, resolve, botMove, canThrow, isValidCover, cardId, cardPts, handPts, SUIT_SYM, SUIT_RED } from "../lib/bura";
 
@@ -35,11 +35,16 @@ export function BuraGame({ onExit }) {
   const [joinCode, setJoinCode] = useState("");
   const [joinErr, setJoinErr] = useState("");
   const [oppLeft, setOppLeft] = useState(false);
+  const [chatMsgs, setChatMsgs] = useState([]);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatUnread, setChatUnread] = useState(0);
+  const [chatInput, setChatInput] = useState("");
 
   const online = role !== null;
   const chRef = useRef(null), readyRef = useRef(false), queueRef = useRef([]);
-  const gRef = useRef(null), playersRef = useRef(null), roleRef = useRef(null), onMsgRef = useRef(null);
-  gRef.current = g; playersRef.current = players; roleRef.current = role;
+  const gRef = useRef(null), playersRef = useRef(null), roleRef = useRef(null), onMsgRef = useRef(null), chatOpenRef = useRef(false);
+  const chatListRef = useRef(null);
+  gRef.current = g; playersRef.current = players; roleRef.current = role; chatOpenRef.current = chatOpen;
 
   const sendRaw = (ch, payload) => { try { ch.send({ type: "broadcast", event: "b", payload }); } catch (e) {} };
   const send = (payload) => {
@@ -49,6 +54,11 @@ export function BuraGame({ onExit }) {
 
   // ── incoming realtime messages ──
   const onMsg = (m) => {
+    if (m.t === "chat") {
+      setChatMsgs(list => [...list, m]);
+      if (!chatOpenRef.current) setChatUnread(u => u + 1);
+      return;
+    }
     const r = roleRef.current;
     if (r === "host") {
       if (m.t === "hello") {
@@ -141,11 +151,12 @@ export function BuraGame({ onExit }) {
   }, [g, online, role]);
 
   const startBot = () => { setRole(null); setPlayers(null); setG(newGame({ starter })); setSel([]); setScreen("play"); };
-  const createRoom = () => { setJoinErr(""); setPlayers(null); setG(null); setCode(genCode()); setRole("host"); setScreen("online-wait"); };
-  const joinRoom = () => { const c = joinCode.trim().toUpperCase(); if (c.length < 3) { setJoinErr("შეიყვანე კოდი"); return; } setJoinErr(""); setPlayers(null); setG(null); setCode(c); setRole("guest"); setScreen("online-wait"); };
+  const resetChat = () => { setChatMsgs([]); setChatOpen(false); setChatUnread(0); setChatInput(""); };
+  const createRoom = () => { setJoinErr(""); setPlayers(null); setG(null); setCode(genCode()); setRole("host"); resetChat(); setScreen("online-wait"); };
+  const joinRoom = () => { const c = joinCode.trim().toUpperCase(); if (c.length < 3) { setJoinErr("შეიყვანე კოდი"); return; } setJoinErr(""); setPlayers(null); setG(null); setCode(c); setRole("guest"); resetChat(); setScreen("online-wait"); };
   const rematch = () => { const ns2 = 1 - starter; setStarter(ns2); const ns = newGame({ starter: ns2 }); setSel([]); setG(ns); setOppLeft(false); if (online && role === "host") send({ t: "state", state: ns, players }); };
   const leave = () => { if (online) send({ t: "bye", from: ME }); onExit(); };
-  const backToMenu = () => { if (online) send({ t: "bye", from: ME }); setRole(null); setCode(""); setPlayers(null); setG(null); setSel([]); setJoinErr(""); setOppLeft(false); setScreen("menu"); };
+  const backToMenu = () => { if (online) send({ t: "bye", from: ME }); setRole(null); setCode(""); setPlayers(null); setG(null); setSel([]); setJoinErr(""); setOppLeft(false); resetChat(); setScreen("menu"); };
 
   // apply a local action (offline / online-host) or send it (online-guest)
   const act = (kind, cards) => {
@@ -155,6 +166,19 @@ export function BuraGame({ onExit }) {
     if (role === "host") { const ns = apply(g); if (ns !== g) { setG(ns); send({ t: "state", state: ns, players }); } }
     else send({ t: "move", kind, cards: cards || [] });
   };
+
+  const sendChat = () => {
+    const text = chatInput.trim().slice(0, 300);
+    if (!text) return;
+    const msg = { t: "chat", from: ME, text, ts: Date.now() };
+    setChatMsgs(list => [...list, msg]);
+    send(msg);
+    setChatInput("");
+  };
+
+  useEffect(() => {
+    if (chatOpen && chatListRef.current) chatListRef.current.scrollTop = chatListRef.current.scrollHeight;
+  }, [chatMsgs, chatOpen]);
 
   // ══════════════ MENU ══════════════
   if (screen === "menu") {
@@ -238,9 +262,20 @@ export function BuraGame({ onExit }) {
   const selCards = myHand.filter(c => sel.includes(cardId(c)));
   const canPlay = iLead ? canThrow(myHand, selCards) : false;
   const canClose = iDefend && sel.length === g.attackCards.length && isValidCover(g.attackCards, selCards, trump);
+  const leadSuit = iLead && sel.length ? myHand.find(h => cardId(h) === sel[0])?.s : null;
   const toggle = (c) => {
     const id = cardId(c);
-    setSel(s => { if (s.includes(id)) return s.filter(x => x !== id); const cap = iDefend ? g.attackCards.length : 5; if (s.length >= cap) return s; return [...s, id]; });
+    setSel(s => {
+      if (s.includes(id)) return s.filter(x => x !== id);
+      if (iDefend) {
+        const cap = g.attackCards.length;
+        if (s.length >= cap) return s;
+        return [...s, id];
+      }
+      if (s.length >= 5) return s;
+      if (leadSuit && c.s !== leadSuit) return s; // multi-card lead must share one suit
+      return [...s, id];
+    });
   };
 
   const oppWord = online ? oppName : "ბოტმა";
@@ -258,7 +293,12 @@ export function BuraGame({ onExit }) {
       <div className="flex items-center justify-between px-4 py-2.5" style={{ background: "rgba(0,0,0,.25)" }}>
         <button onClick={leave} className="active:scale-90"><ArrowLeft size={22} color="#fff" /></button>
         <span className="text-[13px] font-bold" style={{ color: "rgba(255,255,255,.7)", fontFamily: MONO }}>{online ? "ონლაინ" : "ბურა"} · {g.captured[meIdx]}–{g.captured[oppIdx]} · 61</span>
-        {!online ? <button onClick={rematch} className="active:scale-90" style={{ color: "#fff", fontSize: 20, lineHeight: 1 }}>↻</button> : <span style={{ width: 20 }} />}
+        {online ? (
+          <button onClick={() => { setChatOpen(true); setChatUnread(0); }} className="relative active:scale-90" style={{ color: "#fff" }}>
+            <MessageCircle size={21} />
+            {chatUnread > 0 && <span className="absolute flex items-center justify-center rounded-full font-bold" style={{ top: -6, right: -8, minWidth: 16, height: 16, padding: "0 3px", backgroundImage: GBRAND, color: "#fff", fontSize: 10, fontFamily: MONO }}>{chatUnread > 9 ? "9+" : chatUnread}</span>}
+          </button>
+        ) : <button onClick={rematch} className="active:scale-90" style={{ color: "#fff", fontSize: 20, lineHeight: 1 }}>↻</button>}
       </div>
 
       {/* opponent */}
@@ -293,7 +333,7 @@ export function BuraGame({ onExit }) {
       <div className="px-4 pb-1 text-center"><span className="text-[11.5px]" style={{ color: "rgba(255,255,255,.55)", fontFamily: MONO }}>შენი ქულა: {g.captured[meIdx]}</span></div>
 
       <div className="px-3 pt-1 flex items-end justify-center flex-wrap gap-1.5" style={{ minHeight: 96 }}>
-        {myHand.map((c) => { const id = cardId(c); const lifted = sel.includes(id); const selectable = (iLead || iDefend); return <div key={id} style={{ marginTop: 6 }}><CardFace card={c} size="md" lifted={lifted} onClick={selectable ? () => toggle(c) : undefined} /></div>; })}
+        {myHand.map((c) => { const id = cardId(c); const lifted = sel.includes(id); const selectable = (iLead || iDefend); const blocked = iLead && !lifted && leadSuit && c.s !== leadSuit; return <div key={id} style={{ marginTop: 6 }}><CardFace card={c} size="md" lifted={lifted} dim={blocked} onClick={selectable ? () => toggle(c) : undefined} /></div>; })}
         {myHand.length === 0 && <span style={{ color: "rgba(255,255,255,.4)", fontSize: 13 }}>ხელი ცარიელია</span>}
       </div>
 
@@ -306,6 +346,38 @@ export function BuraGame({ onExit }) {
         {showSkip && <button onClick={() => act("skip")} className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white active:scale-[.98]" style={{ backgroundImage: GBRAND }}>გაგრძელება →</button>}
         {!iLead && !iDefend && g.phase !== "over" && !showSkip && <div className="text-center py-3.5 text-[14px] font-semibold" style={{ color: "rgba(255,255,255,.55)" }}>{statusText}</div>}
       </div>
+
+      {/* chat */}
+      {online && chatOpen && (
+        <div className="absolute inset-0 z-40 flex items-end" style={{ background: "rgba(0,0,0,.45)" }} onClick={() => setChatOpen(false)}>
+          <div className="w-full flex flex-col rounded-t-3xl" style={{ background: C.paper, maxHeight: "72%", animation: "up .25s ease both" }} onClick={(e) => e.stopPropagation()}>
+            <div className="mx-auto rounded-full mt-2 mb-1" style={{ width: 38, height: 4, background: C.line }} />
+            <div className="flex items-center justify-between px-4 py-2">
+              <div className="flex items-center gap-2">
+                {online && oppId ? <Avatar id={oppId} size={26} /> : <div style={{ width: 26, height: 26, borderRadius: "50%", backgroundImage: GBRAND, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>🤖</div>}
+                <span className="text-[14.5px] font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{oppName}</span>
+              </div>
+              <button onClick={() => setChatOpen(false)} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 30, height: 30, color: C.ink2, background: C.surfaceMuted }}><X size={16} /></button>
+            </div>
+            <div ref={chatListRef} className="flex-1 min-h-0 overflow-y-auto px-3 py-2 space-y-1.5" style={{ minHeight: 120 }}>
+              {chatMsgs.length === 0 && <div className="text-center py-8 text-[13.5px]" style={{ color: C.faint }}>დაიწყე საუბარი 👋</div>}
+              {chatMsgs.map((m, i) => {
+                const mine = m.from === ME;
+                const bubbleStyle = mine ? { backgroundImage: GBRAND, color: "#fff", borderRadius: "18px 18px 5px 18px" } : { background: C.surfaceMuted, color: C.ink, borderRadius: "18px 18px 18px 5px" };
+                return (
+                  <div key={i} className={"flex " + (mine ? "justify-end" : "justify-start")}>
+                    <div className="max-w-[78%] px-3.5 py-2 text-[14.5px]" style={{ ...bubbleStyle, lineHeight: 1.35, wordBreak: "break-word" }}>{m.text}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-2 px-3 py-2.5" style={{ borderTop: `1px solid ${C.line}`, paddingBottom: "max(0.625rem, env(safe-area-inset-bottom))" }}>
+              <input value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") sendChat(); }} placeholder="შეტყობინება…" maxLength={300} className="flex-1 px-4 py-2.5 rounded-full text-[14.5px] outline-none" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
+              <button onClick={sendChat} disabled={!chatInput.trim()} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 40, height: 40, backgroundImage: GBRAND, color: "#fff", opacity: chatInput.trim() ? 1 : 0.4 }}><Send size={18} /></button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* opponent left */}
       {oppLeft && g.phase !== "over" && (
@@ -321,6 +393,7 @@ export function BuraGame({ onExit }) {
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center" style={{ background: "rgba(0,0,0,.72)", backdropFilter: "blur(3px)" }}>
           <div style={{ fontSize: 60 }}>{g.winner === meIdx ? "🏆" : g.winner === "draw" ? "🤝" : "😔"}</div>
           <h2 className="text-[26px] font-bold mt-1" style={{ color: "#fff", fontFamily: DISPLAY }}>{g.winner === meIdx ? "მოიგე!" : g.winner === "draw" ? "ფრე" : "წააგე"}</h2>
+          {g.combo && <p className="text-[15px] font-bold mt-1" style={{ color: "#ffd166" }}>{g.combo} 🃏 — {g.winner === "draw" ? "ორივეს ერთდროულად!" : "მყისიერი გამარჯვება!"}</p>}
           <p className="text-[14px] mt-1 mb-7" style={{ color: "rgba(255,255,255,.7)", fontFamily: MONO }}>{g.captured[meIdx]} – {g.captured[oppIdx]}</p>
           {(!online || role === "host") && <button onClick={rematch} className="px-8 py-3 rounded-2xl text-[15px] font-bold text-white active:scale-95" style={{ backgroundImage: GBRAND }}>თავიდან</button>}
           {online && role === "guest" && <div className="text-[13px]" style={{ color: "rgba(255,255,255,.6)" }}>ახალი თამაშისთვის ჰოსტი აჭერს „თავიდან"</div>}
