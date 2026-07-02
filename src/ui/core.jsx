@@ -47,12 +47,12 @@ export const card = () => ({
 });
 
 // Subtle 3D tilt on pointer move — used sparingly on signature surfaces
-export function Tilt({ children, max = 8, radius = 22, className, style, onClick }) {
+export function Tilt({ children, max = 8, radius = 22, className, style, onClick, touchAction = "pan-y" }) {
   const ref = useRef(null);
   const [t, setT] = useState("");
   const move = (e) => { const el = ref.current; if (!el) return; const r = el.getBoundingClientRect(); const px = (e.clientX - r.left) / r.width - 0.5; const py = (e.clientY - r.top) / r.height - 0.5; setT(`perspective(1000px) rotateX(${(-py * max).toFixed(2)}deg) rotateY(${(px * max).toFixed(2)}deg) scale(1.012)`); };
   const reset = () => setT("");
-  return <div ref={ref} onPointerMove={move} onPointerLeave={reset} onPointerUp={reset} onPointerCancel={reset} onClick={onClick} className={className} style={{ ...style, borderRadius: radius, transform: t || "perspective(1000px)", transition: t ? "transform 70ms linear" : "transform 340ms cubic-bezier(.2,.8,.2,1)", transformStyle: "preserve-3d", willChange: "transform", touchAction: "pan-y" }}>{children}</div>;
+  return <div ref={ref} onPointerMove={move} onPointerLeave={reset} onPointerUp={reset} onPointerCancel={reset} onClick={onClick} className={className} style={{ ...style, borderRadius: radius, transform: t || "perspective(1000px)", transition: t ? "transform 70ms linear" : "transform 340ms cubic-bezier(.2,.8,.2,1)", transformStyle: "preserve-3d", willChange: "transform", touchAction }}>{children}</div>;
 }
 
 export const DISPLAY = "'Space Grotesk', 'Noto Sans Georgian', system-ui, sans-serif";

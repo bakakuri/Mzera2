@@ -166,7 +166,7 @@ export const posts = {
     let q = need()
       .from("posts")
       .select("*, author:profiles!posts_author_id_fkey(*), poll_options(idx,text), poll_votes(option_idx,user_id), shared:posts!posts_shared_post_id_fkey(*, author:profiles!posts_author_id_fkey(*))")
-      .or(`scheduled_for.is.null,scheduled_for.lte.${new Date().toISOString()}`)
+      .or(`scheduled_for.is.null,scheduled_for.lte."${new Date().toISOString()}"`)
       .order("created_at", { ascending: false })
       .limit(limit);
     if (before) q = q.lt("created_at", before);
