@@ -2,28 +2,54 @@ import React, { useState, useEffect, useRef } from "react";
 import { C, DISPLAY, MONO, GBRAND, Avatar, USERS, ME } from "./core";
 import { ArrowLeft, MessageCircle, Send, X } from "./core";
 import { calls as callsApi } from "../lib/api";
-import { newGame, openingRoll, rollDice, move, botPlayTurn, legalFirstMoves, pipCount } from "../lib/nardi";
+import { newGame, openingRoll, rollDice, move, botChooseMove, legalFirstMoves, pipCount } from "../lib/nardi";
 
 const DIFFS = [{ k: "easy", t: "მარტივი" }, { k: "normal", t: "საშუალო" }, { k: "hard", t: "რთული" }];
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const genCode = () => Array.from({ length: 4 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join("");
-const COL = { 0: "#fff", 1: "#1a1d26" };
+const CHECKER_BG = {
+  0: "radial-gradient(circle at 35% 28%, #ffffff, #e4e7ef 55%, #b7bccb 100%)",
+  1: "radial-gradient(circle at 35% 28%, #565c6b, #23262f 55%, #050608 100%)",
+};
+const CHECKER_RING = { 0: "#aeb3c2", 1: "#000" };
+const PT_TINT = ["#c98a4b", "#5a3a24"]; // alternating triangle tones (wood look)
 
-function Checker({ player, size = 22 }) {
-  return <div style={{ width: size, height: size, borderRadius: "50%", background: COL[player], border: `2px solid ${player === 0 ? "#c9ccd6" : "#000"}`, boxShadow: "0 2px 3px rgba(0,0,0,.35)", flex: "0 0 auto" }} />;
+function Checker({ player, size = 22, pop }) {
+  return <div className={pop ? "nardi-checker-in" : ""} style={{ width: size, height: size, borderRadius: "50%", background: CHECKER_BG[player], border: `1.5px solid ${CHECKER_RING[player]}`, boxShadow: "0 2px 4px rgba(0,0,0,.45), inset 0 1px 1px rgba(255,255,255,.5)", flex: "0 0 auto" }} />;
 }
 
-function Point({ idx, count, top, selectable, onClick, tint }) {
+function Point({ idx, count, top, selectable, onClick, tint, setRef, hitFlash }) {
   const player = count > 0 ? 0 : count < 0 ? 1 : null;
   const n = Math.abs(count);
   const shown = Math.min(n, 5);
-  const checkers = Array.from({ length: shown }, (_, i) => <Checker key={i} player={player} size={20} />);
+  const checkers = Array.from({ length: shown }, (_, i) => <Checker key={i} player={player} size={19} pop={hitFlash && i === shown - 1} />);
+  const clip = top ? "polygon(0 0, 100% 0, 50% 100%)" : "polygon(50% 0, 100% 100%, 0 100%)";
   return (
-    <button onClick={onClick} disabled={!selectable} className="relative flex-1 flex flex-col items-center active:opacity-80" style={{ minWidth: 0, height: 118, background: tint, border: selectable ? `2px solid ${C.accent}` : "2px solid transparent", borderRadius: 6, justifyContent: top ? "flex-start" : "flex-end", padding: "3px 1px", gap: 2 }}>
-      <div style={{ display: "flex", flexDirection: top ? "column" : "column-reverse", gap: 2, alignItems: "center" }}>{checkers}</div>
-      {n > 5 && <span style={{ fontSize: 10, fontFamily: MONO, color: C.ink, fontWeight: 700 }}>+{n - 5}</span>}
-      <span style={{ position: "absolute", [top ? "bottom" : "top"]: 2, fontSize: 9, color: "rgba(0,0,0,.4)", fontFamily: MONO }}>{idx + 1}</span>
-    </button>
+    <div ref={setRef} className={"relative flex-1 " + (hitFlash ? "nardi-hit" : "")} style={{ minWidth: 0, height: 116 }}>
+      <div className="absolute inset-0" style={{ clipPath: clip, background: tint, opacity: 0.92 }} />
+      <button
+        onClick={onClick}
+        disabled={!selectable}
+        className={"relative w-full h-full flex flex-col items-center active:opacity-80 " + (selectable ? "nardi-selectable" : "")}
+        style={{ borderRadius: 4, justifyContent: top ? "flex-start" : "flex-end", padding: "4px 1px", gap: 2, background: "transparent" }}
+      >
+        <div style={{ display: "flex", flexDirection: top ? "column" : "column-reverse", gap: 2, alignItems: "center" }}>{checkers}</div>
+        {n > 5 && <span style={{ fontSize: 10, fontFamily: MONO, color: "#fff", fontWeight: 700, textShadow: "0 1px 2px rgba(0,0,0,.8)" }}>+{n - 5}</span>}
+        <span style={{ position: "absolute", [top ? "bottom" : "top"]: 3, fontSize: 8.5, color: "rgba(255,255,255,.55)", fontFamily: MONO }}>{idx + 1}</span>
+      </button>
+    </div>
+  );
+}
+
+const PIP_LAYOUT = {
+  1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8],
+};
+function Die({ value, dim, rolling }) {
+  const pips = PIP_LAYOUT[value] || [];
+  return (
+    <div className={rolling ? "nardi-dice-roll" : ""} style={{ width: 26, height: 26, borderRadius: 6, background: dim ? "rgba(255,255,255,.25)" : "linear-gradient(160deg,#fff,#e7e9ef)", boxShadow: dim ? "none" : "0 2px 4px rgba(0,0,0,.4)", display: "grid", gridTemplateColumns: "repeat(3,1fr)", gridTemplateRows: "repeat(3,1fr)", padding: 3.5, gap: 1 }}>
+      {Array.from({ length: 9 }, (_, i) => <div key={i} style={{ borderRadius: "50%", background: pips.includes(i) ? (dim ? "rgba(255,255,255,.6)" : "#23262f") : "transparent" }} />)}
+    </div>
   );
 }
 
@@ -50,6 +76,57 @@ export function NardiGame({ onExit }) {
   const gRef = useRef(null), playersRef = useRef(null), roleRef = useRef(null), onMsgRef = useRef(null), chatOpenRef = useRef(false);
   const chatListRef = useRef(null);
   gRef.current = g; playersRef.current = players; roleRef.current = role; chatOpenRef.current = chatOpen;
+
+  // ── animation: sliding "flying" checker between points (FLIP technique) ──
+  const boardRef = useRef(null);
+  const pointRefs = useRef({});
+  const barRefs = useRef({});
+  const offRefs = useRef({});
+  const lastAnimatedRef = useRef(null);
+  const [flying, setFlying] = useState(null);
+  const [hitIdx, setHitIdx] = useState(null);
+  useEffect(() => {
+    if (!g || !g.last || g.last.type) return; // roll/opening/no-moves aren't checker moves
+    if (lastAnimatedRef.current === g.last) return;
+    lastAnimatedRef.current = g.last;
+    const { from, to, by, hit } = g.last;
+    const originEl = from === "bar" ? barRefs.current[by] : pointRefs.current[from];
+    const destEl = to === "off" ? offRefs.current[by] : pointRefs.current[to];
+    const boardEl = boardRef.current;
+    if (!originEl || !destEl || !boardEl) return;
+    const bR = boardEl.getBoundingClientRect(), oR = originEl.getBoundingClientRect(), dR = destEl.getBoundingClientRect();
+    const sx = oR.left + oR.width / 2 - bR.left, sy = oR.top + oR.height / 2 - bR.top;
+    const ex = dR.left + dR.width / 2 - bR.left, ey = dR.top + dR.height / 2 - bR.top;
+    setFlying({ player: by, x: sx, y: sy, moving: false });
+    const raf1 = requestAnimationFrame(() => {
+      const raf2 = requestAnimationFrame(() => setFlying({ player: by, x: ex, y: ey, moving: true }));
+      lastAnimatedRef.current.__raf2 = raf2;
+    });
+    const t1 = setTimeout(() => setFlying(null), 340);
+    const t2 = hit ? setTimeout(() => { setHitIdx(to); setTimeout(() => setHitIdx(null), 360); }, 300) : null;
+    return () => { cancelAnimationFrame(raf1); clearTimeout(t1); if (t2) clearTimeout(t2); };
+  }, [g]);
+
+  // ── animation: dice tumble/flicker on a fresh roll ──
+  const [displayDice, setDisplayDice] = useState([]);
+  const [diceRolling, setDiceRolling] = useState(false);
+  const lastRolledRef = useRef(null);
+  useEffect(() => {
+    if (!g) return;
+    const isFreshRoll = g.last && (g.last.type === "roll" || g.last.type === "opening") && g.last !== lastRolledRef.current;
+    if (isFreshRoll) {
+      lastRolledRef.current = g.last;
+      setDiceRolling(true);
+      let n = 0;
+      const iv = setInterval(() => {
+        setDisplayDice([1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)]);
+        n++;
+        if (n >= 5) { clearInterval(iv); setDisplayDice(g.dice); setDiceRolling(false); }
+      }, 65);
+      return () => clearInterval(iv);
+    }
+    setDisplayDice(g.dice);
+  }, [g]);
 
   const sendRaw = (ch, payload) => { try { ch.send({ type: "broadcast", event: "b", payload }); } catch (e) {} };
   const send = (payload) => {
@@ -114,11 +191,22 @@ export function NardiGame({ onExit }) {
     return () => clearInterval(iv);
   }, [screen, role]);
 
-  // bot plays on its turn (offline only)
+  // bot plays on its turn (offline only) — one single move per tick, so each
+  // checker the bot moves gets its own slide animation, re-triggering this
+  // effect via the `g` dependency until the bot's turn naturally ends
   useEffect(() => {
     if (online || !g || g.turn !== 1 || g.phase === "over") { setThinking(false); return; }
     setThinking(true);
-    const t = setTimeout(() => { setG(cur => (cur && cur.turn === 1 && cur.phase !== "over") ? botPlayTurn(cur, diff) : cur); setThinking(false); }, 700);
+    const t = setTimeout(() => {
+      setG(cur => {
+        if (!cur || cur.turn !== 1 || cur.phase === "over") return cur;
+        if (cur.phase === "opening") return openingRoll(cur);
+        if (cur.phase === "roll") return rollDice(cur);
+        if (cur.phase === "move") { const mv = botChooseMove(cur, diff); return mv ? move(cur, mv.from, mv.die) : cur; }
+        return cur;
+      });
+      setThinking(false);
+    }, g.phase === "move" ? 550 : 750);
     return () => clearTimeout(t);
   }, [g, diff, online]);
 
@@ -268,15 +356,20 @@ export function NardiGame({ onExit }) {
     <div className="flex" style={{ gap: 2 }}>
       {idxs.map((idx, i) => (
         <React.Fragment key={idx}>
-          {i === 6 && <div style={{ width: 14 }} />}
-          <Point idx={idx} count={g.points[idx]} top={top} selectable={fromsSet.has(idx)} onClick={() => onPointClick(idx)} tint={(idx % 2 === 0) ? "#eef1f7" : "#dfe4ee"} />
+          {i === 6 && <div style={{ width: 16 }} />}
+          <Point idx={idx} count={g.points[idx]} top={top} selectable={fromsSet.has(idx)} onClick={() => onPointClick(idx)} tint={PT_TINT[idx % 2]} setRef={(el) => { pointRefs.current[idx] = el; }} hitFlash={hitIdx === idx} />
         </React.Fragment>
       ))}
     </div>
   );
+  const OffTray = ({ player }) => (
+    <div ref={(el) => { offRefs.current[player] = el; }} className="flex items-center justify-center rounded-lg" style={{ width: 26, height: 26, background: "rgba(255,255,255,.08)", border: "1px dashed rgba(255,255,255,.25)" }}>
+      <span className="text-[11px] font-bold" style={{ color: "#fff", fontFamily: MONO }}>{g.off[player]}</span>
+    </div>
+  );
 
   return (
-    <div className="fixed inset-0 z-[95] flex flex-col" style={{ background: "radial-gradient(circle at 50% 20%, #1a2436, #0c1220 75%)" }}>
+    <div className="fixed inset-0 z-[95] flex flex-col" style={{ background: "radial-gradient(circle at 50% 15%, #26170d, #0c0705 80%)" }}>
       <div className="flex items-center justify-between px-4 py-2.5" style={{ background: "rgba(0,0,0,.25)" }}>
         <button onClick={leave} className="active:scale-90"><ArrowLeft size={22} color="#fff" /></button>
         <span className="text-[13px] font-bold" style={{ color: "rgba(255,255,255,.7)", fontFamily: MONO }}>{online ? "ონლაინ" : "ნარდი"} · აღებული {g.off[meIdx]}–{g.off[oppIdx]}</span>
@@ -291,27 +384,35 @@ export function NardiGame({ onExit }) {
       <div className="flex items-center gap-2.5 px-4 py-1.5">
         {online && oppId ? <Avatar id={oppId} size={30} /> : <div style={{ width: 30, height: 30, borderRadius: "50%", backgroundImage: GBRAND, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, border: "2px solid rgba(255,255,255,.2)" }}>🤖</div>}
         <div className="flex-1"><div className="text-[13px] font-bold" style={{ color: "#fff" }}>{oppName}</div><div className="text-[10.5px]" style={{ color: "rgba(255,255,255,.55)", fontFamily: MONO }}>pip: {pipCount(g, oppIdx)}</div></div>
-        <Checker player={oppIdx} size={16} /><span className="text-[12px] font-bold" style={{ color: "#fff", fontFamily: MONO }}>{g.bar[oppIdx]}</span>
+        <div ref={(el) => { barRefs.current[oppIdx] = el; }} className="flex items-center gap-1"><Checker player={oppIdx} size={16} /><span className="text-[12px] font-bold" style={{ color: "#fff", fontFamily: MONO }}>{g.bar[oppIdx]}</span></div>
         <span className="text-[11px]" style={{ color: "rgba(255,255,255,.5)" }}>ბარზე</span>
+        <OffTray player={oppIdx} />
       </div>
 
-      <div className="px-3 py-2">
+      <div ref={boardRef} className="relative mx-3 px-2.5 py-2.5" style={{ background: "linear-gradient(160deg,#3a2313,#1e1109)", borderRadius: 12, border: "6px solid #241407", boxShadow: "0 10px 26px -6px rgba(0,0,0,.6), inset 0 0 0 1px rgba(0,0,0,.4)" }}>
         {renderRow(topIdx, true)}
-        <button onClick={onBarClick} className="w-full flex items-center justify-center active:opacity-80" style={{ height: 34, background: fromsSet.has("bar") ? "rgba(103,80,242,.35)" : "rgba(255,255,255,.06)", border: fromsSet.has("bar") ? `2px solid ${C.accent}` : "2px solid transparent", borderRadius: 6, margin: "3px 0", gap: 10 }} disabled={!fromsSet.has("bar")}>
-          {g.dice.length > 0 && g.phase !== "opening" && (
+        <button onClick={onBarClick} className="w-full flex items-center justify-center active:opacity-80" style={{ height: 38, background: fromsSet.has("bar") ? "rgba(255,196,92,.22)" : "rgba(0,0,0,.35)", border: fromsSet.has("bar") ? "2px solid #ffc45c" : "2px solid rgba(255,255,255,.06)", borderRadius: 6, margin: "4px 0", gap: 10 }} disabled={!fromsSet.has("bar")}>
+          {g.dice.length > 0 && (
             <div className="flex gap-2">
-              {g.diceLeft.map((d, i) => <div key={i} className="flex items-center justify-center rounded-md font-bold" style={{ width: 24, height: 24, background: "#fff", color: "#1a1d26", fontSize: 13, fontFamily: MONO }}>{d}</div>)}
-              {g.diceLeft.length === 0 && g.dice.map((d, i) => <div key={i} className="flex items-center justify-center rounded-md font-bold" style={{ width: 24, height: 24, background: "rgba(255,255,255,.25)", color: "rgba(255,255,255,.6)", fontSize: 13, fontFamily: MONO }}>{d}</div>)}
+              {diceRolling
+                ? displayDice.map((d, i) => <Die key={"r" + i} value={d} rolling />)
+                : g.diceLeft.length > 0
+                  ? g.diceLeft.map((d, i) => <Die key={"l" + i} value={d} />)
+                  : g.dice.map((d, i) => <Die key={"d" + i} value={d} dim />)}
             </div>
           )}
           {g.bar[0] > 0 && <span className="text-[11px] font-bold" style={{ color: "#fff", fontFamily: MONO }}>⚪{g.bar[0]}</span>}
           {g.bar[1] > 0 && <span className="text-[11px] font-bold" style={{ color: "#fff", fontFamily: MONO }}>⚫{g.bar[1]}</span>}
         </button>
         {renderRow(bottomIdx, false)}
+
+        {flying && (
+          <div style={{ position: "absolute", left: 0, top: 0, width: 19, height: 19, marginLeft: -9.5, marginTop: -9.5, borderRadius: "50%", background: CHECKER_BG[flying.player], border: `1.5px solid ${CHECKER_RING[flying.player]}`, boxShadow: "0 5px 10px rgba(0,0,0,.55)", transform: `translate(${flying.x}px, ${flying.y}px) scale(${flying.moving ? 1.25 : 1})`, transition: flying.moving ? "transform 300ms cubic-bezier(.25,.7,.3,1)" : "none", zIndex: 30, pointerEvents: "none" }} />
+        )}
       </div>
 
       {pendingFrom != null && (
-        <div className="flex items-center justify-center gap-2 px-4">
+        <div className="flex items-center justify-center gap-2 px-4 pt-2">
           <span className="text-[12.5px]" style={{ color: "rgba(255,255,255,.7)" }}>რომელი კამათლით?</span>
           {diceForFrom.map(d => <button key={d} onClick={() => doMove(pendingFrom, d)} className="rounded-lg font-bold active:scale-90" style={{ width: 32, height: 32, backgroundImage: GBRAND, color: "#fff", fontFamily: MONO }}>{d}</button>)}
         </div>
@@ -324,10 +425,11 @@ export function NardiGame({ onExit }) {
       </div>
 
       <div className="px-4 pb-1 flex items-center gap-2.5">
-        {online && oppId ? <Avatar id={ME} size={30} /> : <Avatar id={ME} size={30} />}
+        <Avatar id={ME} size={30} />
         <div className="flex-1"><div className="text-[13px] font-bold" style={{ color: "#fff" }}>შენ</div><div className="text-[10.5px]" style={{ color: "rgba(255,255,255,.55)", fontFamily: MONO }}>pip: {pipCount(g, meIdx)}</div></div>
-        <Checker player={meIdx} size={16} /><span className="text-[12px] font-bold" style={{ color: "#fff", fontFamily: MONO }}>{g.bar[meIdx]}</span>
+        <div ref={(el) => { barRefs.current[meIdx] = el; }} className="flex items-center gap-1"><Checker player={meIdx} size={16} /><span className="text-[12px] font-bold" style={{ color: "#fff", fontFamily: MONO }}>{g.bar[meIdx]}</span></div>
         <span className="text-[11px]" style={{ color: "rgba(255,255,255,.5)" }}>ბარზე</span>
+        <OffTray player={meIdx} />
       </div>
 
       {/* chat */}

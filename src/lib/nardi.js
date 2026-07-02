@@ -89,23 +89,29 @@ function legalSingleMoves(state, player, die) {
 function landOn(s, player, idx) {
   const v = s.points[idx];
   const o = v > 0 ? 0 : v < 0 ? 1 : null;
-  if (o !== null && o !== player) { s.bar[o] += 1; s.points[idx] = 0; }
+  let hit = false;
+  if (o !== null && o !== player) { s.bar[o] += 1; s.points[idx] = 0; hit = true; }
   s.points[idx] += player === 0 ? 1 : -1;
+  return hit;
 }
 
 function applySingle(state, player, mv) {
   const s = clone(state);
+  let to = null, hit = false;
   if (mv.from === "bar") {
     s.bar[player] -= 1;
-    landOn(s, player, entryIdx(player, mv.die));
+    to = entryIdx(player, mv.die);
+    hit = landOn(s, player, to);
   } else if (mv.bearOff) {
     s.points[mv.from] += player === 0 ? -1 : 1;
     s.off[player] += 1;
+    to = "off";
   } else {
     s.points[mv.from] += player === 0 ? -1 : 1;
-    landOn(s, player, mv.from + dir(player) * mv.die);
+    to = mv.from + dir(player) * mv.die;
+    hit = landOn(s, player, to);
   }
-  s.last = { from: mv.from, die: mv.die, bearOff: !!mv.bearOff, by: player };
+  s.last = { from: mv.from, to, die: mv.die, bearOff: !!mv.bearOff, hit, by: player };
   return s;
 }
 
@@ -217,14 +223,10 @@ function evalState(state, player) {
   return score;
 }
 
-export function botPlayTurn(state, diff = "normal", rnd) {
-  if (state.phase === "opening") return openingRoll(state, rnd);
-  if (state.phase === "roll") return rollDice(state, rnd);
-  if (state.phase !== "move") return state;
-  const player = state.turn;
+function bestSequence(state, player, diff, rnd) {
   const seqs = enumerateSequences(state, player, state.diceLeft);
   const maxLen = maxLenOf(seqs);
-  if (maxLen === 0) { const s = clone(state); s.diceLeft = []; s.turn = 1 - player; s.phase = "roll"; return s; }
+  if (maxLen === 0) return [];
   const candidates = seqs.filter((q) => q.length === maxLen);
   const noise = diff === "easy" ? 20 : diff === "hard" ? 0 : 6;
   const r = rnd || Math.random;
@@ -235,7 +237,26 @@ export function botPlayTurn(state, diff = "normal", rnd) {
     const sc = evalState(s, player) + (r() - 0.5) * noise;
     if (sc > bestScore) { bestScore = sc; best = seq; }
   }
+  return best;
+}
+
+// applies the bot's whole turn in one shot
+export function botPlayTurn(state, diff = "normal", rnd) {
+  if (state.phase === "opening") return openingRoll(state, rnd);
+  if (state.phase === "roll") return rollDice(state, rnd);
+  if (state.phase !== "move") return state;
+  const player = state.turn;
+  const best = bestSequence(state, player, diff, rnd);
+  if (!best.length) { const s = clone(state); s.diceLeft = []; s.turn = 1 - player; s.phase = "roll"; return s; }
   let s = state;
   for (const mv of best) s = applySingle(s, player, mv);
   return finalizeIfDone(s, player);
+}
+
+// single-step variant for animated UIs: just the next move the bot would
+// make in its chosen best sequence, to be applied via move() one at a time
+export function botChooseMove(state, diff = "normal", rnd) {
+  if (state.phase !== "move") return null;
+  const best = bestSequence(state, state.turn, diff, rnd);
+  return best.length ? { from: best[0].from, die: best[0].die } : null;
 }
