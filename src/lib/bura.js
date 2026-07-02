@@ -178,16 +178,20 @@ export function cover(state, cards) {
   return s;
 }
 
-export function take(state) {
+// `chosen`: cards the defender picked to give up. Honored only if it's exactly
+// n cards from their own hand; otherwise falls back to auto-picking the
+// lowest-value ones (bot / no selection made).
+export function take(state, chosen) {
   if (state.phase !== "defend") return state;
   const s = clone(state);
   const atk = s.attacker;
   const def = 1 - atk;
   const n = s.attackCards.length;
-  // defender still plays n cards — gives up the lowest-value ones to the attacker
-  const give = s.hands[def].slice()
-    .sort((a, b) => (cardPts(a) - cardPts(b)) || (rank(a, s.trumpSuit) - rank(b, s.trumpSuit)))
-    .slice(0, Math.min(n, s.hands[def].length));
+  const give = (chosen && chosen.length === n && has(s.hands[def], chosen))
+    ? chosen.slice()
+    : s.hands[def].slice()
+        .sort((a, b) => (cardPts(a) - cardPts(b)) || (rank(a, s.trumpSuit) - rank(b, s.trumpSuit)))
+        .slice(0, Math.min(n, s.hands[def].length));
   s.hands[def] = without(s.hands[def], give);
   s.coverCards = give;                // shown on the table, then go to attacker
   s.pileWinner = atk;                 // attacker banks all the cards

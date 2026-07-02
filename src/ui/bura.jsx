@@ -74,7 +74,7 @@ export function BuraGame({ onExit }) {
         else if (cur.turn === 1) {
           if (m.kind === "throw") ns = throwCards(cur, m.cards);
           else if (m.kind === "cover") ns = cover(cur, m.cards);
-          else if (m.kind === "take") ns = take(cur);
+          else if (m.kind === "take") ns = take(cur, m.cards);
         }
         if (ns !== cur) { setG(ns); send({ t: "state", state: ns, players: playersRef.current }); }
       } else if (m.t === "bye") setOppLeft(true);
@@ -161,7 +161,7 @@ export function BuraGame({ onExit }) {
   // apply a local action (offline / online-host) or send it (online-guest)
   const act = (kind, cards) => {
     setSel([]);
-    const apply = (st) => { if (kind === "throw") return throwCards(st, cards); if (kind === "cover") return cover(st, cards); if (kind === "take") return take(st); if (kind === "skip") return resolve(st); return st; };
+    const apply = (st) => { if (kind === "throw") return throwCards(st, cards); if (kind === "cover") return cover(st, cards); if (kind === "take") return take(st, cards); if (kind === "skip") return resolve(st); return st; };
     if (!online) { setG(apply(g)); return; }
     if (role === "host") { const ns = apply(g); if (ns !== g) { setG(ns); send({ t: "state", state: ns, players }); } }
     else send({ t: "move", kind, cards: cards || [] });
@@ -340,7 +340,7 @@ export function BuraGame({ onExit }) {
       <div className="px-4 pt-2" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}>
         {iLead && <button onClick={() => act("throw", selCards)} disabled={!canPlay} className="w-full py-3.5 rounded-2xl text-[16px] font-bold text-white active:scale-[.98]" style={{ backgroundImage: GBRAND, opacity: canPlay ? 1 : 0.4 }}>ჩააგდე{selCards.length ? ` (${selCards.length})` : ""}</button>}
         {iDefend && <div className="flex gap-2">
-          <button onClick={() => act("take")} className="flex-1 py-3.5 rounded-2xl text-[15px] font-bold active:scale-[.98]" style={{ background: C.surfaceMuted, color: C.ink }}>გატანება</button>
+          <button onClick={() => act("take", selCards)} className="flex-1 py-3.5 rounded-2xl text-[15px] font-bold active:scale-[.98]" style={{ background: C.surfaceMuted, color: C.ink }}>გატანება</button>
           <button onClick={() => act("cover", selCards)} disabled={!canClose} className="flex-1 py-3.5 rounded-2xl text-[15px] font-bold text-white active:scale-[.98]" style={{ backgroundImage: GBRAND, opacity: canClose ? 1 : 0.4 }}>სვლა</button>
         </div>}
         {showSkip && <button onClick={() => act("skip")} className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white active:scale-[.98]" style={{ backgroundImage: GBRAND }}>გაგრძელება →</button>}
