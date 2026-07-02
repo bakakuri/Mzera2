@@ -7,15 +7,45 @@ import { newGame, openingRoll, rollDice, move, botChooseMove, legalFirstMoves, p
 const DIFFS = [{ k: "easy", t: "მარტივი" }, { k: "normal", t: "საშუალო" }, { k: "hard", t: "რთული" }];
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const genCode = () => Array.from({ length: 4 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join("");
-const CHECKER_BG = {
-  0: "radial-gradient(circle at 35% 28%, #ffffff, #e4e7ef 55%, #b7bccb 100%)",
-  1: "radial-gradient(circle at 35% 28%, #565c6b, #23262f 55%, #050608 100%)",
+
+// procedural wood-grain texture (SVG feTurbulence → data URI) — no image
+// assets, just a low-x/high-y frequency noise field so it reads as streaky
+// grain rather than blobby static
+const grain = ({ fx = 0.012, fy = 0.85, opacity = 0.45, seed = 3 } = {}) => {
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='${fx} ${fy}' numOctaves='2' seed='${seed}' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%' height='100%' filter='url(#n)' opacity='${opacity}'/></svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 };
-const CHECKER_RING = { 0: "#aeb3c2", 1: "#000" };
-const PT_TINT = ["#c98a4b", "#5a3a24"]; // alternating triangle tones (wood look)
+const GRAIN_LIGHT = grain({ opacity: 0.5, seed: 4 });
+const GRAIN_DARK = grain({ opacity: 0.32, seed: 9 });
+const GRAIN_FRAME = grain({ fy: 1.3, opacity: 0.38, seed: 15 });
+const GRAIN_CHECKER = grain({ fx: 0.5, fy: 0.5, opacity: 0.22, seed: 21 });
+
+// triangle point tones — warm maple (light) vs mahogany (dark), grained
+const PT_STYLE = [
+  { backgroundImage: `${GRAIN_LIGHT}, linear-gradient(165deg, #eccb96, #cf9a5c 55%, #a8763f)`, backgroundBlendMode: "overlay, normal" },
+  { backgroundImage: `${GRAIN_DARK}, linear-gradient(165deg, #6e4527, #442a17 55%, #2a1a0d)`, backgroundBlendMode: "overlay, normal" },
+];
+// checkers — cream ivory vs dark espresso wood discs, not plastic spheres
+const CHECKER_BG = {
+  0: `${GRAIN_CHECKER}, radial-gradient(circle at 36% 28%, #fdf8ec, #ecdfbf 48%, #cbb480 80%, #a68d5a)`,
+  1: `${GRAIN_CHECKER}, radial-gradient(circle at 36% 28%, #6b4a2e, #402813 48%, #241407 80%, #120a04)`,
+};
+const CHECKER_BLEND = "overlay, normal";
+const CHECKER_RING = { 0: "#8a7550", 1: "#0d0704" };
 
 function Checker({ player, size = 22, pop }) {
-  return <div className={pop ? "nardi-checker-in" : ""} style={{ width: size, height: size, borderRadius: "50%", background: CHECKER_BG[player], border: `1.5px solid ${CHECKER_RING[player]}`, boxShadow: "0 2px 4px rgba(0,0,0,.45), inset 0 1px 1px rgba(255,255,255,.5)", flex: "0 0 auto" }} />;
+  return (
+    <div
+      className={pop ? "nardi-checker-in" : ""}
+      style={{
+        width: size, height: size, borderRadius: "50%",
+        backgroundImage: CHECKER_BG[player], backgroundBlendMode: CHECKER_BLEND,
+        border: `1.5px solid ${CHECKER_RING[player]}`,
+        boxShadow: "0 3px 5px rgba(0,0,0,.5), inset 0 1.5px 2px rgba(255,255,255,.4), inset 0 -2px 3px rgba(0,0,0,.3)",
+        flex: "0 0 auto",
+      }}
+    />
+  );
 }
 
 function Point({ idx, count, top, selectable, onClick, tint, setRef, hitFlash }) {
@@ -26,7 +56,7 @@ function Point({ idx, count, top, selectable, onClick, tint, setRef, hitFlash })
   const clip = top ? "polygon(0 0, 100% 0, 50% 100%)" : "polygon(50% 0, 100% 100%, 0 100%)";
   return (
     <div ref={setRef} className={"relative flex-1 " + (hitFlash ? "nardi-hit" : "")} style={{ minWidth: 0, height: 116 }}>
-      <div className="absolute inset-0" style={{ clipPath: clip, background: tint, opacity: 0.92 }} />
+      <div className="absolute inset-0" style={{ clipPath: clip, ...tint, opacity: 0.95 }} />
       <button
         onClick={onClick}
         disabled={!selectable}
@@ -35,8 +65,20 @@ function Point({ idx, count, top, selectable, onClick, tint, setRef, hitFlash })
       >
         <div style={{ display: "flex", flexDirection: top ? "column" : "column-reverse", gap: 2, alignItems: "center" }}>{checkers}</div>
         {n > 5 && <span style={{ fontSize: 10, fontFamily: MONO, color: "#fff", fontWeight: 700, textShadow: "0 1px 2px rgba(0,0,0,.8)" }}>+{n - 5}</span>}
-        <span style={{ position: "absolute", [top ? "bottom" : "top"]: 3, fontSize: 8.5, color: "rgba(255,255,255,.55)", fontFamily: MONO }}>{idx + 1}</span>
+        <span style={{ position: "absolute", [top ? "bottom" : "top"]: 3, fontSize: 8.5, color: "rgba(255,255,255,.5)", fontFamily: MONO }}>{idx + 1}</span>
       </button>
+    </div>
+  );
+}
+
+// decorative inlaid diamond medallion, like the marquetry centerpiece on a
+// real board — purely visual
+function Medallion() {
+  return (
+    <div className="flex items-center justify-center" style={{ height: 20 }}>
+      <div style={{ position: "relative", width: 13, height: 13, transform: "rotate(45deg)", background: "linear-gradient(135deg,#eccb96,#a8763f)", border: "1px solid #241407", boxShadow: "0 1px 2px rgba(0,0,0,.4)" }}>
+        <div style={{ position: "absolute", inset: 3, background: "#2a1a0d" }} />
+      </div>
     </div>
   );
 }
@@ -357,7 +399,7 @@ export function NardiGame({ onExit }) {
       {idxs.map((idx, i) => (
         <React.Fragment key={idx}>
           {i === 6 && <div style={{ width: 16 }} />}
-          <Point idx={idx} count={g.points[idx]} top={top} selectable={fromsSet.has(idx)} onClick={() => onPointClick(idx)} tint={PT_TINT[idx % 2]} setRef={(el) => { pointRefs.current[idx] = el; }} hitFlash={hitIdx === idx} />
+          <Point idx={idx} count={g.points[idx]} top={top} selectable={fromsSet.has(idx)} onClick={() => onPointClick(idx)} tint={PT_STYLE[idx % 2]} setRef={(el) => { pointRefs.current[idx] = el; }} hitFlash={hitIdx === idx} />
         </React.Fragment>
       ))}
     </div>
@@ -389,9 +431,10 @@ export function NardiGame({ onExit }) {
         <OffTray player={oppIdx} />
       </div>
 
-      <div ref={boardRef} className="relative mx-3 px-2.5 py-2.5" style={{ background: "linear-gradient(160deg,#3a2313,#1e1109)", borderRadius: 12, border: "6px solid #241407", boxShadow: "0 10px 26px -6px rgba(0,0,0,.6), inset 0 0 0 1px rgba(0,0,0,.4)" }}>
+      <div ref={boardRef} className="relative mx-3 px-2.5 py-2.5" style={{ backgroundImage: `${GRAIN_FRAME}, linear-gradient(160deg,#3a2313,#1e1109)`, backgroundBlendMode: "overlay, normal", borderRadius: 12, border: "6px solid #241407", boxShadow: "0 10px 26px -6px rgba(0,0,0,.6), inset 0 0 0 2px #6e4527, inset 0 0 0 3px rgba(0,0,0,.5)" }}>
         {renderRow(topIdx, true)}
-        <button onClick={onBarClick} className="w-full flex items-center justify-center active:opacity-80" style={{ height: 38, background: fromsSet.has("bar") ? "rgba(255,196,92,.22)" : "rgba(0,0,0,.35)", border: fromsSet.has("bar") ? "2px solid #ffc45c" : "2px solid rgba(255,255,255,.06)", borderRadius: 6, margin: "4px 0", gap: 10 }} disabled={!fromsSet.has("bar")}>
+        <Medallion />
+        <button onClick={onBarClick} className="w-full flex items-center justify-center active:opacity-80" style={{ height: 38, background: fromsSet.has("bar") ? "rgba(255,196,92,.22)" : "rgba(0,0,0,.35)", border: fromsSet.has("bar") ? "2px solid #ffc45c" : "2px solid rgba(255,255,255,.06)", borderRadius: 6, margin: "2px 0", gap: 10 }} disabled={!fromsSet.has("bar")}>
           {g.dice.length > 0 && (
             <div className="flex gap-2">
               {diceRolling
@@ -404,10 +447,11 @@ export function NardiGame({ onExit }) {
           {g.bar[0] > 0 && <span className="text-[11px] font-bold" style={{ color: "#fff", fontFamily: MONO }}>⚪{g.bar[0]}</span>}
           {g.bar[1] > 0 && <span className="text-[11px] font-bold" style={{ color: "#fff", fontFamily: MONO }}>⚫{g.bar[1]}</span>}
         </button>
+        <Medallion />
         {renderRow(bottomIdx, false)}
 
         {flying && (
-          <div style={{ position: "absolute", left: 0, top: 0, width: 19, height: 19, marginLeft: -9.5, marginTop: -9.5, borderRadius: "50%", background: CHECKER_BG[flying.player], border: `1.5px solid ${CHECKER_RING[flying.player]}`, boxShadow: "0 5px 10px rgba(0,0,0,.55)", transform: `translate(${flying.x}px, ${flying.y}px) scale(${flying.moving ? 1.25 : 1})`, transition: flying.moving ? "transform 300ms cubic-bezier(.25,.7,.3,1)" : "none", zIndex: 30, pointerEvents: "none" }} />
+          <div style={{ position: "absolute", left: 0, top: 0, width: 19, height: 19, marginLeft: -9.5, marginTop: -9.5, borderRadius: "50%", backgroundImage: CHECKER_BG[flying.player], backgroundBlendMode: CHECKER_BLEND, border: `1.5px solid ${CHECKER_RING[flying.player]}`, boxShadow: "0 5px 10px rgba(0,0,0,.55)", transform: `translate(${flying.x}px, ${flying.y}px) scale(${flying.moving ? 1.25 : 1})`, transition: flying.moving ? "transform 300ms cubic-bezier(.25,.7,.3,1)" : "none", zIndex: 30, pointerEvents: "none" }} />
         )}
       </div>
 
