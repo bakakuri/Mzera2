@@ -15,6 +15,7 @@ const Groups = lazy(() => import("./ui/discover").then(m => ({ default: m.Groups
 const CallLayer = lazy(() => import("./ui/call").then(m => ({ default: m.CallLayer })));
 const BuraGame = lazy(() => import("./ui/bura").then(m => ({ default: m.BuraGame })));
 const GamesList = lazy(() => import("./ui/bura").then(m => ({ default: m.GamesList })));
+const NardiGame = lazy(() => import("./ui/nardi").then(m => ({ default: m.NardiGame })));
 
 const lsGet = (k, def) => { try { const v = typeof localStorage !== "undefined" && localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch (e) { return def; } };
 const lsSet = (k, v) => { try { if (typeof localStorage !== "undefined") localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
@@ -146,6 +147,7 @@ export default function App() {
   const [dismissedSug, setDismissedSug] = useState([]);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [buraOpen, setBuraOpen] = useState(false);
+  const [nardiOpen, setNardiOpen] = useState(false);
   const backRef = useRef(() => false);
   const exitArmedRef = useRef(false);
   const [tagPosts, setTagPosts] = useState([]);
@@ -580,6 +582,7 @@ export default function App() {
   // ── Hardware / gesture "back" → step one level back inside the app (не exit) ──
   const goBackOneLevel = () => {
     if (buraOpen) { setBuraOpen(false); return true; }
+    if (nardiOpen) { setNardiOpen(false); return true; }
     if (storyId) { setStoryId(null); return true; }
     if (reelComments) { setReelComments(null); return true; }
     if (reelCreateOpen) { setReelCreateOpen(false); return true; }
@@ -701,7 +704,7 @@ export default function App() {
             {tab === "explore" && <Explore posts={visible} onTag={onTag} activeTag={activeTag} clearTag={() => setActiveTag(null)} onOpenProfile={openProfile} onSearch={() => setSearchOpen(true)} tagPosts={tagPosts} tagLoading={tagLoading} />}
             {tab === "forum" && <Forum threads={threads} onReply={onThreadReply} onVote={onThreadVote} onNew={onNewThread} onOpenProfile={openProfile} onEdit={onEditThread} onDelete={onDeleteThread} />}
             {tab === "market" && <Market listings={listings} onSave={onListingSave} onNew={onNewListing} onMessage={onMessageUser} onOpenProfile={openProfile} flash={flash} live={live} onOrder={onOrder} getReviews={getReviews} onAddReview={addReviewApi} onUpload={(f) => uploadImage(f, "market")} onEdit={onEditListing} onDelete={onDeleteListing} sentinelRef={listSentinelRef} hasMore={listMore} loadingMore={listLoadingMore} />}
-            {tab === "games" && <GamesList onOpenBura={() => setBuraOpen(true)} />}
+            {tab === "games" && <GamesList onOpenBura={() => setBuraOpen(true)} onOpenNardi={() => setNardiOpen(true)} />}
             {tab === "map" && <MapView onMessage={onMessageUser} onMenu={() => setDrawerOpen(true)} onOpenProfile={openProfile} />}
             {tab === "reels" && <Reels reels={reels} onLike={onReelLike} onSave={onReelSave} onView={onReelView} onOpenProfile={openProfile} onMenu={() => setDrawerOpen(true)} flash={flash} onCreate={() => setReelCreateOpen(true)} onComments={openReelComments} sentinelRef={reelsSentinelRef} hasMore={reelsMore} loadingMore={reelsLoadingMore} />}
             {tab === "groups" && <Groups groups={groups} events={events} onJoin={onJoinGroup} onRsvp={onRsvp} onOpenProfile={openProfile} onMessage={onMessageUser} live={live} onGroupPost={onGroupPost} onUpload={(f) => uploadImage(f, "groups")} onUploadVideo={(f) => storageApi.upload(f, "groups")} onCreateGroup={onCreateGroup} onCreateEvent={onCreateEvent} pendingOpen={pendingGroup} clearPending={() => setPendingGroup(null)} onEditPost={onEditGroupPost} onDeletePost={onDeleteGroupPost} onEditGroup={onEditGroup} onDeleteGroup={onDeleteGroup} onEditEvent={onEditEvent} onDeleteEvent={onDeleteEvent} allPosts={posts} loadGroupPosts={mergeGroupPosts} loadMembers={(gid) => groupsApi.members(gid).then(rows => { rows.forEach(r => { if (r.profile) mergeProfile(r.profile); }); return rows; })} onApproveMember={onApproveMember} onKickMember={onKickMember} onSetGroupPrivate={onSetGroupPrivate} taggable={following} postProps={{ onLike, onReact, onSave, onComment, onPollVote, onTag, onReport, onRemove: onRemovePost, onOpenProfile: openProfile, isAdmin: me.admin, onEdit: onEditPost, onDelete: onDeletePost, onEditComment, onDeleteComment, onLikeComment, onRepost, onReactors: (pid) => reactionsApi.listForPost(pid) }} />}
@@ -749,6 +752,7 @@ export default function App() {
       {session && hasSupabase && <Suspense fallback={null}><CallLayer ref={callRef} me={ME} enabled={true} /></Suspense>}
       {showOnboarding && <Onboarding suggested={suggested} following={following} onToggleFollow={toggleFollow} onUploadAvatar={onChangeAvatar} onSaveProfile={onSaveOnboardProfile} onFinish={onFinishOnboarding} />}
       {buraOpen && <Suspense fallback={null}><BuraGame onExit={() => setBuraOpen(false)} /></Suspense>}
+      {nardiOpen && <Suspense fallback={null}><NardiGame onExit={() => setNardiOpen(false)} /></Suspense>}
       <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)} nav={NAV} onNav={goTab} onCreate={() => { setDrawerOpen(false); setCreateOpen(true); }} flash={(t) => { setDrawerOpen(false); flash(t); }} tab={tab} mode={mode} setMode={setMode} xp={xp} followers={followerCounts[ME] != null ? followerCounts[ME] : (USERS[ME] ? USERS[ME].followers : 0)} following={following.length} onSettings={() => { setDrawerOpen(false); setSettingsOpen(true); }} onSignOut={() => { setDrawerOpen(false); authApi.signOut().catch(dbErr("გასვლა")); }} />
       {createOpen && <CreateSheet onClose={() => setCreateOpen(false)} onPost={onPost} live={live} taggable={following} myGroups={groups.filter(g => g.joined)} onGroupPost={onGroupPost} onUpload={(f) => uploadImage(f, "posts")} onUploadVideo={(f) => storageApi.upload(f, "posts")} />}
       {story && <StoryViewer story={story} onClose={() => setStoryId(null)} onDone={markSeen} flash={flash} />}
