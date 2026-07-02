@@ -166,13 +166,14 @@ export const posts = {
     let q = need()
       .from("posts")
       .select("*, author:profiles!posts_author_id_fkey(*), poll_options(idx,text), poll_votes(option_idx,user_id), shared:posts!posts_shared_post_id_fkey(*, author:profiles!posts_author_id_fkey(*))")
-      .or(`scheduled_for.is.null,scheduled_for.lte."${new Date().toISOString()}"`)
       .order("created_at", { ascending: false })
       .limit(limit);
     if (before) q = q.lt("created_at", before);
     const { data, error } = await q;
     if (error) throw error;
-    return data;
+    // scheduled (future) posts are excluded client-side — PostgREST's or() raw-string
+    // grammar is too fragile with timestamp values to rely on server-side (see git log)
+    return (data || []).filter((p) => !(p.scheduled_for && new Date(p.scheduled_for) > new Date()));
   },
   scheduledMine: async () => {
     const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;
