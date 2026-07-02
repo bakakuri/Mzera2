@@ -1,58 +1,24 @@
 import React, { useState, useEffect, useRef } from "react";
-import { C, GRADS, DISPLAY, MONO, GBRAND, Avatar, USERS, ME, Tilt, Title, card, ChevronRight } from "./core";
+import { C, DISPLAY, MONO, GBRAND, Avatar, USERS, ME } from "./core";
 import { ArrowLeft, MessageCircle, Send, X } from "./core";
 import { calls as callsApi } from "../lib/api";
-import { newGame, throwCards, cover, take, resolve, botMove, canThrow, isValidCover, cardId, cardPts, handPts, SUIT_SYM, SUIT_RED } from "../lib/bura";
+import { CardFace } from "./bura";
+import {
+  newGame, chooseTrump, throwCards, cover, take, resolve, nextDeal, botMove,
+  canThrow, isValidCover, cardId, SUIT_SYM, SUIT_RED, SUITS,
+} from "../lib/jokeri";
 
 const DIFFS = [{ k: "easy", t: "მარტივი" }, { k: "normal", t: "საშუალო" }, { k: "hard", t: "რთული" }];
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const genCode = () => Array.from({ length: 4 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join("");
 
-// list screen for the "თამაშები" nav tab
-export function GamesList({ onOpenBura, onOpenJokeri }) {
-  const GAMES = [
-    { emoji: "🃏", name: "ბურა", desc: "1-ზე-1 ქართული კარტების თამაში · 36 კარტი", act: onOpenBura },
-    { emoji: "🎴", name: "იაპონური ჯოკერი", desc: "1-ზე-1 კარტების თამაში · 21 ქულამდე", act: onOpenJokeri },
-  ];
-  return (
-    <div className="pb-10">
-      <div className="px-4 pt-5 pb-3"><Title>თამაშები</Title></div>
-      <div className="px-4 space-y-2.5">
-        {GAMES.map(g => (
-          <button key={g.name} onClick={g.act} className="w-full flex items-center gap-3.5 p-4 text-left active:scale-[.98] transition" style={card()}>
-            <div className="rounded-2xl flex items-center justify-center shrink-0" style={{ width: 56, height: 56, backgroundImage: GBRAND, fontSize: 28 }}>{g.emoji}</div>
-            <div className="min-w-0 flex-1">
-              <div className="text-[16px] font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{g.name}</div>
-              <div className="text-[13px] mt-0.5" style={{ color: C.muted }}>{g.desc}</div>
-            </div>
-            <ChevronRight size={20} style={{ color: C.faint }} />
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export function CardFace({ card, size = "md", down = false, dim = false, lifted = false, onClick, disabled }) {
-  const dims = size === "sm" ? { w: 34, h: 48, f: 15, sym: 13 } : size === "xs" ? { w: 24, h: 34, f: 11, sym: 10 } : { w: 52, h: 74, f: 22, sym: 20 };
-  if (down) return <div style={{ width: dims.w, height: dims.h, borderRadius: 9, backgroundImage: GBRAND, border: "2px solid rgba(255,255,255,.25)", boxShadow: "0 2px 6px rgba(0,0,0,.3)", display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ color: "rgba(255,255,255,.55)", fontFamily: DISPLAY, fontWeight: 800, fontSize: dims.f }}>მ</span></div>;
-  const red = SUIT_RED[card.s];
-  return (
-    <button onClick={onClick} disabled={disabled} style={{ width: dims.w, height: dims.h, borderRadius: 9, background: "linear-gradient(180deg,#fff,#f1f3f8)", border: `2px solid ${lifted ? C.accent : "rgba(0,0,0,.12)"}`, boxShadow: lifted ? "0 10px 18px -6px rgba(103,80,242,.5)" : "0 2px 5px rgba(0,0,0,.22)", transform: lifted ? "translateY(-12px)" : "none", transition: "transform .14s, box-shadow .14s, border-color .14s", opacity: dim ? 0.4 : 1, position: "relative", flex: "0 0 auto", cursor: onClick && !disabled ? "pointer" : "default" }}>
-      <span style={{ position: "absolute", top: 3, left: 5, color: red ? "#e5484d" : "#1a1d26", fontWeight: 800, fontSize: dims.f, lineHeight: 1, fontFamily: DISPLAY }}>{card.r}</span>
-      <span style={{ position: "absolute", bottom: 3, right: 5, color: red ? "#e5484d" : "#1a1d26", fontSize: dims.sym, lineHeight: 1 }}>{SUIT_SYM[card.s]}</span>
-      <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: red ? "#e5484d" : "#1a1d26", fontSize: dims.sym + 6, opacity: .9 }}>{SUIT_SYM[card.s]}</span>
-    </button>
-  );
-}
-
-export function BuraGame({ onExit }) {
+export function JokeriGame({ onExit }) {
   const [screen, setScreen] = useState("menu");
   const [diff, setDiff] = useState("normal");
   const [g, setG] = useState(null);
   const [sel, setSel] = useState([]);
   const [thinking, setThinking] = useState(false);
-  const [starter, setStarter] = useState(0);
+  const [dealer, setDealer] = useState(0);
   // online
   const [role, setRole] = useState(null);   // null | "host" | "guest"
   const [code, setCode] = useState("");
@@ -89,15 +55,17 @@ export function BuraGame({ onExit }) {
       if (m.t === "hello") {
         if (!gRef.current) {
           const pl = [ME, m.from]; setPlayers(pl);
-          const ns = newGame({ starter: 0 }); setG(ns); setOppLeft(false); setScreen("online");
+          const ns = newGame({ dealer: 0 }); setG(ns); setOppLeft(false); setScreen("online");
           send({ t: "state", state: ns, players: pl });
         } else send({ t: "state", state: gRef.current, players: playersRef.current });
       } else if (m.t === "move") {
         const cur = gRef.current; if (!cur) return;
         let ns = cur;
         if (m.kind === "skip") { if (cur.phase === "reveal") ns = resolve(cur); }
+        else if (m.kind === "nextdeal") { if (cur.phase === "dealover") ns = nextDeal(cur); }
         else if (cur.turn === 1) {
-          if (m.kind === "throw") ns = throwCards(cur, m.cards);
+          if (m.kind === "trump") ns = chooseTrump(cur, m.suit);
+          else if (m.kind === "throw") ns = throwCards(cur, m.cards);
           else if (m.kind === "cover") ns = cover(cur, m.cards);
           else if (m.kind === "take") ns = take(cur, m.cards);
         }
@@ -113,7 +81,7 @@ export function BuraGame({ onExit }) {
   // ── channel lifecycle ──
   useEffect(() => {
     if (!code || !role) return;
-    const ch = callsApi.channel("bura-" + code);
+    const ch = callsApi.channel("jokeri-" + code);
     chRef.current = ch; readyRef.current = false;
     ch.on("broadcast", { event: "b" }, ({ payload }) => { if (onMsgRef.current) onMsgRef.current(payload); });
     ch.subscribe((status) => {
@@ -141,15 +109,16 @@ export function BuraGame({ onExit }) {
 
   // bot plays on its turn (offline only)
   useEffect(() => {
-    if (online || !g || g.turn !== 1 || (g.phase !== "lead" && g.phase !== "defend")) { setThinking(false); return; }
+    if (online || !g || g.turn !== 1 || (g.phase !== "choose-trump" && g.phase !== "lead" && g.phase !== "defend")) { setThinking(false); return; }
     setThinking(true);
     const t = setTimeout(() => {
       setG(cur => {
-        if (!cur || cur.turn !== 1 || (cur.phase !== "lead" && cur.phase !== "defend")) return cur;
+        if (!cur || cur.turn !== 1 || (cur.phase !== "choose-trump" && cur.phase !== "lead" && cur.phase !== "defend")) return cur;
         const mv = botMove(cur, 1, diff);
         let next = cur;
         if (mv) {
-          if (mv.kind === "throw") next = throwCards(cur, mv.cards);
+          if (mv.kind === "trump") next = chooseTrump(cur, mv.suit);
+          else if (mv.kind === "throw") next = throwCards(cur, mv.cards);
           else if (mv.kind === "cover") next = cover(cur, mv.cards);
           else if (mv.kind === "take") next = take(cur);
         }
@@ -175,21 +144,40 @@ export function BuraGame({ onExit }) {
     return () => clearTimeout(t);
   }, [g, online, role]);
 
-  const startBot = () => { setRole(null); setPlayers(null); setG(newGame({ starter })); setSel([]); setScreen("play"); };
+  // dealover → next deal after a beat, same drive/broadcast pattern as reveal
+  useEffect(() => {
+    if (!g || g.phase !== "dealover") return;
+    if (online && role === "guest") return;
+    const t = setTimeout(() => {
+      const cur = gRef.current;
+      if (cur && cur.phase === "dealover") { const ns = nextDeal(cur); setG(ns); if (online && roleRef.current === "host") send({ t: "state", state: ns, players: playersRef.current }); }
+    }, 4500);
+    return () => clearTimeout(t);
+  }, [g, online, role]);
+
+  const startBot = () => { setRole(null); setPlayers(null); setG(newGame({ dealer })); setSel([]); setScreen("play"); };
   const resetChat = () => { setChatMsgs([]); setChatOpen(false); setChatUnread(0); setChatInput(""); };
   const createRoom = () => { setJoinErr(""); setPlayers(null); setG(null); setCode(genCode()); setRole("host"); resetChat(); setScreen("online-wait"); };
   const joinRoom = () => { const c = joinCode.trim().toUpperCase(); if (c.length < 3) { setJoinErr("შეიყვანე კოდი"); return; } setJoinErr(""); setPlayers(null); setG(null); setCode(c); setRole("guest"); resetChat(); setScreen("online-wait"); };
-  const rematch = () => { const ns2 = 1 - starter; setStarter(ns2); const ns = newGame({ starter: ns2 }); setSel([]); setG(ns); setOppLeft(false); if (online && role === "host") send({ t: "state", state: ns, players }); };
+  const rematch = () => { const nd = 1 - dealer; setDealer(nd); const ns = newGame({ dealer: nd }); setSel([]); setG(ns); setOppLeft(false); if (online && role === "host") send({ t: "state", state: ns, players }); };
   const leave = () => { if (online) send({ t: "bye", from: ME }); onExit(); };
   const backToMenu = () => { if (online) send({ t: "bye", from: ME }); setRole(null); setCode(""); setPlayers(null); setG(null); setSel([]); setJoinErr(""); setOppLeft(false); resetChat(); setScreen("menu"); };
 
   // apply a local action (offline / online-host) or send it (online-guest)
-  const act = (kind, cards) => {
+  const act = (kind, cards, suit) => {
     setSel([]);
-    const apply = (st) => { if (kind === "throw") return throwCards(st, cards); if (kind === "cover") return cover(st, cards); if (kind === "take") return take(st, cards); if (kind === "skip") return resolve(st); return st; };
+    const apply = (st) => {
+      if (kind === "trump") return chooseTrump(st, suit);
+      if (kind === "throw") return throwCards(st, cards);
+      if (kind === "cover") return cover(st, cards);
+      if (kind === "take") return take(st, cards);
+      if (kind === "skip") return resolve(st);
+      if (kind === "nextdeal") return nextDeal(st);
+      return st;
+    };
     if (!online) { setG(apply(g)); return; }
     if (role === "host") { const ns = apply(g); if (ns !== g) { setG(ns); send({ t: "state", state: ns, players }); } }
-    else send({ t: "move", kind, cards: cards || [] });
+    else send({ t: "move", kind, cards: cards || [], suit });
   };
 
   const sendChat = () => {
@@ -209,11 +197,11 @@ export function BuraGame({ onExit }) {
   if (screen === "menu") {
     return (
       <div className="fixed inset-0 z-[95] flex flex-col" style={{ background: C.paper }}>
-        <div className="flex items-center gap-3 px-4 py-3"><button onClick={onExit} className="active:scale-90"><ArrowLeft size={22} style={{ color: C.ink }} /></button><span className="font-bold text-[17px]" style={{ color: C.ink, fontFamily: DISPLAY }}>ბურა</span></div>
+        <div className="flex items-center gap-3 px-4 py-3"><button onClick={onExit} className="active:scale-90"><ArrowLeft size={22} style={{ color: C.ink }} /></button><span className="font-bold text-[17px]" style={{ color: C.ink, fontFamily: DISPLAY }}>იაპონური ჯოკერი</span></div>
         <div className="flex-1 flex flex-col items-center justify-center px-8 -mt-8">
-          <div style={{ fontSize: 64 }}>🃏</div>
-          <h1 className="text-[30px] font-bold mt-2" style={{ color: C.ink, fontFamily: DISPLAY }}>ბურა</h1>
-          <p className="text-[14px] mt-1 mb-8 text-center" style={{ color: C.muted }}>36 კარტი · 61 ქულამდე</p>
+          <div style={{ fontSize: 64 }}>🎴</div>
+          <h1 className="text-[26px] font-bold mt-2 text-center" style={{ color: C.ink, fontFamily: DISPLAY }}>იაპონური ჯოკერი</h1>
+          <p className="text-[14px] mt-1 mb-8 text-center" style={{ color: C.muted }}>36 კარტი · 21 ქულამდე</p>
           <div className="w-full max-w-[320px]">
             <div className="text-[12.5px] font-semibold mb-2" style={{ color: C.ink2 }}>სირთულე (ბოტთან)</div>
             <div className="flex gap-2 mb-5">{DIFFS.map(d => <button key={d.k} onClick={() => setDiff(d.k)} className="flex-1 py-2.5 rounded-xl text-[13.5px] font-bold transition active:scale-95" style={diff === d.k ? { backgroundImage: GBRAND, color: "#fff" } : { background: C.surfaceMuted, color: C.ink2 }}>{d.t}</button>)}</div>
@@ -229,7 +217,7 @@ export function BuraGame({ onExit }) {
   if (screen === "online-menu") {
     return (
       <div className="fixed inset-0 z-[95] flex flex-col" style={{ background: C.paper }}>
-        <div className="flex items-center gap-3 px-4 py-3"><button onClick={() => setScreen("menu")} className="active:scale-90"><ArrowLeft size={22} style={{ color: C.ink }} /></button><span className="font-bold text-[17px]" style={{ color: C.ink, fontFamily: DISPLAY }}>ონლაინ ბურა</span></div>
+        <div className="flex items-center gap-3 px-4 py-3"><button onClick={() => setScreen("menu")} className="active:scale-90"><ArrowLeft size={22} style={{ color: C.ink }} /></button><span className="font-bold text-[17px]" style={{ color: C.ink, fontFamily: DISPLAY }}>ონლაინ ჯოკერი</span></div>
         <div className="flex-1 flex flex-col items-center justify-center px-8 -mt-8">
           <div style={{ fontSize: 54 }}>🌐</div>
           <p className="text-[14px] mt-2 mb-7 text-center" style={{ color: C.muted }}>შექმენი ოთახი და კოდი გაუზიარე მეგობარს,<br />ან შეიყვანე მისი კოდი</p>
@@ -249,11 +237,11 @@ export function BuraGame({ onExit }) {
   if (screen === "online-wait") {
     return (
       <div className="fixed inset-0 z-[95] flex flex-col" style={{ background: C.paper }}>
-        <div className="flex items-center gap-3 px-4 py-3"><button onClick={backToMenu} className="active:scale-90"><ArrowLeft size={22} style={{ color: C.ink }} /></button><span className="font-bold text-[17px]" style={{ color: C.ink, fontFamily: DISPLAY }}>ონლაინ ბურა</span></div>
+        <div className="flex items-center gap-3 px-4 py-3"><button onClick={backToMenu} className="active:scale-90"><ArrowLeft size={22} style={{ color: C.ink }} /></button><span className="font-bold text-[17px]" style={{ color: C.ink, fontFamily: DISPLAY }}>ონლაინ ჯოკერი</span></div>
         <div className="flex-1 flex flex-col items-center justify-center px-8 -mt-8 text-center">
           {role === "host" ? (
             <>
-              <div style={{ fontSize: 48 }}>🃏</div>
+              <div style={{ fontSize: 48 }}>🎴</div>
               <div className="text-[13px] mt-3 mb-1" style={{ color: C.muted }}>ოთახის კოდი</div>
               <div className="text-[46px] font-bold tracking-[0.15em]" style={{ color: C.accent, fontFamily: MONO }}>{code}</div>
               <p className="text-[13.5px] mt-3 mb-6" style={{ color: C.muted, maxWidth: 280 }}>გაუზიარე ეს კოდი მეგობარს — ის შეიყვანს და თამაში ავტომატურად დაიწყება</p>
@@ -282,6 +270,7 @@ export function BuraGame({ onExit }) {
   const trump = g.trumpSuit;
   const myHand = g.hands[meIdx];
   const oppHand = g.hands[oppIdx];
+  const iChoose = g.phase === "choose-trump" && g.turn === meIdx;
   const iLead = g.phase === "lead" && g.turn === meIdx;
   const iDefend = g.phase === "defend" && g.turn === meIdx;
   const selCards = myHand.filter(c => sel.includes(cardId(c)));
@@ -310,14 +299,17 @@ export function BuraGame({ onExit }) {
       : (g.pileWinner === meIdx ? "შენ წაიღე ⬇" : `${oppWord} წაიღო ⬇`))
     : "";
   const waitWord = online ? `${oppName} ფიქრობს…` : (thinking ? "ბოტი ფიქრობს…" : "ბოტის სვლა…");
-  const statusText = g.phase === "over" ? "" : g.phase === "reveal" ? revealLabel : iLead ? "შენი სვლა — ჩააგდე 1–5 კარტი (ერთი მასტის)" : iDefend ? "დაიცავი: აირჩიე კარტ(ებ)ი → „სვლა“, ან „გატანება“" : waitWord;
+  const statusText = g.phase === "over" || g.phase === "dealover" ? "" : g.phase === "reveal" ? revealLabel
+    : g.phase === "choose-trump" ? (iChoose ? "აირჩიე კოზირის მასტი" : `${oppWord} ირჩევს კოზირს…`)
+    : iLead ? "შენი სვლა — ჩააგდე 1–5 კარტი (ერთი მასტის)" : iDefend ? "დაიცავი: აირჩიე კარტ(ებ)ი → „სვლა“, ან „გატანება“" : waitWord;
   const showSkip = g.phase === "reveal";
+  const showDealSkip = g.phase === "dealover";
 
   return (
     <div className="fixed inset-0 z-[95] flex flex-col" style={{ background: "radial-gradient(circle at 50% 30%, #14351f, #0c1f13 70%)" }}>
       <div className="flex items-center justify-between px-4 py-2.5" style={{ background: "rgba(0,0,0,.25)" }}>
         <button onClick={leave} className="active:scale-90"><ArrowLeft size={22} color="#fff" /></button>
-        <span className="text-[13px] font-bold" style={{ color: "rgba(255,255,255,.7)", fontFamily: MONO }}>{online ? "ონლაინ" : "ბურა"} · {g.captured[meIdx]}–{g.captured[oppIdx]} · 61</span>
+        <span className="text-[13px] font-bold" style={{ color: "rgba(255,255,255,.7)", fontFamily: MONO }}>{online ? "ონლაინ" : "ჯოკერი"} · {g.matchScore[meIdx]}–{g.matchScore[oppIdx]} · 21</span>
         {online ? (
           <button onClick={() => { setChatOpen(true); setChatUnread(0); }} className="relative active:scale-90" style={{ color: "#fff" }}>
             <MessageCircle size={21} />
@@ -329,22 +321,32 @@ export function BuraGame({ onExit }) {
       {/* opponent */}
       <div className="flex items-center gap-2.5 px-4 py-2">
         {online && oppId ? <Avatar id={oppId} size={36} /> : <div style={{ width: 36, height: 36, borderRadius: "50%", backgroundImage: GBRAND, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19, border: "2px solid rgba(255,255,255,.2)" }}>🤖</div>}
-        <div className="flex-1"><div className="text-[13.5px] font-bold" style={{ color: "#fff" }}>{oppName}</div><div className="text-[11px]" style={{ color: "rgba(255,255,255,.55)", fontFamily: MONO }}>ქულა: {g.captured[oppIdx]}</div></div>
+        <div className="flex-1"><div className="text-[13.5px] font-bold" style={{ color: "#fff" }}>{oppName}</div><div className="text-[11px]" style={{ color: "rgba(255,255,255,.55)", fontFamily: MONO }}>აღებული: {g.capturedCount[oppIdx]}</div></div>
         <div className="flex">{oppHand.map((c, i) => <div key={i} style={{ marginLeft: i ? -14 : 0 }}><CardFace down size="sm" /></div>)}</div>
       </div>
 
       {/* table */}
       <div className="flex-1 flex flex-col items-center justify-center relative px-4">
         <div className="absolute left-4 top-2 flex flex-col items-center">
-          <div style={{ position: "relative" }}>
-            {g.trumpCard && <div style={{ transform: "rotate(90deg)", transformOrigin: "center" }}><CardFace card={g.trumpCard} size="sm" /></div>}
-            <div style={{ position: "absolute", left: -6, top: -4 }}><CardFace down size="sm" /></div>
-          </div>
+          <CardFace down size="sm" />
           <span className="text-[10.5px] mt-3" style={{ color: "rgba(255,255,255,.6)", fontFamily: MONO }}>დასტა: {g.talon.length}</span>
-          <span className="text-[15px] mt-0.5" style={{ color: SUIT_RED[trump] ? "#ff6b6f" : "#fff" }}>კოზირი {SUIT_SYM[trump]}</span>
+          {trump && <span className="text-[15px] mt-0.5" style={{ color: SUIT_RED[trump] ? "#ff6b6f" : "#fff" }}>კოზირი {SUIT_SYM[trump]}</span>}
         </div>
 
-        {(g.attackCards.length || (g.coverCards && g.coverCards.length)) ? (
+        {g.phase === "choose-trump" ? (
+          iChoose ? (
+            <div className="flex flex-col items-center gap-3">
+              <span className="text-[13px] font-semibold" style={{ color: "rgba(255,255,255,.85)" }}>აირჩიე კოზირის მასტი</span>
+              <div className="flex gap-2.5">{SUITS.map(s => <button key={s} onClick={() => act("trump", null, s)} className="flex items-center justify-center rounded-2xl active:scale-90 transition" style={{ width: 58, height: 58, background: "rgba(255,255,255,.08)", border: "2px solid rgba(255,255,255,.25)", fontSize: 30, color: SUIT_RED[s] ? "#ff6b6f" : "#fff" }}>{SUIT_SYM[s]}</button>)}</div>
+            </div>
+          ) : <div style={{ color: "rgba(255,255,255,.4)", fontSize: 13 }}>{statusText}</div>
+        ) : g.phase === "dealover" ? (
+          <div className="flex flex-col items-center gap-1.5 text-center">
+            <span style={{ fontSize: 40 }}>{g.dealResult.winner === "tie" ? "🤝" : g.dealResult.winner === meIdx ? "✅" : "❌"}</span>
+            <span className="text-[16px] font-bold" style={{ color: "#fff", fontFamily: DISPLAY }}>{g.dealResult.winner === "tie" ? "ნიჩია — თავიდან ურიგდებათ" : g.dealResult.winner === meIdx ? `მოიგე პარტია (+${g.dealResult.score})` : `${oppWord} მოიგო პარტია (+${g.dealResult.score})`}</span>
+            <span className="text-[12.5px]" style={{ color: "rgba(255,255,255,.6)", fontFamily: MONO }}>{g.capturedCount[meIdx]} – {g.capturedCount[oppIdx]} აღებული კარტი</span>
+          </div>
+        ) : (g.attackCards.length || (g.coverCards && g.coverCards.length)) ? (
           <div className="flex flex-col items-center gap-1.5">
             {g.attackCards.length > 0 && <div className="flex" style={{ gap: 6 }}>{g.attackCards.map((c, i) => <CardFace key={"a" + i} card={c} size="md" />)}</div>}
             {g.coverCards && g.coverCards.length > 0 && <div className="flex" style={{ gap: 6 }}>{g.coverCards.map((c, i) => <CardFace key={"c" + i} card={c} size="md" />)}</div>}
@@ -355,7 +357,7 @@ export function BuraGame({ onExit }) {
         )}
       </div>
 
-      <div className="px-4 pb-1 text-center"><span className="text-[11.5px]" style={{ color: "rgba(255,255,255,.55)", fontFamily: MONO }}>შენი ქულა: {g.captured[meIdx]}</span></div>
+      <div className="px-4 pb-1 text-center"><span className="text-[11.5px]" style={{ color: "rgba(255,255,255,.55)", fontFamily: MONO }}>შენი აღებული: {g.capturedCount[meIdx]}</span></div>
 
       <div className="px-3 pt-1 flex items-end justify-center flex-wrap gap-1.5" style={{ minHeight: 96 }}>
         {myHand.map((c) => { const id = cardId(c); const lifted = sel.includes(id); const selectable = (iLead || iDefend); const blocked = iLead && !lifted && leadSuit && c.s !== leadSuit; return <div key={id} style={{ marginTop: 6 }}><CardFace card={c} size="md" lifted={lifted} dim={blocked} onClick={selectable ? () => toggle(c) : undefined} /></div>; })}
@@ -369,7 +371,8 @@ export function BuraGame({ onExit }) {
           <button onClick={() => act("cover", selCards)} disabled={!canClose} className="flex-1 py-3.5 rounded-2xl text-[15px] font-bold text-white active:scale-[.98]" style={{ backgroundImage: GBRAND, opacity: canClose ? 1 : 0.4 }}>სვლა</button>
         </div>}
         {showSkip && <button onClick={() => act("skip")} className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white active:scale-[.98]" style={{ backgroundImage: GBRAND }}>გაგრძელება →</button>}
-        {!iLead && !iDefend && g.phase !== "over" && !showSkip && <div className="text-center py-3.5 text-[14px] font-semibold" style={{ color: "rgba(255,255,255,.55)" }}>{statusText}</div>}
+        {showDealSkip && <button onClick={() => act("nextdeal")} className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white active:scale-[.98]" style={{ backgroundImage: GBRAND }}>შემდეგი პარტია →</button>}
+        {!iLead && !iDefend && !iChoose && g.phase !== "over" && !showSkip && !showDealSkip && <div className="text-center py-3.5 text-[14px] font-semibold" style={{ color: "rgba(255,255,255,.55)" }}>{statusText}</div>}
       </div>
 
       {/* chat */}
@@ -413,13 +416,12 @@ export function BuraGame({ onExit }) {
         </div>
       )}
 
-      {/* game over */}
+      {/* match over */}
       {g.phase === "over" && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center" style={{ background: "rgba(0,0,0,.72)", backdropFilter: "blur(3px)" }}>
-          <div style={{ fontSize: 60 }}>{g.winner === meIdx ? "🏆" : g.winner === "draw" ? "🤝" : "😔"}</div>
-          <h2 className="text-[26px] font-bold mt-1" style={{ color: "#fff", fontFamily: DISPLAY }}>{g.winner === meIdx ? "მოიგე!" : g.winner === "draw" ? "ფრე" : "წააგე"}</h2>
-          {g.combo && <p className="text-[15px] font-bold mt-1" style={{ color: "#ffd166" }}>{g.combo} 🃏 — {g.winner === "draw" ? "ორივეს ერთდროულად!" : "მყისიერი გამარჯვება!"}</p>}
-          <p className="text-[14px] mt-1 mb-7" style={{ color: "rgba(255,255,255,.7)", fontFamily: MONO }}>{g.captured[meIdx]} – {g.captured[oppIdx]}</p>
+          <div style={{ fontSize: 60 }}>{g.winner === meIdx ? "🏆" : "😔"}</div>
+          <h2 className="text-[26px] font-bold mt-1" style={{ color: "#fff", fontFamily: DISPLAY }}>{g.winner === meIdx ? "მოიგე!" : "წააგე"}</h2>
+          <p className="text-[14px] mt-1 mb-7" style={{ color: "rgba(255,255,255,.7)", fontFamily: MONO }}>{g.matchScore[meIdx]} – {g.matchScore[oppIdx]}</p>
           {(!online || role === "host") && <button onClick={rematch} className="px-8 py-3 rounded-2xl text-[15px] font-bold text-white active:scale-95" style={{ backgroundImage: GBRAND }}>თავიდან</button>}
           {online && role === "guest" && <div className="text-[13px]" style={{ color: "rgba(255,255,255,.6)" }}>ახალი თამაშისთვის ჰოსტი აჭერს „თავიდან"</div>}
           <button onClick={leave} className="px-8 py-2.5 mt-2 text-[14px] font-semibold" style={{ color: "rgba(255,255,255,.6)" }}>გასვლა</button>
