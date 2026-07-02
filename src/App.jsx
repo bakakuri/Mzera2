@@ -1,5 +1,5 @@
 import {
-  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Gamepad2, Clapperboard, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, filmsApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, questsApi, xpApi, adminApi, pushApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, KA_MONS, mapDbListing, mapDbReview, mapDbFilm, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, NOTIF_VERB, levelInfo, kfmt, RSVP_OPTS, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, FILTERS, STORY_STICKERS, setTheme, setME, compressImage, POST_BGS} from "./ui/core";
+  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Gamepad2, Clapperboard, Music, MiniPlayer, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, filmsApi, musicApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, questsApi, xpApi, adminApi, pushApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, KA_MONS, mapDbListing, mapDbReview, mapDbFilm, mapDbSong, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, NOTIF_VERB, levelInfo, kfmt, RSVP_OPTS, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, FILTERS, STORY_STICKERS, setTheme, setME, compressImage, POST_BGS} from "./ui/core";
 import { PostCard, StoryViewer, CreateSheet, Explore, StoryEditor } from "./ui/feed";
 import { Profile, Notifications, Admin, Drawer, OnlinePage, Progress, SettingsView, Leaderboard, SearchView, SuggestedPeople, Onboarding } from "./ui/social";
 import { registerPush, unregisterPush, currentPushState, pushSupported } from "./lib/push";
@@ -17,6 +17,7 @@ const BuraGame = lazy(() => import("./ui/bura").then(m => ({ default: m.BuraGame
 const GamesList = lazy(() => import("./ui/bura").then(m => ({ default: m.GamesList })));
 const NardiGame = lazy(() => import("./ui/nardi").then(m => ({ default: m.NardiGame })));
 const Movies = lazy(() => import("./ui/movies").then(m => ({ default: m.Movies })));
+const MusicPage = lazy(() => import("./ui/music").then(m => ({ default: m.MusicPage })));
 
 const lsGet = (k, def) => { try { const v = typeof localStorage !== "undefined" && localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch (e) { return def; } };
 const lsSet = (k, v) => { try { if (typeof localStorage !== "undefined") localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
@@ -65,6 +66,12 @@ export default function App() {
   const filmSentinelRef = useRef(null);
   const [films, setFilms] = useState([]);
   const [filmWatch, setFilmWatch] = useState({});
+  const [songs, setSongs] = useState([]);
+  // global music player state — lives here (not inside the music tab) so
+  // playback survives switching tabs; only stops when the user hits ✕
+  const [nowPlaying, setNowPlaying] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioElRef = useRef(null);
   const [stories, setStories] = useState([]);
   const [convos, setConvos] = useState([]);
   const [notifs, setNotifs] = useState([]);
@@ -207,7 +214,7 @@ export default function App() {
       profilesApi.listCollections().then(cols => { if (!cancelled) setCollections(cols); }).catch(() => {});
       postsApi.memories().then(mem => { if (!cancelled && mem.length) setMemories(mem.map(mapDbPost)); }).catch(() => {});
       profilesApi.suggested().then(sug => { sug.forEach(mergeProfile); if (!cancelled) setSuggested(sug); }).catch(() => {});
-      loadNotifs().catch(() => {}); loadConvos().catch(() => {}); loadStories().catch(() => {}); loadReels().catch(() => {}); loadListings().catch(() => {}); loadFilms().catch(() => {}); loadFilmWatch().catch(() => {}); loadGroups().catch(() => {}); loadEvents().catch(() => {}); loadThreads().catch(() => {});
+      loadNotifs().catch(() => {}); loadConvos().catch(() => {}); loadStories().catch(() => {}); loadReels().catch(() => {}); loadListings().catch(() => {}); loadFilms().catch(() => {}); loadFilmWatch().catch(() => {}); loadMusic().catch(() => {}); loadGroups().catch(() => {}); loadEvents().catch(() => {}); loadThreads().catch(() => {});
     })();
     return () => { cancelled = true; };
   }, [session]);
@@ -351,6 +358,29 @@ export default function App() {
     } catch (e) {} finally { setFilmLoadingMore(false); }
   };
   const loadFilmWatch = async () => { if (!hasSupabase || !session) return; try { const rows = await filmsApi.myWatch(); const map = {}; rows.forEach(r => { map[r.film_id] = r.status; }); setFilmWatch(map); } catch (e) {} };
+  // songs table is new, same as films — fail silently until migrated
+  const loadMusic = async () => { if (!hasSupabase) return; try { const rows = await musicApi.page(null, "new", 60); setSongs(rows.map(mapDbSong)); } catch (e) { console.error("music:", e); } };
+  const onNewSong = (d) => { flash("სიმღერა დაემატა 🎵"); musicApi.create({ title: d.title, artist: d.artist, genre: d.genre, cover_url: d.cover || null, audio_url: d.audio }).then(loadMusic).catch(dbErr("სიმღერა")); };
+  const onEditSong = (id, patch) => { setSongs(ss => ss.map(s => s.id === id ? { ...s, ...(patch.title != null ? { title: patch.title } : {}), ...(patch.artist != null ? { artist: patch.artist } : {}), ...(patch.genre != null ? { genre: patch.genre } : {}), ...(patch.cover_url !== undefined ? { cover: patch.cover_url || img("song" + id, 480, 480) } : {}), ...(patch.audio_url != null ? { audio: patch.audio_url } : {}) } : s)); musicApi.update(id, patch).then(loadMusic).then(() => flash("სიმღერა განახლდა ✏️")).catch(dbErr("რედაქტირება")); };
+  const onDeleteSong = (id) => { if (nowPlaying && nowPlaying.id === id) { setIsPlaying(false); setNowPlaying(null); } setSongs(ss => ss.filter(s => s.id !== id)); musicApi.remove(id).then(loadMusic).then(() => flash("სიმღერა წაიშალა")).catch(dbErr("წაშლა")); };
+  // global player: survives tab switches since this state/audio element lives in App, not the music tab
+  const playSong = (song) => {
+    if (nowPlaying && nowPlaying.id === song.id) { setIsPlaying(p => !p); return; }
+    setNowPlaying(song); setIsPlaying(true);
+    musicApi.incrementPlays(song.id).catch(() => {});
+  };
+  const stopPlaying = () => { setIsPlaying(false); setNowPlaying(null); };
+  useEffect(() => {
+    const el = audioElRef.current;
+    if (!el || !nowPlaying) return;
+    el.src = nowPlaying.audio;
+    el.play().catch(() => {});
+  }, [nowPlaying?.id]);
+  useEffect(() => {
+    const el = audioElRef.current;
+    if (!el || !nowPlaying) return;
+    if (isPlaying) el.play().catch(() => {}); else el.pause();
+  }, [isPlaying]);
   const loadGroups = async () => { if (!hasSupabase || !session) return; try { const rows = await groupsApi.list(); setGroups(rows.map(r => mapDbGroup(r, session.user.id))); } catch (e) { console.error("groups:", e); setDbError("groups: " + (e.message || JSON.stringify(e)) + (e.hint ? " · hint: " + e.hint : "") + (e.code ? " · code: " + e.code : "")); } };
   const loadEvents = async () => { if (!hasSupabase || !session) return; try { const rows = await eventsApi.list(); setEvents(rows.map(r => mapDbEvent(r, session.user.id))); } catch (e) { console.error("events:", e); setDbError("events: " + (e.message || JSON.stringify(e)) + (e.hint ? " · hint: " + e.hint : "") + (e.code ? " · code: " + e.code : "")); } };
   const loadThreads = async () => { if (!hasSupabase || !session) return; try { const rows = await forumApi.list(); setThreads(rows.map(r => mapDbThread(r, session.user.id))); } catch (e) { console.error("forum:", e); setDbError("forum: " + (e.message || JSON.stringify(e)) + (e.hint ? " · hint: " + e.hint : "") + (e.code ? " · code: " + e.code : "")); } };
@@ -656,7 +686,7 @@ export default function App() {
   const NAV = [
     { key: "home", label: "მთავარი", icon: Home }, { key: "explore", label: "აღმოჩენა", icon: Compass },
     { key: "reels", label: "Reels", icon: Film }, { key: "forum", label: "ფორუმი", icon: MessageSquare },
-    { key: "market", label: "მარკეტი", icon: ShoppingBag }, { key: "games", label: "თამაშები", icon: Gamepad2 }, { key: "movies", label: "ფილმები", icon: Clapperboard }, { key: "groups", label: "ჯგუფები", icon: Users },
+    { key: "market", label: "მარკეტი", icon: ShoppingBag }, { key: "games", label: "თამაშები", icon: Gamepad2 }, { key: "movies", label: "ფილმები", icon: Clapperboard }, { key: "music", label: "მუსიკა", icon: Music }, { key: "groups", label: "ჯგუფები", icon: Users },
     { key: "map", label: "რუკა", icon: Map }, { key: "create", label: "შექმნა", icon: PlusSquare },
     { key: "messages", label: "შეტყობინებები", icon: Send, badge: unreadMsgs }, { key: "notifications", label: "აქტივობა", icon: Bell, badge: unreadNotifs },
     { key: "progress", label: "პროგრესი", icon: Zap }, { key: "leaderboard", label: "რეიტინგი", icon: Trophy }, { key: "profile", label: "პროფილი", icon: User },
@@ -699,7 +729,10 @@ export default function App() {
 
       <div className="mx-auto flex w-full max-w-[1100px]">
         <aside className="hidden md:flex flex-col w-[235px] shrink-0 px-3 py-6 sticky top-0 h-screen" style={{ borderRight: `1px solid ${C.line}`, background: C.surface }}>
-          <div className="px-3 mb-6"><Wordmark size={25} /></div>
+          <div className="px-3 mb-6">
+            <Wordmark size={25} />
+            {nowPlaying && <div className="mt-2.5"><MiniPlayer song={nowPlaying} playing={isPlaying} onToggle={() => setIsPlaying(p => !p)} onStop={stopPlaying} /></div>}
+          </div>
           <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-1">
             {NAV.map(n => <button key={n.key} onClick={() => goTab(n.key)} className="relative flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl transition active:scale-[.98] shrink-0" style={{ background: tab === n.key ? C.accentSoft : "transparent", color: tab === n.key ? C.accentText : C.ink2, fontWeight: tab === n.key ? 700 : 500 }}>{tab === n.key && <span className="absolute left-0 rounded-full" style={{ width: 4, height: 20, backgroundImage: GBRAND }} />}<n.icon size={23} />{n.label}{n.badge > 0 && <span className="ml-auto rounded-full text-white px-1.5 py-0.5" style={{ background: C.like, fontFamily: MONO, fontSize: 11, fontWeight: 700 }}>{n.badge}</span>}</button>)}
             <button onClick={() => setCreateOpen(true)} className="mt-2 py-3 rounded-2xl font-bold text-white transition active:scale-[.98] shrink-0" style={{ backgroundImage: GBRAND, boxShadow: SH.glow, fontFamily: DISPLAY }}>ახალი პოსტი</button>
@@ -712,12 +745,13 @@ export default function App() {
 
         <main className="flex-1 min-w-0 max-w-[600px] mx-auto" style={{ borderRight: `1px solid ${C.line}` }}>
           {!fullBleed && (
-            <header className="mz-hdr md:hidden flex items-center justify-between px-3 h-14 sticky top-0 z-20" style={{ background: C.surface + "e6", backdropFilter: "blur(14px)", borderBottom: `1px solid ${C.line}` }}>
-              <div className="flex items-center gap-1">
+            <header className="mz-hdr md:hidden flex items-center px-3 h-14 sticky top-0 z-20" style={{ background: C.surface + "e6", backdropFilter: "blur(14px)", borderBottom: `1px solid ${C.line}` }}>
+              <div className="flex items-center gap-1 shrink-0">
                 <button onClick={() => setDrawerOpen(true)} className="rounded-full active:scale-90 flex items-center justify-center" style={{ width: 40, height: 40, color: C.ink2 }}><Menu size={24} /></button>
                 <button onClick={() => goTab("home")} className="active:scale-95 flex items-center pr-2" aria-label="მთავარი"><Wordmark size={21} /></button>
               </div>
-              <div className="flex items-center"><IconBtn onClick={() => setSearchOpen(true)}><Search size={23} /></IconBtn><ThemeToggle mode={mode} setMode={setMode} /><IconBtn onClick={() => goTab("online")} badge={onlineCount}><Users size={23} /></IconBtn><IconBtn onClick={() => goTab("notifications")} badge={unreadNotifs}><Bell size={23} /></IconBtn></div>
+              <div className="flex-1 min-w-0 flex justify-center px-1">{nowPlaying && <MiniPlayer song={nowPlaying} playing={isPlaying} onToggle={() => setIsPlaying(p => !p)} onStop={stopPlaying} />}</div>
+              <div className="flex items-center shrink-0"><IconBtn onClick={() => setSearchOpen(true)}><Search size={23} /></IconBtn><ThemeToggle mode={mode} setMode={setMode} /><IconBtn onClick={() => goTab("online")} badge={onlineCount}><Users size={23} /></IconBtn><IconBtn onClick={() => goTab("notifications")} badge={unreadNotifs}><Bell size={23} /></IconBtn></div>
             </header>
           )}
 
@@ -744,6 +778,7 @@ export default function App() {
             {tab === "market" && <Market listings={listings} onSave={onListingSave} onNew={onNewListing} onMessage={onMessageUser} onOpenProfile={openProfile} flash={flash} live={live} onOrder={onOrder} getReviews={getReviews} onAddReview={addReviewApi} onUpload={(f) => uploadImage(f, "market")} onEdit={onEditListing} onDelete={onDeleteListing} sentinelRef={listSentinelRef} hasMore={listMore} loadingMore={listLoadingMore} />}
             {tab === "games" && <GamesList onOpenBura={() => setBuraOpen(true)} onOpenNardi={() => setNardiOpen(true)} />}
             {tab === "movies" && <Movies films={films} watch={filmWatch} onNew={onNewFilm} onEdit={onEditFilm} onDelete={onDeleteFilm} onOpenProfile={openProfile} flash={flash} onUpload={(f) => uploadImage(f, "films")} onUploadVideo={(f) => storageApi.upload(f, "films")} getReviews={getFilmReviews} onAddReview={addFilmReviewApi} onSetWatch={onSetFilmWatch} onClearWatch={onClearFilmWatch} sentinelRef={filmSentinelRef} hasMore={filmMore} loadingMore={filmLoadingMore} />}
+            {tab === "music" && <MusicPage songs={songs} nowPlaying={nowPlaying} isPlaying={isPlaying} onPlay={playSong} onNew={onNewSong} onEdit={onEditSong} onDelete={onDeleteSong} onUpload={(f) => uploadImage(f, "music")} onUploadAudio={(f) => storageApi.upload(f, "music")} />}
             {tab === "map" && <MapView onMessage={onMessageUser} onMenu={() => setDrawerOpen(true)} onOpenProfile={openProfile} />}
             {tab === "reels" && <Reels reels={reels} onLike={onReelLike} onSave={onReelSave} onView={onReelView} onOpenProfile={openProfile} onMenu={() => setDrawerOpen(true)} flash={flash} onCreate={() => setReelCreateOpen(true)} onComments={openReelComments} sentinelRef={reelsSentinelRef} hasMore={reelsMore} loadingMore={reelsLoadingMore} />}
             {tab === "groups" && <Groups groups={groups} events={events} onJoin={onJoinGroup} onRsvp={onRsvp} onOpenProfile={openProfile} onMessage={onMessageUser} live={live} onGroupPost={onGroupPost} onUpload={(f) => uploadImage(f, "groups")} onUploadVideo={(f) => storageApi.upload(f, "groups")} onCreateGroup={onCreateGroup} onCreateEvent={onCreateEvent} pendingOpen={pendingGroup} clearPending={() => setPendingGroup(null)} onEditPost={onEditGroupPost} onDeletePost={onDeleteGroupPost} onEditGroup={onEditGroup} onDeleteGroup={onDeleteGroup} onEditEvent={onEditEvent} onDeleteEvent={onDeleteEvent} allPosts={posts} loadGroupPosts={mergeGroupPosts} loadMembers={(gid) => groupsApi.members(gid).then(rows => { rows.forEach(r => { if (r.profile) mergeProfile(r.profile); }); return rows; })} onApproveMember={onApproveMember} onKickMember={onKickMember} onSetGroupPrivate={onSetGroupPrivate} taggable={following} postProps={{ onLike, onReact, onSave, onComment, onPollVote, onTag, onReport, onRemove: onRemovePost, onOpenProfile: openProfile, isAdmin: me.admin, onEdit: onEditPost, onDelete: onDeletePost, onEditComment, onDeleteComment, onLikeComment, onRepost, onReactors: (pid) => reactionsApi.listForPost(pid) }} />}
@@ -788,6 +823,7 @@ export default function App() {
         })}
       </nav>
 
+      <audio ref={audioElRef} onEnded={() => setIsPlaying(false)} style={{ display: "none" }} />
       {session && hasSupabase && <Suspense fallback={null}><CallLayer ref={callRef} me={ME} enabled={true} /></Suspense>}
       {showOnboarding && <Onboarding suggested={suggested} following={following} onToggleFollow={toggleFollow} onUploadAvatar={onChangeAvatar} onSaveProfile={onSaveOnboardProfile} onFinish={onFinishOnboarding} />}
       {buraOpen && <Suspense fallback={null}><BuraGame onExit={() => setBuraOpen(false)} /></Suspense>}

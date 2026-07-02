@@ -299,6 +299,29 @@ create table if not exists public.film_watch (
 );
 
 -- ============================================================================
+--  MUSIC  (user-submitted songs: genre/performer browse, online streaming)
+-- ============================================================================
+create table if not exists public.songs (
+  id         uuid primary key default gen_random_uuid(),
+  author_id  uuid not null references public.profiles(id) on delete cascade,
+  title      text not null,
+  artist     text,
+  genre      text,
+  cover_url  text,
+  audio_url  text not null,
+  plays      int not null default 0,
+  created_at timestamptz not null default now()
+);
+
+-- security definer so any listener can bump play count without a general
+-- update policy that would let strangers edit title/artist/etc.
+create or replace function public.increment_song_plays(p_song_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  update public.songs set plays = plays + 1 where id = p_song_id;
+end; $$;
+
+-- ============================================================================
 --  NOTIFICATIONS  (ავტომატური триггерებით)
 -- ============================================================================
 create table if not exists public.notifications (
@@ -453,7 +476,8 @@ alter table public.notifications       enable row level security;
 alter table public.reports             enable row level security;
 alter table public.films               enable row level security;
 alter table public.film_reviews        enable row level security;
-alter table public.film_watch          enable row level security;
+alter table public.film_watch           enable row level security;
+alter table public.songs               enable row level security;
 
 -- helper: ფლობს თუ არა მომხმარებელი row-ს ველის მიხედვით
 -- (პოლისები ცალ-ცალკე იწერება ქვემოთ)
@@ -587,6 +611,17 @@ drop policy if exists film_watch_update on public.film_watch;
 create policy film_watch_update on public.film_watch for update using (auth.uid() = user_id);
 drop policy if exists film_watch_delete on public.film_watch;
 create policy film_watch_delete on public.film_watch for delete using (auth.uid() = user_id);
+
+-- SONGS: public read (streaming), own write/edit/delete. plays is bumped
+-- only via the increment_song_plays() security-definer function above.
+drop policy if exists songs_read on public.songs;
+create policy songs_read on public.songs for select using (true);
+drop policy if exists songs_insert on public.songs;
+create policy songs_insert on public.songs for insert with check (auth.uid() = author_id);
+drop policy if exists songs_update on public.songs;
+create policy songs_update on public.songs for update using (auth.uid() = author_id);
+drop policy if exists songs_delete on public.songs;
+create policy songs_delete on public.songs for delete using (auth.uid() = author_id);
 
 -- NOTIFICATIONS: მხოლოდ შენი
 drop policy if exists notif_read on public.notifications;

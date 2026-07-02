@@ -734,6 +734,35 @@ export const films = {
   },
 };
 
+/* ───────────── MUSIC (user-submitted songs, online streaming) ───────────── */
+export const music = {
+  update: async (id, patch) => { const { error } = await need().from("songs").update(patch).eq("id", id); if (error) throw error; },
+  remove: async (id) => { const { error } = await need().from("songs").delete().eq("id", id); if (error) throw error; },
+  byId: async (id) => {
+    const { data, error } = await need().from("songs").select("*, author:profiles!songs_author_id_fkey(*)").eq("id", id).maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+  // sort: "new" (created_at desc, default) | "popular" (plays desc). genre/artist/title
+  // filtering happens client-side on the loaded page (same pattern as films/market)
+  page: async (before, sort, limit = 20) => {
+    let q = need().from("songs").select("*, author:profiles!songs_author_id_fkey(*)").limit(limit);
+    q = sort === "popular" ? q.order("plays", { ascending: false }).order("created_at", { ascending: false }) : q.order("created_at", { ascending: false });
+    if (before) q = sort === "popular" ? q.lt("plays", before) : q.lt("created_at", before);
+    const { data, error } = await q;
+    if (error) throw error;
+    return data;
+  },
+  create: async (song) => {
+    const sb = need();
+    const uid = (await sb.auth.getUser()).data.user.id;
+    const { data, error } = await sb.from("songs").insert({ ...song, author_id: uid }).select().single();
+    if (error) throw error;
+    return data;
+  },
+  incrementPlays: async (id) => { const { error } = await need().rpc("increment_song_plays", { p_song_id: id }); if (error) throw error; },
+};
+
 /* ───────────── STORIES ───────────── */
 export const stories = {
   list: async () => {
