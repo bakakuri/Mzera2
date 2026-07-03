@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { filmsApi, mapDbFilm, mapDbReview, img, hasSupabase } from "../ui/core";
+import { filmsApi, mapDbFilm, mapDbReview, img, hasSupabase, t } from "../ui/core";
 
 // films/film_reviews/film_watch are a new-ish schema addition — load
 // functions fail silently (no setDbError banner) until the migration has
@@ -37,9 +37,9 @@ export function useMovies({ tab, session, flash, dbErr }) {
   const onSetFilmWatch = (filmId, status) => { setFilmWatch(w => ({ ...w, [filmId]: status })); filmsApi.setWatch(filmId, status).catch(dbErr("სტატუსი")); };
   const onClearFilmWatch = (filmId) => { setFilmWatch(w => { const n = { ...w }; delete n[filmId]; return n; }); filmsApi.clearWatch(filmId).catch(dbErr("სტატუსი")); };
 
-  const onNewFilm = (d) => { flash("ფილმი დაემატა 🎬"); filmsApi.create({ title: d.title, year: d.year, genre: d.genre, description: d.desc, poster_url: d.poster || null, video_url: d.video || null }).then(loadFilms).catch(dbErr("ფილმი")); };
-  const onEditFilm = (id, patch) => { setFilms(fs => fs.map(f => f.id === id ? { ...f, ...(patch.title != null ? { title: patch.title } : {}), ...(patch.year !== undefined ? { year: patch.year } : {}), ...(patch.genre != null ? { genre: patch.genre } : {}), ...(patch.description != null ? { desc: patch.description } : {}), ...(patch.poster_url !== undefined ? { poster: patch.poster_url || img("film" + id, 480, 720) } : {}), ...(patch.video_url !== undefined ? { video: patch.video_url } : {}) } : f)); filmsApi.update(id, patch).then(loadFilms).then(() => flash("ფილმი განახლდა ✏️")).catch(dbErr("რედაქტირება")); };
-  const onDeleteFilm = (id) => { setFilms(fs => fs.filter(f => f.id !== id)); filmsApi.remove(id).then(loadFilms).then(() => flash("ფილმი წაიშალა")).catch(dbErr("წაშლა")); };
+  const onNewFilm = (d) => { flash(t("toast.filmAdded")); filmsApi.create({ title: d.title, year: d.year, genre: d.genre, description: d.desc, poster_url: d.poster || null, video_url: d.video || null }).then(loadFilms).catch(dbErr("ფილმი")); };
+  const onEditFilm = (id, patch) => { setFilms(fs => fs.map(f => f.id === id ? { ...f, ...(patch.title != null ? { title: patch.title } : {}), ...(patch.year !== undefined ? { year: patch.year } : {}), ...(patch.genre != null ? { genre: patch.genre } : {}), ...(patch.description != null ? { desc: patch.description } : {}), ...(patch.poster_url !== undefined ? { poster: patch.poster_url || img("film" + id, 480, 720) } : {}), ...(patch.video_url !== undefined ? { video: patch.video_url } : {}) } : f)); filmsApi.update(id, patch).then(loadFilms).then(() => flash(t("toast.filmUpdated"))).catch(dbErr("რედაქტირება")); };
+  const onDeleteFilm = (id) => { setFilms(fs => fs.filter(f => f.id !== id)); filmsApi.remove(id).then(loadFilms).then(() => flash(t("toast.filmDeleted"))).catch(dbErr("წაშლა")); };
   const getFilmReviews = (filmId) => filmsApi.reviews(filmId).then(rows => rows.map(mapDbReview));
   const addFilmReviewApi = (filmId, rating, text) => filmsApi.addReview(filmId, rating, text);
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { profilesApi, mergeProfile, hasSupabase } from "../ui/core";
+import { profilesApi, mergeProfile, hasSupabase, t } from "../ui/core";
 
 // invite/referral system: your own stable referral_code (assigned server-side
 // at signup) + who you've brought in so far. Attribution + the XP bonus for
@@ -30,8 +30,8 @@ export function useReferrals({ session, flash }) {
 
   const copyInviteLink = () => {
     if (!inviteLink) return;
-    try { navigator.clipboard.writeText(inviteLink); flash && flash("ლინკი დაკოპირდა 🔗"); }
-    catch (e) { flash && flash("ვერ დაკოპირდა"); }
+    try { navigator.clipboard.writeText(inviteLink); flash && flash(t("toast.linkCopied")); }
+    catch (e) { flash && flash(t("toast.linkCopyFailed")); }
   };
 
   return { referralCode, invitedCount, invitedUsers, inviteLink, loadReferrals, copyInviteLink };

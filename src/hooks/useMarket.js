@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { marketApi, mapDbListing, mapDbReview, hydrateAuthors, hasSupabase } from "../ui/core";
+import { marketApi, mapDbListing, mapDbReview, hydrateAuthors, hasSupabase, t } from "../ui/core";
 
 export function useMarket({ tab, flash, dbErr, setDbError }) {
   const [listings, setListings] = useState([]);
@@ -30,9 +30,9 @@ export function useMarket({ tab, flash, dbErr, setDbError }) {
   }, [tab, listMore, listCursor, listLoadingMore]);
 
   const onListingSave = (id) => setListings(ls => ls.map(l => l.id === id ? { ...l, savedByMe: !l.savedByMe } : l));
-  const onNewListing = (d) => { flash("განცხადება დაიდო 🛍️"); marketApi.create({ title: d.title, price: d.price, description: d.desc, category: d.cat, image_url: d.image, video_url: d.video || null, location: "თბილისი" }).then(loadListings).catch(dbErr("განცხადება")); };
-  const onEditListing = (id, patch) => { setListings(ls => ls.map(l => l.id === id ? { ...l, ...(patch.title != null ? { title: patch.title } : {}), ...(patch.price != null ? { price: patch.price } : {}), ...(patch.description != null ? { desc: patch.description } : {}) } : l)); marketApi.update(id, patch).then(loadListings).then(() => flash("განცხადება განახლდა ✏️")).catch(dbErr("რედაქტირება")); };
-  const onDeleteListing = (id) => { setListings(ls => ls.filter(l => l.id !== id)); marketApi.remove(id).then(loadListings).then(() => flash("განცხადება წაიშალა")).catch(dbErr("წაშლა")); };
+  const onNewListing = (d) => { flash(t("toast.listingCreated")); marketApi.create({ title: d.title, price: d.price, description: d.desc, category: d.cat, image_url: d.image, video_url: d.video || null, location: "თბილისი" }).then(loadListings).catch(dbErr("განცხადება")); };
+  const onEditListing = (id, patch) => { setListings(ls => ls.map(l => l.id === id ? { ...l, ...(patch.title != null ? { title: patch.title } : {}), ...(patch.price != null ? { price: patch.price } : {}), ...(patch.description != null ? { desc: patch.description } : {}) } : l)); marketApi.update(id, patch).then(loadListings).then(() => flash(t("toast.listingUpdated"))).catch(dbErr("რედაქტირება")); };
+  const onDeleteListing = (id) => { setListings(ls => ls.filter(l => l.id !== id)); marketApi.remove(id).then(loadListings).then(() => flash(t("toast.listingDeleted"))).catch(dbErr("წაშლა")); };
   const onOrder = (item, d) => { marketApi.order(item.id, { delivery: d.delivery, payment: d.payment, address: d.address, total: d.total }).catch(dbErr("შეკვეთა")); };
   const getReviews = (sellerId) => marketApi.reviews(sellerId).then(rows => rows.map(mapDbReview));
   const addReviewApi = (sellerId, rating, text) => marketApi.addReview(sellerId, rating, text);

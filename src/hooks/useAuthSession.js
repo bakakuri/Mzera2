@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { authApi, profilesApi, hasSupabase, pushApi, USERS, ME, LANG } from "../ui/core";
+import { authApi, profilesApi, hasSupabase, pushApi, USERS, ME, LANG, t } from "../ui/core";
 import { registerPush, unregisterPush, currentPushState } from "../lib/push";
 
 // Supabase auth session + onboarding/profile-settings state + web push
@@ -45,12 +45,12 @@ export function useAuthSession({ flash, reloadFeed }) {
   }, [session]);
 
   const onTogglePush = async () => {
-    if (pushState === "on") { await unregisterPush(pushApi); setPushState("off"); flash("Push გამოირთო"); return; }
+    if (pushState === "on") { await unregisterPush(pushApi); setPushState("off"); flash(t("toast.pushOff")); return; }
     const res = await registerPush(pushApi);
-    if (res.ok) { setPushState("on"); flash("Push შეტყობინებები ჩაირთო 🔔"); }
-    else if (res.reason === "denied") { setPushState("denied"); flash("ბრაუზერმა დაბლოკა — ჩართე პარამეტრებიდან"); }
-    else if (res.reason === "unsupported") { setPushState("unsupported"); flash("ამ ბრაუზერს არ აქვს მხარდაჭერა"); }
-    else flash("ვერ ჩაირთო, სცადე თავიდან");
+    if (res.ok) { setPushState("on"); flash(t("toast.pushOn")); }
+    else if (res.reason === "denied") { setPushState("denied"); flash(t("toast.pushDenied")); }
+    else if (res.reason === "unsupported") { setPushState("unsupported"); flash(t("toast.pushUnsupported")); }
+    else flash(t("toast.pushFailed"));
   };
 
   const onSaveOnboardProfile = (name, bio) => {

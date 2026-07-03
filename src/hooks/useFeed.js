@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   postsApi, reactionsApi, commentsApi, profilesApi, pollsApi,
   filmsApi, musicApi, marketApi,
-  mapDbPost, mapDbFilm, mapDbSong, mapDbListing, mergeProfile, timeAgo, ME, USERS, hasSupabase, resolveImg,
+  mapDbPost, mapDbFilm, mapDbSong, mapDbListing, mergeProfile, timeAgo, ME, USERS, hasSupabase, resolveImg, t,
 } from "../ui/core";
 
 const lsGet = (k, def) => { try { const v = typeof localStorage !== "undefined" && localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch (e) { return def; } };
@@ -156,18 +156,18 @@ export function useFeed({ tab, session, flash, dbErr, setDbError, gainXp }) {
   };
   const onComment = (id, text, parentId) => { const tempId = "c" + Date.now(); const now = new Date().toISOString(); setPosts(ps => ps.map(p => p.id === id ? { ...p, comments: [...p.comments, { id: tempId, authorId: ME, text, time: "ახლა", createdAt: now, parentId: parentId || null, likes: 0, likedByMe: false }] } : p)); gainXp(5); commentsApi.add(id, text, parentId).then(c => { if (c && c.id) setPosts(ps => ps.map(p => p.id === id ? { ...p, comments: p.comments.map(cm => cm.id === tempId ? { ...cm, id: c.id } : cm) } : p)); }).catch(dbErr("კომენტარი")); };
   const onLikeComment = (postId, commentId) => { setPosts(ps => ps.map(p => p.id === postId ? { ...p, comments: p.comments.map(c => c.id === commentId ? { ...c, likedByMe: !c.likedByMe, likes: (c.likes || 0) + (c.likedByMe ? -1 : 1) } : c) } : p)); commentsApi.toggleLike(commentId).catch(dbErr("მოწონება")); };
-  const onEditPost = (id, text) => { setPosts(ps => ps.map(p => p.id === id ? { ...p, text, edited: true } : p)); setSavedPosts(sp => sp.map(p => p.id === id ? { ...p, text, edited: true } : p)); postsApi.update(id, { text, edited: true }).catch(dbErr("პოსტის რედაქტირება")); flash("პოსტი განახლდა ✓"); };
-  const onRepost = (postId, quote) => { postsApi.create({ text: quote || "", shared_post_id: postId }).then(() => { gainXp(8); flash("გააზიარე კედელზე 🔁"); return Promise.resolve(reloadFeed()).then(() => loadShareCounts()); }).catch(dbErr("გაზიარება")); };
-  const onHidePost = (id) => { setHiddenPosts(h => h.includes(id) ? h : [...h, id]); flash("პოსტი დაიმალა ფიდიდან"); };
-  const onSeeLess = (authorId) => { setSeeLess(s => s.includes(authorId) ? s : [...s, authorId]); setFavorites(f => f.filter(x => x !== authorId)); flash("ნაკლებს გაჩვენებთ ამ ავტორს 👇"); };
-  const onToggleFavorite = (authorId) => { const now = favorites.includes(authorId); setFavorites(f => now ? f.filter(x => x !== authorId) : [...f, authorId]); setSeeLess(s => s.filter(x => x !== authorId)); flash(now ? "მოიხსნა „ჯერ ეს მაჩვენე“" : "დაემატა „ჯერ ეს მაჩვენე“ ⭐"); };
-  const onDeletePost = (id) => { setPosts(ps => ps.filter(p => p.id !== id)); setSavedPosts(sp => sp.filter(p => p.id !== id)); postsApi.remove(id).catch(dbErr("პოსტის წაშლა")); flash("პოსტი წაიშალა"); };
+  const onEditPost = (id, text) => { setPosts(ps => ps.map(p => p.id === id ? { ...p, text, edited: true } : p)); setSavedPosts(sp => sp.map(p => p.id === id ? { ...p, text, edited: true } : p)); postsApi.update(id, { text, edited: true }).catch(dbErr("პოსტის რედაქტირება")); flash(t("toast.postUpdated")); };
+  const onRepost = (postId, quote) => { postsApi.create({ text: quote || "", shared_post_id: postId }).then(() => { gainXp(8); flash(t("toast.repostedToWall")); return Promise.resolve(reloadFeed()).then(() => loadShareCounts()); }).catch(dbErr("გაზიარება")); };
+  const onHidePost = (id) => { setHiddenPosts(h => h.includes(id) ? h : [...h, id]); flash(t("toast.postHidden")); };
+  const onSeeLess = (authorId) => { setSeeLess(s => s.includes(authorId) ? s : [...s, authorId]); setFavorites(f => f.filter(x => x !== authorId)); flash(t("toast.showLessAuthor")); };
+  const onToggleFavorite = (authorId) => { const now = favorites.includes(authorId); setFavorites(f => now ? f.filter(x => x !== authorId) : [...f, authorId]); setSeeLess(s => s.filter(x => x !== authorId)); flash(now ? t("toast.favoriteRemoved") : t("toast.favoriteAdded")); };
+  const onDeletePost = (id) => { setPosts(ps => ps.filter(p => p.id !== id)); setSavedPosts(sp => sp.filter(p => p.id !== id)); postsApi.remove(id).catch(dbErr("პოსტის წაშლა")); flash(t("toast.postDeleted")); };
   const onEditComment = (postId, commentId, text) => { setPosts(ps => ps.map(p => p.id === postId ? { ...p, comments: p.comments.map(c => c.id === commentId ? { ...c, text } : c) } : p)); commentsApi.update(commentId, text).catch(dbErr("კომენტარის რედაქტირება")); };
   const onDeleteComment = (postId, commentId) => { setPosts(ps => ps.map(p => p.id === postId ? { ...p, comments: p.comments.filter(c => c.id !== commentId) } : p)); commentsApi.remove(commentId).catch(dbErr("კომენტარის წაშლა")); };
-  const onRemovePost = (id) => { setPosts(ps => ps.filter(p => p.id !== id)); setSavedPosts(sp => sp.filter(p => p.id !== id)); postsApi.remove(id).catch(dbErr("პოსტის წაშლა")); flash("პოსტი წაიშალა"); };
+  const onRemovePost = (id) => { setPosts(ps => ps.filter(p => p.id !== id)); setSavedPosts(sp => sp.filter(p => p.id !== id)); postsApi.remove(id).catch(dbErr("პოსტის წაშლა")); flash(t("toast.postDeleted")); };
   // note: closing the compose sheet (setCreateOpen(false)) is nav state owned
   // by App.jsx, wired in alongside this call rather than done here
-  const onPost = (text, pics, poll, scheduledFor, wantPublic, extras) => { extras = extras || {}; gainXp(15); flash(wantPublic ? "გაიგზავნა მოდერაციაზე 📢" : scheduledFor ? "დაიგეგმა 📅 — დროზე გამოქვეყნდება" : "გამოქვეყნდა 🎉"); postsApi.create({ text, images: (pics && pics.length) ? pics.map(resolveImg) : null, poll, scheduled_for: scheduledFor || null, public_status: wantPublic ? "pending" : "none", bg: extras.bg || null, feeling: extras.feeling || null, location: extras.location || null, tagged: (extras.tagged && extras.tagged.length) ? extras.tagged : null, video_url: extras.video || null }).then(reloadFeed).catch(dbErr("პოსტი")); };
+  const onPost = (text, pics, poll, scheduledFor, wantPublic, extras) => { extras = extras || {}; gainXp(15); flash(wantPublic ? t("toast.sentToModeration") : scheduledFor ? t("toast.scheduled") : t("toast.published")); postsApi.create({ text, images: (pics && pics.length) ? pics.map(resolveImg) : null, poll, scheduled_for: scheduledFor || null, public_status: wantPublic ? "pending" : "none", bg: extras.bg || null, feeling: extras.feeling || null, location: extras.location || null, tagged: (extras.tagged && extras.tagged.length) ? extras.tagged : null, video_url: extras.video || null }).then(reloadFeed).catch(dbErr("პოსტი")); };
 
   const hydrateMerge = async (mapped) => {
     const ids = mapped.map(p => p.id);

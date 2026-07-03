@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { chatApi, mapDbMsg, toDbMsg, mergeProfile, hasSupabase, USERS, ME, pushNotif, REPLIES } from "../ui/core";
+import { chatApi, mapDbMsg, toDbMsg, mergeProfile, hasSupabase, USERS, ME, pushNotif, REPLIES, t } from "../ui/core";
 
 export function useChat({ live, session, flash, dbErr, setDbError, setTab }) {
   const [convos, setConvos] = useState([]);
@@ -48,7 +48,7 @@ export function useChat({ live, session, flash, dbErr, setDbError, setTab }) {
     chanRef.current = convos.map(c => chatApi.subscribe(c.id, (evt, row, oldRow) => {
       if (evt === "INSERT") {
         const m = mapDbMsg(row);
-        if (!m.fromMe && openRef.current !== c.id) { const other = USERS[m.from]; pushNotif((other && other.name) ? other.name : "ახალი შეტყობინება", m.type === "text" ? m.text : m.type === "image" ? "📷 ფოტო" : m.type === "voice" ? "🎤 ხმოვანი" : m.type === "doc" ? "📄 ფაილი" : m.type === "location" ? "📍 ლოკაცია" : "ახალი შეტყობინება"); }
+        if (!m.fromMe && openRef.current !== c.id) { const other = USERS[m.from]; pushNotif((other && other.name) ? other.name : t("chat.newMessage"), m.type === "text" ? m.text : m.type === "image" ? t("msg.photo") : m.type === "voice" ? t("msg.voice") : m.type === "doc" ? (t("msg.file") + t("msg.fileFallback")) : m.type === "location" ? t("msg.location") : t("chat.newMessage")); }
         setConvos(cs => cs.map(x => {
           if (x.id !== c.id) return x;
           if (x.messages.some(z => z.id === m.id)) return x;
@@ -69,8 +69,8 @@ export function useChat({ live, session, flash, dbErr, setDbError, setTab }) {
   const onSendMsg = (cid, partial) => { chatApi.send(cid, toDbMsg(partial)).catch(dbErr("შეტყობინება")); };
   const onEditMsg = (cid, mid, text) => { setConvos(cs => cs.map(c => c.id === cid ? { ...c, messages: c.messages.map(m => m.id === mid ? { ...m, text, edited: true } : m) } : c)); chatApi.editMessage(mid, text).catch(dbErr("რედაქტირება")); };
   const onDeleteMsg = (cid, mid) => { setConvos(cs => cs.map(c => c.id === cid ? { ...c, messages: c.messages.filter(m => m.id !== mid) } : c)); chatApi.deleteMessage(mid).catch(dbErr("წაშლა")); };
-  const onDeleteConvo = (cid) => { setOpenConvoId(null); setConvos(cs => cs.filter(c => c.id !== cid)); chatApi.deleteConversation(cid).then(() => flash("მიმოწერა წაიშალა 🗑️")).catch(dbErr("მიმოწერის წაშლა")); };
-  const onReply = (cid) => setConvos(cs => cs.map(c => { if (c.id !== cid) return c; const mem = c.members || (c.withId ? [c.withId] : []); const from = mem.length > 1 ? mem[Math.floor(Math.random() * mem.length)] : mem[0]; return { ...c, messages: [...c.messages, { id: "m" + Date.now() + Math.round(Math.random() * 777), fromMe: false, from, type: "text", text: REPLIES[Math.floor(Math.random() * REPLIES.length)], time: "ახლა" }] }; }));
+  const onDeleteConvo = (cid) => { setOpenConvoId(null); setConvos(cs => cs.filter(c => c.id !== cid)); chatApi.deleteConversation(cid).then(() => flash(t("toast.convoDeleted"))).catch(dbErr("მიმოწერის წაშლა")); };
+  const onReply = (cid) => setConvos(cs => cs.map(c => { if (c.id !== cid) return c; const mem = c.members || (c.withId ? [c.withId] : []); const from = mem.length > 1 ? mem[Math.floor(Math.random() * mem.length)] : mem[0]; return { ...c, messages: [...c.messages, { id: "m" + Date.now() + Math.round(Math.random() * 777), fromMe: false, from, type: "text", text: REPLIES[Math.floor(Math.random() * REPLIES.length)], time: t("time.now") }] }; }));
   const onCreateConvo = (memberIds) => { const members = [...new Set(memberIds)].filter(x => x !== ME); const name = members.length > 1 ? members.map(m => (USERS[m]?.name || "").split(" ")[0]).join(", ") : null; chatApi.createConversation(members, name).then(async (conv) => { await loadConvos(); setOpenConvoId(conv.id); }).catch(dbErr("საუბარი")); return null; };
   const onMessageUser = (uid) => { setTab("messages"); const ex = convos.find(c => { const m = c.members || (c.withId ? [c.withId] : []); return m.length === 1 && m[0] === uid; }); setOpenConvoId(ex ? ex.id : onCreateConvo([uid])); };
 

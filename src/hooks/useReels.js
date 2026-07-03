@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { reelsApi, mapDbReel, hydrateAuthors, hasSupabase, mergeProfile } from "../ui/core";
+import { reelsApi, mapDbReel, hydrateAuthors, hasSupabase, mergeProfile, t } from "../ui/core";
 
 export function useReels({ tab, flash, dbErr, setDbError, gainXp }) {
   const [reels, setReels] = useState([]);
@@ -44,7 +44,7 @@ export function useReels({ tab, flash, dbErr, setDbError, gainXp }) {
   const onReelEdit = (id, caption) => { setReels(rs => rs.map(r => r.id === id ? { ...r, caption } : r)); reelsApi.update(id, { caption }).catch(dbErr("reel რედაქტირება")); };
   const openReelComments = async (r) => { setReelComments({ reel: r, list: null }); try { const list = await reelsApi.comments(r.id); list.forEach(c => c.author && mergeProfile(c.author)); setReelComments({ reel: r, list }); } catch (e) { setReelComments(null); setDbError("reel comments: " + (e.message || JSON.stringify(e)) + (e.code ? " · code: " + e.code : "")); } };
   const addReelComment = async (text) => { const rc = reelComments; if (!rc) return; try { const c = await reelsApi.addComment(rc.reel.id, text); if (c.author) mergeProfile(c.author); setReelComments(p => p && p.reel.id === rc.reel.id ? { ...p, list: [...(p.list || []), c] } : p); setReels(rs => rs.map(x => x.id === rc.reel.id ? { ...x, comments: (x.comments || 0) + 1 } : x)); gainXp(3); } catch (e) { setDbError("reel comment: " + (e.message || JSON.stringify(e)) + (e.code ? " · code: " + e.code : "")); } };
-  const onPublishReel = ({ video, thumb, caption, audio }) => { setReelCreateOpen(false); gainXp(12); flash("Reel გამოქვეყნდა 🎬"); reelsApi.create({ video_url: video, thumb_url: thumb || null, caption, audio: audio || "ორიგინალი ხმა" }).then(loadReels).catch(dbErr("reel")); };
+  const onPublishReel = ({ video, thumb, caption, audio }) => { setReelCreateOpen(false); gainXp(12); flash(t("toast.reelPublished")); reelsApi.create({ video_url: video, thumb_url: thumb || null, caption, audio: audio || "ორიგინალი ხმა" }).then(loadReels).catch(dbErr("reel")); };
 
   return {
     reels, reelsCursor, reelsMore, reelsLoadingMore, reelsSentinelRef, reelsSeedRef,

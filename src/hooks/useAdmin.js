@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { profilesApi, postsApi, adminApi, mapDbPost, mergeProfile, hasSupabase, ME, USERS } from "../ui/core";
+import { profilesApi, postsApi, adminApi, mapDbPost, mergeProfile, hasSupabase, ME, USERS, t } from "../ui/core";
 
 // Moderation queue (reports) + admin-only user/content management.
 export function useAdmin({ tab, session, flash, dbErr, setXp, setPosts }) {
@@ -28,16 +28,16 @@ export function useAdmin({ tab, session, flash, dbErr, setXp, setPosts }) {
     })();
   }, [session]);
 
-  const onReport = (id) => { setReports(r => [{ id: "r" + Date.now(), type: "post", targetId: id, reason: "მომხმარებლის რეპორტი", reporterId: ME, time: "ახლა", status: "open" }, ...r]); flash("გაგზავნილია მოდერაციაში ✓"); };
+  const onReport = (id) => { setReports(r => [{ id: "r" + Date.now(), type: "post", targetId: id, reason: t("report.userReport"), reporterId: ME, time: t("time.now"), status: "open" }, ...r]); flash(t("toast.sentToModerationQueue")); };
   const onResolve = (id) => setReports(r => r.map(x => x.id === id ? { ...x, status: "resolved" } : x));
-  const onSetVerified = (id, v) => { setAllUsers(us => us.map(u => u.id === id ? { ...u, verified: v } : u)); if (USERS[id].id === id) USERS[id] = { ...USERS[id], verified: v }; profilesApi.update(id, { verified: v }).then(() => flash(v ? "ვერიფიცირებულია ✓" : "ვერიფიკაცია მოიხსნა")).catch(dbErr("ვერიფიკაცია")); };
-  const onSetAdmin = (id, v) => { setAllUsers(us => us.map(u => u.id === id ? { ...u, is_admin: v } : u)); if (USERS[id].id === id) USERS[id] = { ...USERS[id], admin: v }; profilesApi.update(id, { is_admin: v }).then(() => flash(v ? "ადმინი დაინიშნა 🛡" : "ადმინი მოიხსნა")).catch(dbErr("admin")); };
-  const onBanUser = (id, v) => { setAllUsers(us => us.map(u => u.id === id ? { ...u, banned: v } : u)); adminApi.setBanned(id, v).then(() => flash(v ? "მომხმარებელი დაიბლოკა 🚫" : "ბლოკი მოიხსნა ✓")).catch(dbErr("ბლოკი")); };
-  const onGrantXp = (id, amount) => { setAllUsers(us => us.map(u => u.id === id ? { ...u, xp: (u.xp || 0) + amount } : u)); if (id === ME) setXp(x => x + amount); adminApi.grantXp(id, amount).then(() => flash(`+${amount} XP გადაეცა 🎁`)).catch(dbErr("XP")); };
-  const onSetXp = (id, amount) => { const v = Math.max(0, amount | 0); setAllUsers(us => us.map(u => u.id === id ? { ...u, xp: v } : u)); if (id === ME) setXp(v); adminApi.setXp(id, v).then(() => flash("XP დაყენდა: " + v)).catch(dbErr("XP")); };
-  const onDeleteUser = (id) => { setAllUsers(us => us.filter(u => u.id !== id)); adminApi.deleteUser(id).then(() => flash("მომხმარებელი სამუდამოდ წაიშალა 🗑")).catch(dbErr("მომხმარებლის წაშლა")); };
-  const onBroadcast = (msg) => { if (!msg || !msg.trim()) return; adminApi.broadcast(msg.trim()).then(n => flash("📢 გაიგზავნა " + (n || 0) + " მომხმარებელთან")).catch(dbErr("broadcast")); };
-  const onReviewPublic = (id, approve) => { setPendingPublic(pp => pp.filter(p => p.id !== id)); if (approve) setPosts(ps => ps.map(p => p.id === id ? { ...p, publicStatus: "approved" } : p)); adminApi.reviewPublic(id, approve).then(() => flash(approve ? "დამტკიცდა — საჯაროა ✅" : "უარყოფილია")).catch(dbErr("მოდერაცია")); };
+  const onSetVerified = (id, v) => { setAllUsers(us => us.map(u => u.id === id ? { ...u, verified: v } : u)); if (USERS[id].id === id) USERS[id] = { ...USERS[id], verified: v }; profilesApi.update(id, { verified: v }).then(() => flash(v ? t("toast.verified") : t("toast.unverified"))).catch(dbErr("ვერიფიკაცია")); };
+  const onSetAdmin = (id, v) => { setAllUsers(us => us.map(u => u.id === id ? { ...u, is_admin: v } : u)); if (USERS[id].id === id) USERS[id] = { ...USERS[id], admin: v }; profilesApi.update(id, { is_admin: v }).then(() => flash(v ? t("toast.adminGranted") : t("toast.adminRevoked"))).catch(dbErr("admin")); };
+  const onBanUser = (id, v) => { setAllUsers(us => us.map(u => u.id === id ? { ...u, banned: v } : u)); adminApi.setBanned(id, v).then(() => flash(v ? t("toast.userBanned") : t("toast.userUnbanned"))).catch(dbErr("ბლოკი")); };
+  const onGrantXp = (id, amount) => { setAllUsers(us => us.map(u => u.id === id ? { ...u, xp: (u.xp || 0) + amount } : u)); if (id === ME) setXp(x => x + amount); adminApi.grantXp(id, amount).then(() => flash(`+${amount}` + t("toast.xpGrantedSuffix"))).catch(dbErr("XP")); };
+  const onSetXp = (id, amount) => { const v = Math.max(0, amount | 0); setAllUsers(us => us.map(u => u.id === id ? { ...u, xp: v } : u)); if (id === ME) setXp(v); adminApi.setXp(id, v).then(() => flash(t("toast.xpSetPre") + v)).catch(dbErr("XP")); };
+  const onDeleteUser = (id) => { setAllUsers(us => us.filter(u => u.id !== id)); adminApi.deleteUser(id).then(() => flash(t("toast.userDeletedForever"))).catch(dbErr("მომხმარებლის წაშლა")); };
+  const onBroadcast = (msg) => { if (!msg || !msg.trim()) return; adminApi.broadcast(msg.trim()).then(n => flash(t("toast.broadcastSentPre") + (n || 0) + t("toast.broadcastSentPost"))).catch(dbErr("broadcast")); };
+  const onReviewPublic = (id, approve) => { setPendingPublic(pp => pp.filter(p => p.id !== id)); if (approve) setPosts(ps => ps.map(p => p.id === id ? { ...p, publicStatus: "approved" } : p)); adminApi.reviewPublic(id, approve).then(() => flash(approve ? t("toast.publicApprovedNow") : t("toast.rejected"))).catch(dbErr("მოდერაცია")); };
 
   return {
     allUsers, adminStats, dailyTrends, pendingPublic, userCount, postCount, reports,
