@@ -217,6 +217,16 @@ export const posts = {
     if (error) throw error;
     return data || null;
   },
+  // plain (non-embedded) batch lookup — used as a fallback to hydrate reposts whose
+  // shared:posts!... embed came back null (self-referencing FK embeds are flaky on
+  // some Postgres/PostgREST versions), so the repost preview doesn't say "deleted"
+  // for a post that's still very much there
+  byIds: async (ids) => {
+    if (!ids || !ids.length) return [];
+    const { data, error } = await need().from("posts").select("*, author:profiles!posts_author_id_fkey(*)").in("id", ids);
+    if (error) throw error;
+    return data || [];
+  },
   search: async (term, limit = 20) => {
     const t = "%" + String(term).replace(/[%]/g, "") + "%";
     const { data, error } = await need()

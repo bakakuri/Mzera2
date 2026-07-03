@@ -114,7 +114,7 @@ export function FeedPromoCard({ kind, data, onOpen }) {
 export function FeedReelsRow({ reels, onOpen }) {
   if (!reels || !reels.length) return null;
   return (
-    <div className="pt-3 pb-1" style={{ borderBottom: `1px solid ${C.lineSoft}`, background: C.surface }}>
+    <div className="overflow-hidden pt-3 pb-1" style={card()}>
       <div className="flex items-center justify-between px-4 pb-2">
         <span className="text-[15px] font-bold flex items-center gap-1.5" style={{ color: C.ink, fontFamily: DISPLAY }}><Film size={17} /> Reels</span>
         <button onClick={onOpen} className="flex items-center gap-0.5 text-[12.5px] font-bold active:opacity-70" style={{ color: C.accent }}>ყველა <ChevronRight size={14} /></button>
@@ -160,7 +160,11 @@ export function PostCard({ post, onLike, onReact, onSave, onComment, onPollVote,
     } catch (e) { /* cancelled */ }
   };
   return (
-    <article className="overflow-hidden" style={card()}>
+    // overflow stays hidden by default (clips the edge-to-edge image/video to the card's
+    // rounded corners) but flips to visible while a popover is open, since those are
+    // absolutely-positioned inside this card and short cards (e.g. text-only reposts)
+    // were clipping "დაარეპორტე"/"წაშლა (admin)" off the bottom of the "..." menu
+    <article className="overflow-hidden" style={{ ...card(), overflow: (menu || shareMenu || reactOpen) ? "visible" : "hidden" }}>
       {(post.shared || post.sharedId) && <div className="flex items-center gap-1.5 px-4 pt-2.5 -mb-1 text-[12px] font-semibold" style={{ color: C.faint }}><span style={{ fontSize: 12 }}>🔁</span> {isMine ? "შენ გააზიარე" : ((USERS[post.authorId] ? USERS[post.authorId].name.split(" ")[0] : "") + "-მ გააზიარა")}</div>}
       <div className="flex items-center gap-3 px-4 pt-4 pb-3">
         <button onClick={() => onOpenProfile(u.id)}><Avatar id={u.id} size={44} /></button>

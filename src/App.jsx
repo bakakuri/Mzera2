@@ -57,6 +57,9 @@ export default function App() {
   const [reelsLoadingMore, setReelsLoadingMore] = useState(false);
   const reelsSentinelRef = useRef(null);
   const reelViewedRef = useRef(new Set());
+  // fixed once per session so the Reels row's position in the feed doesn't jump
+  // around on every re-render, but still lands somewhere different each visit
+  const reelsSeedRef = useRef(Math.random());
   const [listCursor, setListCursor] = useState(null);
   const [listMore, setListMore] = useState(true);
   const [listLoadingMore, setListLoadingMore] = useState(false);
@@ -101,12 +104,33 @@ export default function App() {
     const measure = () => {
       const h = document.querySelector("header.mz-hdr"); const n = document.querySelector("nav.mz-nav");
       const root = document.documentElement;
+      // only ever set from a real, currently-mounted element — never clear/fall back
+      // to nothing when a fullBleed tab (map/reels) temporarily removes the header,
+      // otherwise fixed panels like the chat view (top: var(--mz-hdr)) that render on
+      // the very next tab would inherit a stale or unset value and misposition
       if (h) root.style.setProperty("--mz-hdr", h.offsetHeight + "px");
       if (n) root.style.setProperty("--mz-nav", n.offsetHeight + "px");
     };
     measure(); const t1 = setTimeout(measure, 200); const t2 = setTimeout(measure, 800);
     window.addEventListener("resize", measure);
-    return () => { window.removeEventListener("resize", measure); clearTimeout(t1); clearTimeout(t2); };
+    const ro = new ResizeObserver(measure);
+    const h0 = document.querySelector("header.mz-hdr"); const n0 = document.querySelector("nav.mz-nav");
+    if (h0) ro.observe(h0);
+    if (n0) ro.observe(n0);
+    return () => { window.removeEventListener("resize", measure); clearTimeout(t1); clearTimeout(t2); ro.disconnect(); };
+  }, [tab]);
+  // when the on-screen keyboard opens over a normal (non-modal) page, the focused
+  // field can end up flush against the visible edge with barely any breathing room
+  // above/below it — nudge it toward the center once the keyboard has settled
+  useEffect(() => {
+    const onFocusIn = (e) => {
+      const el = e.target;
+      if (el && (el.tagName === "TEXTAREA" || el.tagName === "INPUT")) {
+        setTimeout(() => { try { el.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (err) {} }, 320);
+      }
+    };
+    document.addEventListener("focusin", onFocusIn);
+    return () => document.removeEventListener("focusin", onFocusIn);
   }, []);
   const [events, setEvents] = useState([]);
   const [reels, setReels] = useState([]);
@@ -220,6 +244,27 @@ export default function App() {
     return () => { cancelled = true; };
   }, [session]);
 
+  // Fallback for reposts: the shared:posts!posts_shared_post_id_fkey(...) embed
+  // occasionally comes back null even though the original post still exists (a
+  // self-referencing-FK embed quirk), which rendered as "🚫 ეს პოსტი წაშლილია" for
+  // a post that was never deleted. Batch-fetch anything the embed missed and patch it in.
+  const hydrateShared = async (mapped) => {
+    const ids = [...new Set(mapped.filter(p => p.sharedId && !p.shared).map(p => p.sharedId))];
+    if (!ids.length) return mapped;
+    try {
+      const rows = await postsApi.byIds(ids);
+      const byId = {};
+      rows.forEach(r => { if (r.author) mergeProfile(r.author); byId[r.id] = r; });
+      mapped.forEach(p => {
+        if (p.sharedId && !p.shared && byId[p.sharedId]) {
+          const r = byId[p.sharedId];
+          p.shared = { id: r.id, authorId: r.author_id, text: r.text || "", image: r.image_url || (Array.isArray(r.images) && r.images[0]) || null, images: (Array.isArray(r.images) && r.images.length) ? r.images : (r.image_url ? [r.image_url] : []), video: r.video_url || null, bg: r.bg || null, time: timeAgo(r.created_at) };
+        }
+      });
+    } catch (e) {}
+    return mapped;
+  };
+
   const loadFeed = async () => {
     if (!hasSupabase) return;
     try {
@@ -242,6 +287,7 @@ export default function App() {
         try { const rx = await reactionsApi.forPosts(ids); const cnt = {}, mineM = {}; rx.forEach(r => { cnt[r.post_id] = (cnt[r.post_id] || 0) + 1; if (r.user_id === ME) mineM[r.post_id] = r.emoji; }); mapped.forEach(p => { p.likes = cnt[p.id] || 0; if (mineM[p.id]) { p.likedByMe = true; p.reaction = mineM[p.id]; } }); } catch (e) {}
         try { const cms = await commentsApi.forPosts(ids); const by = {}; cms.forEach(c => { if (c.author) mergeProfile(c.author); (by[c.post_id] = by[c.post_id] || []).push({ id: c.id, authorId: c.author_id, text: c.text, time: timeAgo(c.created_at), createdAt: c.created_at, parentId: c.parent_id || null, likes: (c.comment_likes || []).length, likedByMe: (c.comment_likes || []).some(l => l.user_id === ME) }); }); mapped.forEach(p => { if (by[p.id]) p.comments = by[p.id]; }); } catch (e) {}
       }
+      await hydrateShared(mapped);
       setPosts(mapped);
       setNewPosts(0);
       setFeedCursor(mapped.length ? mapped[mapped.length - 1].createdAt : null);
@@ -262,6 +308,7 @@ export default function App() {
       try { const cms = await commentsApi.forPosts(ids); const by = {}; cms.forEach(c => { if (c.author) mergeProfile(c.author); (by[c.post_id] = by[c.post_id] || []).push({ id: c.id, authorId: c.author_id, text: c.text, time: timeAgo(c.created_at), createdAt: c.created_at, parentId: c.parent_id || null, likes: (c.comment_likes || []).length, likedByMe: (c.comment_likes || []).some(l => l.user_id === ME) }); }); mapped.forEach(p => { if (by[p.id]) p.comments = by[p.id]; }); } catch (e) {}
       try { const savedIds = new Set(await postsApi.mySaveIds()); mapped.forEach(p => { if (savedIds.has(p.id)) p.savedByMe = true; }); } catch (e) {}
       mapped.forEach(p => { p.shares = shareCounts[p.id] || 0; });
+      await hydrateShared(mapped);
       setPosts(prev => { const seen = new Set(prev.map(p => p.id)); return [...prev, ...mapped.filter(p => !seen.has(p.id))]; });
       setFeedCursor(mapped[mapped.length - 1].createdAt);
       setFeedMore(feed.length >= 12);
@@ -615,6 +662,7 @@ export default function App() {
       try { const cms = await commentsApi.forPosts(ids); const by = {}; cms.forEach(c => { if (c.author) mergeProfile(c.author); (by[c.post_id] = by[c.post_id] || []).push({ id: c.id, authorId: c.author_id, text: c.text, time: timeAgo(c.created_at), createdAt: c.created_at, parentId: c.parent_id || null, likes: (c.comment_likes || []).length, likedByMe: (c.comment_likes || []).some(l => l.user_id === ME) }); }); mapped.forEach(p => { if (by[p.id]) p.comments = by[p.id]; }); } catch (e) {}
       try { const savedIds = new Set(await postsApi.mySaveIds()); mapped.forEach(p => { if (savedIds.has(p.id)) p.savedByMe = true; }); } catch (e) {}
     }
+    await hydrateShared(mapped);
     setPosts(prev => { const m = new Map(prev.map(p => [p.id, p])); mapped.forEach(p => m.set(p.id, p)); return Array.from(m.values()); });
   };
   const mergeGroupPosts = async (gid) => { try { const rows = await postsApi.forGroup(gid); await hydrateMerge(rows.map(mapDbPost)); } catch (e) {} };
@@ -676,10 +724,21 @@ export default function App() {
       (() => { if (!listings.length) return null; const p = listings[hashIdx(seedDay + "m", listings.length)]; return { kind: "market", id: p.id, image: p.image, title: p.title, subtitle: `${p.price} ₾ · ${p.location}`, cta: "ნახვა მარკეტში" }; })(),
       (() => { const p = pickTop(threads, t => t.votes); return p && { kind: "forum", id: p.id, image: null, title: p.title, subtitle: `${p.votes} ხმა · ${p.cat}`, cta: "ნახვა ფორუმში" }; })(),
     ].filter(Boolean);
+    // Reels row: first appearance randomly 1-3 posts down, then again every
+    // randomized 20-25 posts — seeded once per session so it's stable while
+    // scrolling but lands somewhere different on the next visit/reload
+    const reelPositions = new Set();
+    if (reels.length) {
+      let seed = reelsSeedRef.current;
+      const rand = (min, max) => { seed = (seed * 9301 + 49297) % 233280; return Math.floor(min + (seed / 233280) * (max - min + 1)); };
+      let pos = rand(1, 3);
+      while (pos <= homeVisible.length + 25) { reelPositions.add(pos); pos += rand(20, 25); }
+    }
     const out = []; let pi = 0;
     homeVisible.forEach((p, i) => {
       out.push({ type: "post", post: p });
       if ((i + 1) % 4 === 0 && promos.length) { out.push({ type: "promo", promo: promos[pi % promos.length] }); pi++; }
+      if (reelPositions.has(i + 1)) out.push({ type: "reels" });
     });
     return out;
   })();
@@ -799,14 +858,14 @@ export default function App() {
               <>
                 {newPosts > 0 && <button onClick={() => { setNewPosts(0); reloadFeed(); if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" }); }} className="fixed left-1/2 z-40 px-4 py-2 rounded-full text-[13px] font-bold text-white active:scale-95 flex items-center gap-1.5" style={{ top: 70, transform: "translateX(-50%)", backgroundImage: GBRAND, boxShadow: SH.glow }}>↑ {newPosts} ახალი პოსტი</button>}
                 <div style={{ borderBottom: `1px solid ${C.lineSoft}`, background: C.surface }}><StoryRow stories={stories} onOpen={openStory} onAdd={() => setStoryEditorOpen(true)} /></div>
-                <FeedReelsRow reels={reels} onOpen={() => goTab("reels")} />
                 <SuggestedPeople people={suggested.filter(u => !dismissedSug.includes(u.id) && u.id !== ME)} isFollowing={(id) => following.includes(id)} onToggle={toggleFollow} onDismiss={(id) => setDismissedSug(d => [...d, id])} onOpenProfile={openProfile} />
                 {todayBdays.length > 0 && <div className="mx-4 mt-3 rounded-2xl p-3.5 flex items-center gap-3" style={{ background: C.accentSoft }}><span style={{ fontSize: 26 }}>🎂</span><div className="min-w-0 flex-1"><div className="text-[14px] font-bold" style={{ color: C.accentText }}>დღეს დაბადების დღეა!</div><div className="text-[13px] truncate" style={{ color: C.ink2 }}>{todayBdays.map(id => id === ME ? "შენ 🎉" : (USERS[id] ? USERS[id].name : "")).filter(Boolean).join(", ")}</div></div>{todayBdays.filter(id => id !== ME).length > 0 && <button onClick={() => openProfile(todayBdays.find(id => id !== ME))} className="shrink-0 px-3 py-1.5 rounded-full text-[12.5px] font-bold text-white active:scale-95" style={{ backgroundImage: GBRAND }}>მიულოცე</button>}</div>}
                 {memories.length > 0 && <div className="mx-4 mt-3 rounded-2xl p-3" style={{ background: C.surface, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 mb-2"><span style={{ fontSize: 18 }}>🗓</span><span className="text-[14px] font-bold" style={{ color: C.ink }}>ამ დღეს</span></div><div className="flex gap-2 overflow-x-auto no-scrollbar">{memories.map(m => <div key={m.id} className="shrink-0 rounded-xl overflow-hidden" style={{ width: 130 }}>{m.image ? <Pic src={m.image} grad={GRADS[hashIdx(m.id, GRADS.length)]} style={{ width: 130, height: 130 }} /> : <div className="flex items-center justify-center p-2.5 text-center" style={{ width: 130, height: 130, background: (m.bg && POST_BGS[m.bg]) ? undefined : C.surfaceMuted, backgroundImage: (m.bg && POST_BGS[m.bg]) ? `linear-gradient(140deg, ${POST_BGS[m.bg][0]}, ${POST_BGS[m.bg][1]})` : undefined }}><span className="text-[12px] font-semibold line-clamp-4" style={{ color: m.bg ? "#fff" : C.ink2 }}>{(m.text || "პოსტი").slice(0, 90)}</span></div>}<div className="text-[11px] px-1 pt-1" style={{ color: C.faint }}>{m.time}</div></div>)}</div></div>}
                 {homeVisible.length > 0 && <div className="flex items-center px-4 pt-3"><div className="flex gap-1 p-0.5 rounded-full" style={{ background: C.surfaceMuted }}>{[["top", "ტოპ"], ["recent", "ბოლო"]].map(([k, l]) => <button key={k} onClick={() => setFeedSort(k)} className="px-4 py-1.5 rounded-full text-[12.5px] font-bold transition" style={feedSort === k ? { background: C.surface, color: C.accent, boxShadow: SH.card } : { color: C.muted }}>{l}</button>)}</div></div>}
                 {homeVisible.length ? <div className="stagger space-y-4 p-4">{feedItems.map((it, i) => it.type === "post"
                   ? <PostCard key={it.post.id} post={it.post} onLike={onLike} onReact={onReact} onSave={onSave} onComment={onComment} onPollVote={onPollVote} onTag={onTag} onReport={onReport} onRemove={onRemovePost} onOpenProfile={openProfile} isAdmin={me.admin} onEdit={onEditPost} onDelete={onDeletePost} onEditComment={onEditComment} onDeleteComment={onDeleteComment} onLikeComment={onLikeComment} onRepost={onRepost} onReactors={(pid) => reactionsApi.listForPost(pid)} onHide={onHidePost} onSeeLess={onSeeLess} onFavorite={onToggleFavorite} isFavorite={favorites.includes(it.post.authorId)} />
-                  : <FeedPromoCard key={"promo" + i} kind={it.promo.kind} data={it.promo} onOpen={() => openPromo(it.promo)} />
+                  : it.type === "promo" ? <FeedPromoCard key={"promo" + i} kind={it.promo.kind} data={it.promo} onOpen={() => openPromo(it.promo)} />
+                  : <FeedReelsRow key={"reels" + i} reels={reels} onOpen={() => goTab("reels")} />
                 )}</div> : <div className="px-6 py-16 text-center"><div className="text-[16px] font-bold" style={{ color: C.ink2 }}>ფიდი ცარიელია 🌱</div><div className="text-[13.5px] mt-1.5" style={{ color: C.muted, lineHeight: 1.6 }}>აქ მხოლოდ შენი და დაფოლოვებულების პოსტები ჩანს. აღმოაჩინე ხალხი და დააფოლოვე.</div><button onClick={() => setTab("explore")} className="mt-4 px-5 py-2.5 rounded-full text-[14px] font-bold text-white active:scale-95" style={{ backgroundImage: GBRAND }}>აღმოჩენა</button></div>}
                 {feedMore ? (
                   <div ref={feedSentinelRef} className="flex justify-center items-center pt-1 pb-28 md:pb-10" style={{ minHeight: 60 }}>
