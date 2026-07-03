@@ -176,9 +176,10 @@ export default function App() {
   })();
   const todayBdays = (() => { const now = new Date(); const mm = now.getMonth() + 1, dd = now.getDate(); const ids = Array.from(new Set([ME, ...following])); return ids.filter(id => { const b = USERS[id] && USERS[id].birthday; if (!b || typeof b !== "string") return false; const parts = b.split("-"); return Number(parts[1]) === mm && Number(parts[2]) === dd; }); })();
 
-  // ── Feed discovery cards: pull people toward Groups/Films/Music/Games/Market/Forum
-  // by dropping one popular-item promo card every few posts. Picks are reshuffled once
-  // a day (via seedDay) so they don't jump around on every re-render/interaction.
+  // ── Feed discovery cards: pull people toward Groups/Films/Music/Games/Market/Forum/
+  // Reels/Map/Languages by dropping one popular-item promo card every few posts.
+  // Picks are reshuffled once a day (via seedDay) so they don't jump around on
+  // every re-render/interaction.
   const openPromo = (promo) => {
     if (promo.kind === "group") { groups.setPendingGroup(promo.id); setTab("groups"); }
     else if (promo.kind === "film") setTab("movies");
@@ -186,6 +187,9 @@ export default function App() {
     else if (promo.kind === "market") setTab("market");
     else if (promo.kind === "forum") setTab("forum");
     else if (promo.kind === "game") { if (promo.id === "bura") games.setBuraOpen(true); else games.setNardiOpen(true); }
+    else if (promo.kind === "reel") setTab("reels");
+    else if (promo.kind === "map") setTab("map");
+    else if (promo.kind === "languages") setTab("languages");
   };
 
   // used by SearchView so a film/song/listing result opens straight to that
@@ -208,6 +212,9 @@ export default function App() {
       GAME_PROMOS[hashIdx(seedDay + "g", GAME_PROMOS.length)],
       (() => { if (!market.listings.length) return null; const p = market.listings[hashIdx(seedDay + "m", market.listings.length)]; return { kind: "market", id: p.id, image: p.image, title: p.title, subtitle: `${p.price} ₾ · ${p.location}`, cta: "ნახვა მარკეტში" }; })(),
       (() => { const p = pickTop(forum.threads, t => t.votes); return p && { kind: "forum", id: p.id, image: null, title: p.title, subtitle: `${p.votes} ხმა · ${p.cat}`, cta: "ნახვა ფორუმში" }; })(),
+      (() => { const p = pickTop(reelsHook.reels, r => r.views || 0); return p && { kind: "reel", id: p.id, image: p.image, title: p.caption || "Reel", subtitle: `${p.views || 0} ნახვა`, cta: "ნახვა" }; })(),
+      { kind: "map", id: "map", image: null, title: "რუკა", subtitle: "ნახე ვინ არის ახლოს და გაუზიარე შენი ლოკაცია", cta: "რუკის გახსნა" },
+      { kind: "languages", id: "languages", image: null, title: "ენების სწავლა", subtitle: "ისწავლე ინგლისური, გერმანული, ესპანური ან ფრანგული", cta: "სწავლის დაწყება" },
     ].filter(Boolean);
     // Reels row: first appearance randomly 1-3 posts down, then again every
     // randomized 20-25 posts — seeded once per session so it's stable while
