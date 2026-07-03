@@ -30,18 +30,19 @@ function NewSong({ onClose, onCreate, onUpload, onUploadAudio, initial }) {
   const audioRef = useRef(null);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [uploadingAudio, setUploadingAudio] = useState(false);
+  const [uploadErr, setUploadErr] = useState("");
   const [vph, setVph] = useState(null);
   useEffect(() => { const vv = window.visualViewport; if (!vv) return; const onR = () => setVph(vv.height); onR(); vv.addEventListener("resize", onR); vv.addEventListener("scroll", onR); return () => { vv.removeEventListener("resize", onR); vv.removeEventListener("scroll", onR); }; }, []);
   const pickCover = async (e) => {
     const f = e.target.files && e.target.files[0]; if (!f) return;
-    setUploadingCover(true);
-    try { setCover(await onUpload(f)); } catch (err) {}
+    setUploadingCover(true); setUploadErr("");
+    try { setCover(await onUpload(f)); } catch (err) { setUploadErr("ყდა ვერ აიტვირთა: " + (err && err.message ? err.message : "უცნობი შეცდომა")); }
     setUploadingCover(false); e.target.value = "";
   };
   const pickAudio = async (e) => {
     const f = e.target.files && e.target.files[0]; if (!f) return;
-    setUploadingAudio(true);
-    try { setAudio(await onUploadAudio(f)); } catch (err) {}
+    setUploadingAudio(true); setUploadErr("");
+    try { setAudio(await onUploadAudio(f)); } catch (err) { setUploadErr("აუდიო ვერ აიტვირთა: " + (err && err.message ? err.message : "უცნობი შეცდომა")); }
     setUploadingAudio(false); e.target.value = "";
   };
   const ok = title.trim().length > 0 && !!audio;
@@ -54,6 +55,7 @@ function NewSong({ onClose, onCreate, onUpload, onUploadAudio, initial }) {
           <button disabled={!ok} onClick={() => onCreate({ title: title.trim(), artist: artist.trim(), genre, cover, audio })} className="px-4 py-1.5 rounded-full text-sm font-bold" style={{ backgroundImage: GBRAND, color: "#fff", opacity: ok ? 1 : 0.4 }}>{initial ? "შენახვა" : "დამატება"}</button>
         </div>
         <div className="p-4 space-y-3.5" style={{ paddingBottom: "calc(var(--mz-nav, 64px) + 1.25rem)" }}>
+          {uploadErr && <div className="px-3 py-2 rounded-xl text-[12.5px] font-semibold" style={{ background: C.like + "1a", color: C.like }}>{uploadErr}</div>}
           <div className="flex gap-2 items-center flex-wrap">
             <input ref={coverRef} type="file" accept="image/*" hidden onChange={pickCover} />
             <button onClick={() => coverRef.current && coverRef.current.click()} disabled={uploadingCover} className="rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95" style={{ width: 72, height: 72, background: C.accentSoft, color: C.accentText }}>{uploadingCover ? <span className="text-[10px] font-bold">…</span> : <><Upload size={20} /><span className="text-[10px] font-bold mt-0.5 text-center">ყდა</span></>}</button>
