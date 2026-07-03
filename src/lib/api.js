@@ -1052,11 +1052,20 @@ export const highlights = {
   },
 };
 
+// Supabase Storage rejects object keys containing spaces/brackets/unicode etc,
+// so strip the original filename down to a safe [a-zA-Z0-9._-] slug and keep the extension.
+function safeStorageName(name) {
+  const dot = name.lastIndexOf(".");
+  const ext = dot > -1 ? name.slice(dot + 1).replace(/[^a-zA-Z0-9]/g, "").slice(0, 8) : "";
+  const base = (dot > -1 ? name.slice(0, dot) : name).replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
+  return (base || "file") + (ext ? "." + ext : "");
+}
+
 export const storage = {
   upload: async (file, folder = "uploads") => {
     const sb = need();
     const uid = (await sb.auth.getUser()).data.user.id;
-    const path = `${uid}/${folder}/${Date.now()}-${file.name}`;
+    const path = `${uid}/${folder}/${Date.now()}-${safeStorageName(file.name)}`;
     const { error } = await sb.storage.from("media").upload(path, file, { upsert: false });
     if (error) throw error;
     return sb.storage.from("media").getPublicUrl(path).data.publicUrl;
