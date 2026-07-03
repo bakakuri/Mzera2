@@ -1,0 +1,85 @@
+import { useState, useRef, useEffect } from "react";
+import { chatApi, mapDbMsg, toDbMsg, mergeProfile, hasSupabase, USERS, ME, pushNotif, REPLIES } from "../ui/core";
+
+export function useChat({ live, session, flash, dbErr, setDbError, setTab }) {
+  const [convos, setConvos] = useState([]);
+  const [openConvoId, setOpenConvoId] = useState(null);
+  const [peerReadAt, setPeerReadAt] = useState(null);
+  const [chatReactions, setChatReactions] = useState({});
+  const openRef = useRef(openConvoId);
+  const chanRef = useRef([]);
+  const callRef = useRef(null);
+
+  const startCall = (uid, video) => { if (callRef.current) callRef.current.startCall({ id: uid, name: (USERS[uid] && USERS[uid].name) || "" }, video); };
+
+  const loadConvos = async () => {
+    try {
+      const rows = await chatApi.conversations();
+      const mapped = rows.map(r => {
+        const profs = (r.members || []).map(mm => mm.profiles).filter(Boolean);
+        profs.forEach(mergeProfile);
+        const memberIds = profs.map(p => p.id).filter(id => id !== ME);
+        const msgs = (r.messages || []).slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at)).map(mapDbMsg);
+        return { id: r.id, members: memberIds, isGroup: r.is_group, name: r.name, unread: 0, messages: msgs };
+      });
+      mapped.sort((a, b) => { const la = a.messages[a.messages.length - 1], lb = b.messages[b.messages.length - 1]; return new Date(lb?._ts || 0) - new Date(la?._ts || 0); });
+      setConvos(mapped);
+    } catch (e) { console.error("convos:", e); setDbError("convos: " + (e.message || JSON.stringify(e)) + (e.hint ? " · hint: " + e.hint : "") + (e.code ? " · code: " + e.code : "")); }
+  };
+
+  useEffect(() => { openRef.current = openConvoId; }, [openConvoId]);
+  useEffect(() => { if (openConvoId) setConvos(cs => cs.map(c => c.id === openConvoId ? { ...c, unread: 0 } : c)); }, [openConvoId]);
+  useEffect(() => {
+    if (!openConvoId || !hasSupabase) { setPeerReadAt(null); setChatReactions({}); return; }
+    let cancelled = false;
+    chatApi.peerRead(openConvoId).then(ts => { if (!cancelled) setPeerReadAt(ts); }).catch(() => {});
+    const conv = convos.find(c => c.id === openConvoId);
+    const ids = conv ? conv.messages.map(m => m.id).filter(Boolean) : [];
+    if (ids.length) chatApi.reactionsFor(ids).then(rows => { if (cancelled) return; const map = {}; rows.forEach(r => { (map[r.message_id] = map[r.message_id] || {})[r.user_id] = r.emoji; }); setChatReactions(map); }).catch(() => {});
+    else setChatReactions({});
+    return () => { cancelled = true; };
+  }, [openConvoId]);
+  const onMarkRead = (cid) => { if (hasSupabase) chatApi.markRead(cid).catch(() => {}); };
+  const onReactMsg = (messageId, emoji) => { if (hasSupabase) chatApi.react(messageId, emoji).catch(dbErr("რეაქცია")); };
+
+  const convIdsKey = convos.map(c => c.id).join(",");
+  useEffect(() => {
+    chanRef.current.forEach(ch => { try { ch.unsubscribe(); } catch (e) {} });
+    chanRef.current = convos.map(c => chatApi.subscribe(c.id, (evt, row, oldRow) => {
+      if (evt === "INSERT") {
+        const m = mapDbMsg(row);
+        if (!m.fromMe && openRef.current !== c.id) { const other = USERS[m.from]; pushNotif((other && other.name) ? other.name : "ახალი შეტყობინება", m.type === "text" ? m.text : m.type === "image" ? "📷 ფოტო" : m.type === "voice" ? "🎤 ხმოვანი" : m.type === "doc" ? "📄 ფაილი" : m.type === "location" ? "📍 ლოკაცია" : "ახალი შეტყობინება"); }
+        setConvos(cs => cs.map(x => {
+          if (x.id !== c.id) return x;
+          if (x.messages.some(z => z.id === m.id)) return x;
+          const isOpen = openRef.current === c.id;
+          return { ...x, messages: [...x.messages, m], unread: (isOpen || m.fromMe) ? x.unread : x.unread + 1 };
+        }));
+      } else if (evt === "UPDATE") {
+        const m = mapDbMsg(row);
+        setConvos(cs => cs.map(x => x.id !== c.id ? x : { ...x, messages: x.messages.map(z => z.id === m.id ? { ...z, ...m } : z) }));
+      } else if (evt === "DELETE") {
+        const did = oldRow && oldRow.id;
+        if (did) setConvos(cs => cs.map(x => x.id !== c.id ? x : { ...x, messages: x.messages.filter(z => z.id !== did) }));
+      }
+    }));
+    return () => { chanRef.current.forEach(ch => { try { ch.unsubscribe(); } catch (e) {} }); chanRef.current = []; };
+  }, [live, convIdsKey]);
+
+  const onSendMsg = (cid, partial) => { chatApi.send(cid, toDbMsg(partial)).catch(dbErr("შეტყობინება")); };
+  const onEditMsg = (cid, mid, text) => { setConvos(cs => cs.map(c => c.id === cid ? { ...c, messages: c.messages.map(m => m.id === mid ? { ...m, text, edited: true } : m) } : c)); chatApi.editMessage(mid, text).catch(dbErr("რედაქტირება")); };
+  const onDeleteMsg = (cid, mid) => { setConvos(cs => cs.map(c => c.id === cid ? { ...c, messages: c.messages.filter(m => m.id !== mid) } : c)); chatApi.deleteMessage(mid).catch(dbErr("წაშლა")); };
+  const onDeleteConvo = (cid) => { setOpenConvoId(null); setConvos(cs => cs.filter(c => c.id !== cid)); chatApi.deleteConversation(cid).then(() => flash("მიმოწერა წაიშალა 🗑️")).catch(dbErr("მიმოწერის წაშლა")); };
+  const onReply = (cid) => setConvos(cs => cs.map(c => { if (c.id !== cid) return c; const mem = c.members || (c.withId ? [c.withId] : []); const from = mem.length > 1 ? mem[Math.floor(Math.random() * mem.length)] : mem[0]; return { ...c, messages: [...c.messages, { id: "m" + Date.now() + Math.round(Math.random() * 777), fromMe: false, from, type: "text", text: REPLIES[Math.floor(Math.random() * REPLIES.length)], time: "ახლა" }] }; }));
+  const onCreateConvo = (memberIds) => { const members = [...new Set(memberIds)].filter(x => x !== ME); const name = members.length > 1 ? members.map(m => (USERS[m]?.name || "").split(" ")[0]).join(", ") : null; chatApi.createConversation(members, name).then(async (conv) => { await loadConvos(); setOpenConvoId(conv.id); }).catch(dbErr("საუბარი")); return null; };
+  const onMessageUser = (uid) => { setTab("messages"); const ex = convos.find(c => { const m = c.members || (c.withId ? [c.withId] : []); return m.length === 1 && m[0] === uid; }); setOpenConvoId(ex ? ex.id : onCreateConvo([uid])); };
+
+  const unreadMsgs = convos.reduce((a, c) => a + c.unread, 0);
+
+  return {
+    convos, setConvos, openConvoId, setOpenConvoId, peerReadAt, chatReactions,
+    callRef, startCall, loadConvos, onMarkRead, onReactMsg,
+    onSendMsg, onEditMsg, onDeleteMsg, onDeleteConvo, onReply, onCreateConvo, onMessageUser,
+    unreadMsgs,
+  };
+}
