@@ -745,6 +745,224 @@ drop policy if exists songs_delete on public.songs;
 create policy songs_delete on public.songs for delete using (auth.uid() = author_id or public.is_admin());
 
 -- ============================================================================
+--  MESSAGING: missing update/delete policies
+--  (edit message, delete message, delete conversation, and mark-as-read were
+--  all silent no-ops — same root cause as the earlier group/reel/thread gaps)
+-- ============================================================================
+drop policy if exists msg_update on public.messages;
+create policy msg_update on public.messages for update using (auth.uid() = sender_id or public.is_admin());
+drop policy if exists msg_delete on public.messages;
+create policy msg_delete on public.messages for delete using (auth.uid() = sender_id or public.is_admin());
+
+drop policy if exists conv_delete on public.conversations;
+create policy conv_delete on public.conversations for delete using (public.is_conversation_member(id) or public.is_admin());
+
+-- last_read_at (unread-badge tracking) was never persisted — no update policy existed
+drop policy if exists conv_mem_update on public.conversation_members;
+create policy conv_mem_update on public.conversation_members for update using (auth.uid() = user_id);
+drop policy if exists conv_mem_del on public.conversation_members;
+create policy conv_mem_del on public.conversation_members for delete using (auth.uid() = user_id or public.is_admin());
+
+-- ============================================================================
+--  UNDOCUMENTED TABLES — these already exist on the live database (added
+--  directly via the Supabase dashboard at some point, judging by the app code
+--  that reads/writes them) but were never captured in this schema file, so
+--  there was no record of what RLS they actually have. Reconstructed from
+--  how src/lib/api.js queries each one; "if not exists" is a no-op against
+--  the real table, but the policies below are applied either way so the
+--  actual behavior is finally pinned down and reproducible from this file.
+-- ============================================================================
+
+create table if not exists public.user_blocks (
+  blocker_id uuid not null references public.profiles(id) on delete cascade,
+  blocked_id uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (blocker_id, blocked_id)
+);
+alter table public.user_blocks enable row level security;
+drop policy if exists user_blocks_read on public.user_blocks;
+create policy user_blocks_read on public.user_blocks for select using (auth.uid() = blocker_id);
+drop policy if exists user_blocks_insert on public.user_blocks;
+create policy user_blocks_insert on public.user_blocks for insert with check (auth.uid() = blocker_id);
+drop policy if exists user_blocks_update on public.user_blocks;
+create policy user_blocks_update on public.user_blocks for update using (auth.uid() = blocker_id);
+drop policy if exists user_blocks_delete on public.user_blocks;
+create policy user_blocks_delete on public.user_blocks for delete using (auth.uid() = blocker_id);
+
+create table if not exists public.user_mutes (
+  muter_id   uuid not null references public.profiles(id) on delete cascade,
+  muted_id   uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (muter_id, muted_id)
+);
+alter table public.user_mutes enable row level security;
+drop policy if exists user_mutes_read on public.user_mutes;
+create policy user_mutes_read on public.user_mutes for select using (auth.uid() = muter_id);
+drop policy if exists user_mutes_insert on public.user_mutes;
+create policy user_mutes_insert on public.user_mutes for insert with check (auth.uid() = muter_id);
+drop policy if exists user_mutes_update on public.user_mutes;
+create policy user_mutes_update on public.user_mutes for update using (auth.uid() = muter_id);
+drop policy if exists user_mutes_delete on public.user_mutes;
+create policy user_mutes_delete on public.user_mutes for delete using (auth.uid() = muter_id);
+
+create table if not exists public.close_friends (
+  user_id    uuid not null references public.profiles(id) on delete cascade,
+  friend_id  uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, friend_id)
+);
+alter table public.close_friends enable row level security;
+drop policy if exists close_friends_read on public.close_friends;
+create policy close_friends_read on public.close_friends for select using (auth.uid() = user_id);
+drop policy if exists close_friends_insert on public.close_friends;
+create policy close_friends_insert on public.close_friends for insert with check (auth.uid() = user_id);
+drop policy if exists close_friends_update on public.close_friends;
+create policy close_friends_update on public.close_friends for update using (auth.uid() = user_id);
+drop policy if exists close_friends_delete on public.close_friends;
+create policy close_friends_delete on public.close_friends for delete using (auth.uid() = user_id);
+
+create table if not exists public.collections (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references public.profiles(id) on delete cascade,
+  name       text not null,
+  created_at timestamptz not null default now()
+);
+alter table public.collections enable row level security;
+drop policy if exists collections_read on public.collections;
+create policy collections_read on public.collections for select using (auth.uid() = user_id);
+drop policy if exists collections_insert on public.collections;
+create policy collections_insert on public.collections for insert with check (auth.uid() = user_id);
+drop policy if exists collections_delete on public.collections;
+create policy collections_delete on public.collections for delete using (auth.uid() = user_id);
+
+create table if not exists public.post_saves (
+  post_id       uuid not null references public.posts(id) on delete cascade,
+  user_id       uuid not null references public.profiles(id) on delete cascade,
+  collection_id uuid references public.collections(id) on delete set null,
+  created_at    timestamptz not null default now(),
+  primary key (post_id, user_id)
+);
+alter table public.post_saves enable row level security;
+drop policy if exists post_saves_read on public.post_saves;
+create policy post_saves_read on public.post_saves for select using (auth.uid() = user_id);
+drop policy if exists post_saves_insert on public.post_saves;
+create policy post_saves_insert on public.post_saves for insert with check (auth.uid() = user_id);
+drop policy if exists post_saves_update on public.post_saves;
+create policy post_saves_update on public.post_saves for update using (auth.uid() = user_id);
+drop policy if exists post_saves_delete on public.post_saves;
+create policy post_saves_delete on public.post_saves for delete using (auth.uid() = user_id);
+
+create table if not exists public.comment_likes (
+  comment_id uuid not null references public.comments(id) on delete cascade,
+  user_id    uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (comment_id, user_id)
+);
+alter table public.comment_likes enable row level security;
+drop policy if exists comment_likes_read on public.comment_likes;
+create policy comment_likes_read on public.comment_likes for select using (true);
+drop policy if exists comment_likes_insert on public.comment_likes;
+create policy comment_likes_insert on public.comment_likes for insert with check (auth.uid() = user_id);
+drop policy if exists comment_likes_delete on public.comment_likes;
+create policy comment_likes_delete on public.comment_likes for delete using (auth.uid() = user_id);
+
+create table if not exists public.message_reactions (
+  message_id uuid not null references public.messages(id) on delete cascade,
+  user_id    uuid not null references public.profiles(id) on delete cascade,
+  emoji      text not null,
+  created_at timestamptz not null default now(),
+  primary key (message_id, user_id)
+);
+alter table public.message_reactions enable row level security;
+drop policy if exists message_reactions_read on public.message_reactions;
+create policy message_reactions_read on public.message_reactions for select using (
+  exists (select 1 from public.messages m where m.id = message_id and public.is_conversation_member(m.conversation_id))
+);
+drop policy if exists message_reactions_insert on public.message_reactions;
+create policy message_reactions_insert on public.message_reactions for insert with check (auth.uid() = user_id);
+drop policy if exists message_reactions_update on public.message_reactions;
+create policy message_reactions_update on public.message_reactions for update using (auth.uid() = user_id);
+drop policy if exists message_reactions_delete on public.message_reactions;
+create policy message_reactions_delete on public.message_reactions for delete using (auth.uid() = user_id);
+
+create table if not exists public.user_locations (
+  user_id    uuid primary key references public.profiles(id) on delete cascade,
+  lat        double precision not null,
+  lng        double precision not null,
+  shared     boolean not null default false,
+  updated_at timestamptz not null default now()
+);
+alter table public.user_locations enable row level security;
+drop policy if exists user_locations_read on public.user_locations;
+create policy user_locations_read on public.user_locations for select using (auth.uid() = user_id or shared = true);
+drop policy if exists user_locations_insert on public.user_locations;
+create policy user_locations_insert on public.user_locations for insert with check (auth.uid() = user_id);
+drop policy if exists user_locations_update on public.user_locations;
+create policy user_locations_update on public.user_locations for update using (auth.uid() = user_id);
+drop policy if exists user_locations_delete on public.user_locations;
+create policy user_locations_delete on public.user_locations for delete using (auth.uid() = user_id);
+
+create table if not exists public.story_likes (
+  story_id   uuid not null references public.stories(id) on delete cascade,
+  user_id    uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (story_id, user_id)
+);
+alter table public.story_likes enable row level security;
+drop policy if exists story_likes_read on public.story_likes;
+create policy story_likes_read on public.story_likes for select using (true);
+drop policy if exists story_likes_insert on public.story_likes;
+create policy story_likes_insert on public.story_likes for insert with check (auth.uid() = user_id);
+drop policy if exists story_likes_delete on public.story_likes;
+create policy story_likes_delete on public.story_likes for delete using (auth.uid() = user_id);
+
+create table if not exists public.reel_saves (
+  reel_id    uuid not null references public.reels(id) on delete cascade,
+  user_id    uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (reel_id, user_id)
+);
+alter table public.reel_saves enable row level security;
+drop policy if exists reel_saves_read on public.reel_saves;
+create policy reel_saves_read on public.reel_saves for select using (auth.uid() = user_id);
+drop policy if exists reel_saves_insert on public.reel_saves;
+create policy reel_saves_insert on public.reel_saves for insert with check (auth.uid() = user_id);
+drop policy if exists reel_saves_delete on public.reel_saves;
+create policy reel_saves_delete on public.reel_saves for delete using (auth.uid() = user_id);
+
+create table if not exists public.highlights (
+  id         uuid primary key default gen_random_uuid(),
+  owner_id   uuid not null references public.profiles(id) on delete cascade,
+  title      text not null,
+  cover_url  text,
+  created_at timestamptz not null default now()
+);
+alter table public.highlights enable row level security;
+drop policy if exists highlights_read on public.highlights;
+create policy highlights_read on public.highlights for select using (true);
+drop policy if exists highlights_insert on public.highlights;
+create policy highlights_insert on public.highlights for insert with check (auth.uid() = owner_id);
+drop policy if exists highlights_delete on public.highlights;
+create policy highlights_delete on public.highlights for delete using (auth.uid() = owner_id);
+
+create table if not exists public.push_subscriptions (
+  endpoint   text primary key,
+  user_id    uuid not null references public.profiles(id) on delete cascade,
+  p256dh     text not null,
+  auth       text not null,
+  created_at timestamptz not null default now()
+);
+alter table public.push_subscriptions enable row level security;
+drop policy if exists push_subscriptions_read on public.push_subscriptions;
+create policy push_subscriptions_read on public.push_subscriptions for select using (auth.uid() = user_id);
+drop policy if exists push_subscriptions_insert on public.push_subscriptions;
+create policy push_subscriptions_insert on public.push_subscriptions for insert with check (auth.uid() = user_id);
+drop policy if exists push_subscriptions_update on public.push_subscriptions;
+create policy push_subscriptions_update on public.push_subscriptions for update using (auth.uid() = user_id);
+drop policy if exists push_subscriptions_delete on public.push_subscriptions;
+create policy push_subscriptions_delete on public.push_subscriptions for delete using (auth.uid() = user_id);
+
+-- ============================================================================
 --  REALTIME (live chat / notifications / presence)
 -- ============================================================================
 do $$ begin
