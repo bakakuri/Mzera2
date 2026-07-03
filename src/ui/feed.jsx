@@ -122,7 +122,7 @@ export function FeedReelsRow({ reels, onOpen }) {
       <div className="flex gap-2 overflow-x-auto no-scrollbar px-4 pb-2.5">
         {reels.slice(0, 12).map(r => (
           <button key={r.id} onClick={onOpen} className="relative shrink-0 rounded-2xl overflow-hidden active:scale-[.97] transition" style={{ width: 108, height: 180 }}>
-            <Pic src={r.image} grad={GRADS[hashIdx(r.id, GRADS.length)]} className="w-full h-full" />
+            {r.image ? <Pic src={r.image} grad={GRADS[hashIdx(r.id, GRADS.length)]} className="w-full h-full" /> : r.video ? <video src={r.video + "#t=0.1"} preload="metadata" muted playsInline className="w-full h-full" style={{ objectFit: "cover", background: "#000" }} /> : <Pic src={null} grad={GRADS[hashIdx(r.id, GRADS.length)]} className="w-full h-full" />}
             <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(0,0,0,.65), transparent 45%)" }} />
             <Play size={20} fill="#fff" className="absolute top-2 left-2" style={{ color: "#fff", filter: "drop-shadow(0 1px 3px rgba(0,0,0,.5))" }} />
             <div className="absolute bottom-2 left-2 right-2 flex items-center gap-1 text-white text-[11px] font-bold truncate" style={{ textShadow: "0 1px 2px rgba(0,0,0,.5)" }}><Avatar id={r.authorId} size={18} />{USERS[r.authorId] ? USERS[r.authorId].name.split(" ")[0] : ""}</div>
