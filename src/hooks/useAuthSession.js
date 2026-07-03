@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { authApi, profilesApi, hasSupabase, pushApi, USERS, ME } from "../ui/core";
+import { authApi, profilesApi, hasSupabase, pushApi, USERS, ME, LANG } from "../ui/core";
 import { registerPush, unregisterPush, currentPushState } from "../lib/push";
 
 // Supabase auth session + onboarding/profile-settings state + web push
@@ -7,13 +7,18 @@ import { registerPush, unregisterPush, currentPushState } from "../lib/push";
 // exists is orchestrated in App.jsx (it needs other hooks' load functions),
 // this hook only owns the session object itself and the account-settings UI
 // state that isn't tied to any one content domain.
+const lsGet = (k, def) => { try { const v = typeof localStorage !== "undefined" && localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch (e) { return def; } };
+const lsSet = (k, v) => { try { if (typeof localStorage !== "undefined") localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+
 export function useAuthSession({ flash, reloadFeed }) {
   const [session, setSession] = useState(undefined);
   const [ready, setReady] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [settings, setSettings] = useState({ private: false, activity: true, showLocation: true, nLikes: true, nComments: true, nFollows: true, nMessages: true, lang: "ka" });
+  const [settings, setSettings] = useState(() => lsGet("mz_settings", { private: false, activity: true, showLocation: true, nLikes: true, nComments: true, nFollows: true, nMessages: true, lang: LANG }));
   const [meProfile, setMeProfile] = useState({ name: "", bio: "", avatar: null, cover: null });
   const [pushState, setPushState] = useState("off");
+
+  useEffect(() => { lsSet("mz_settings", settings); }, [settings]);
 
   useEffect(() => {
     const l = document.createElement("link"); l.rel = "stylesheet";

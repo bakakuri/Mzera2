@@ -1,5 +1,5 @@
 import {
-  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Gamepad2, Clapperboard, Music, MiniPlayer, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, filmsApi, musicApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, questsApi, xpApi, adminApi, pushApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, KA_MONS, mapDbListing, mapDbReview, mapDbFilm, mapDbSong, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, NOTIF_VERB, levelInfo, kfmt, RSVP_OPTS, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, FILTERS, STORY_STICKERS, setTheme, setME, compressImage, POST_BGS} from "./ui/core";
+  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Gamepad2, Clapperboard, Music, MiniPlayer, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, filmsApi, musicApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, questsApi, xpApi, adminApi, pushApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, KA_MONS, mapDbListing, mapDbReview, mapDbFilm, mapDbSong, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, NOTIF_VERB, levelInfo, kfmt, RSVP_OPTS, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, FILTERS, STORY_STICKERS, setTheme, setME, compressImage, POST_BGS, t, setLang} from "./ui/core";
 import { PostCard, StoryViewer, CreateSheet, Explore, StoryEditor, FeedPromoCard, FeedReelsRow } from "./ui/feed";
 import { Profile, Notifications, Admin, Drawer, OnlinePage, Progress, SettingsView, Leaderboard, SearchView, SuggestedPeople, Onboarding } from "./ui/social";
 import { lazy, Suspense } from "react";
@@ -68,6 +68,7 @@ export default function App() {
   const feed = useFeed({ tab, flash, dbErr, setDbError, gainXp });
   const auth = useAuthSession({ flash, reloadFeed: feed.reloadFeed });
   const { session, ready, setReady, showOnboarding, setShowOnboarding, settings, setSettings, meProfile, setMeProfile, pushState, onTogglePush, onSaveOnboardProfile, onFinishOnboarding } = auth;
+  setLang(settings.lang || "ka");
   const live = hasSupabase && !!session;
 
   const social = useSocialGraph({ flash, dbErr, gainXp, reloadFeed: feed.reloadFeed, setMeProfile, setSavedPosts: feed.setSavedPosts });
@@ -261,13 +262,13 @@ export default function App() {
   }, []);
 
   const NAV = [
-    { key: "home", label: "მთავარი", icon: Home }, { key: "explore", label: "აღმოჩენა", icon: Compass },
-    { key: "reels", label: "Reels", icon: Film }, { key: "forum", label: "ფორუმი", icon: MessageSquare },
-    { key: "market", label: "მარკეტი", icon: ShoppingBag }, { key: "games", label: "თამაშები", icon: Gamepad2 }, { key: "movies", label: "ფილმები", icon: Clapperboard }, { key: "music", label: "მუსიკა", icon: Music }, { key: "groups", label: "ჯგუფები", icon: Users },
-    { key: "map", label: "რუკა", icon: Map }, { key: "create", label: "შექმნა", icon: PlusSquare },
-    { key: "messages", label: "შეტყობინებები", icon: Send, badge: unreadMsgs }, { key: "notifications", label: "აქტივობა", icon: Bell, badge: unreadNotifs },
-    { key: "progress", label: "პროგრესი", icon: Zap }, { key: "leaderboard", label: "რეიტინგი", icon: Trophy }, { key: "profile", label: "პროფილი", icon: User },
-    ...(me.admin ? [{ key: "admin", label: "მოდერაცია", icon: Shield, badge: openReports }] : []),
+    { key: "home", label: t("nav.home"), icon: Home }, { key: "explore", label: t("nav.explore"), icon: Compass },
+    { key: "reels", label: t("nav.reels"), icon: Film }, { key: "forum", label: t("nav.forum"), icon: MessageSquare },
+    { key: "market", label: t("nav.market"), icon: ShoppingBag }, { key: "games", label: t("nav.games"), icon: Gamepad2 }, { key: "movies", label: t("nav.movies"), icon: Clapperboard }, { key: "music", label: t("nav.music"), icon: Music }, { key: "groups", label: t("nav.groups"), icon: Users },
+    { key: "map", label: t("nav.map"), icon: Map }, { key: "create", label: t("nav.create"), icon: PlusSquare },
+    { key: "messages", label: t("nav.messages"), icon: Send, badge: unreadMsgs }, { key: "notifications", label: t("nav.notifications"), icon: Bell, badge: unreadNotifs },
+    { key: "progress", label: t("nav.progress"), icon: Zap }, { key: "leaderboard", label: t("nav.leaderboard"), icon: Trophy }, { key: "profile", label: t("nav.profile"), icon: User },
+    ...(me.admin ? [{ key: "admin", label: t("nav.admin"), icon: Shield, badge: openReports }] : []),
   ];
   const BOTTOM = ["home", "reels", "create", "messages", "profile"];
   const fullBleed = tab === "map" || tab === "reels";
@@ -317,7 +318,7 @@ export default function App() {
           </div>
           <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-1">
             {NAV.map(n => <button key={n.key} onClick={() => goTab(n.key)} className="relative flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl transition active:scale-[.98] shrink-0" style={{ background: tab === n.key ? C.accentSoft : "transparent", color: tab === n.key ? C.accentText : C.ink2, fontWeight: tab === n.key ? 700 : 500 }}>{tab === n.key && <span className="absolute left-0 rounded-full" style={{ width: 4, height: 20, backgroundImage: GBRAND }} />}<n.icon size={23} />{n.label}{n.badge > 0 && <span className="ml-auto rounded-full text-white px-1.5 py-0.5" style={{ background: C.like, fontFamily: MONO, fontSize: 11, fontWeight: 700 }}>{n.badge}</span>}</button>)}
-            <button onClick={() => setCreateOpen(true)} className="mt-2 py-3 rounded-2xl font-bold text-white transition active:scale-[.98] shrink-0" style={{ backgroundImage: GBRAND, boxShadow: SH.glow, fontFamily: DISPLAY }}>ახალი პოსტი</button>
+            <button onClick={() => setCreateOpen(true)} className="mt-2 py-3 rounded-2xl font-bold text-white transition active:scale-[.98] shrink-0" style={{ backgroundImage: GBRAND, boxShadow: SH.glow, fontFamily: DISPLAY }}>{t("nav.newPost")}</button>
           </div>
           <div className="pt-3 mt-2" style={{ borderTop: `1px solid ${C.lineSoft}` }}>
             <div className="mb-2"><ThemeToggle mode={mode} setMode={setMode} full /></div>

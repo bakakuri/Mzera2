@@ -4,6 +4,7 @@ import {
 } from "lucide-react";
 import { auth as authApi, profiles as profilesApi, posts as postsApi, reactions as reactionsApi, comments as commentsApi, follows as followsApi, chat as chatApi, notifications as notifsApi, storage as storageApi, stories as storiesApi, reels as reelsApi, market as marketApi, films as filmsApi, music as musicApi, groups as groupsApi, events as eventsApi, forum as forumApi, highlights as highlightsApi, presence as presenceApi, locations as locationsApi, polls as pollsApi, quests as questsApi, xp as xpApi, admin as adminApi, push as pushApi } from "../lib/api";
 import { hasSupabase } from "../lib/supabase";
+import { t, setLang, LANG, LANGS } from "../lib/i18n";
 
 export const PAL = {
   light: {
@@ -650,20 +651,20 @@ export function AuthScreen() {
   return (
     <div className="min-h-screen flex items-center justify-center p-6" style={{ background: C.paper, fontFamily: BODY, backgroundImage: `radial-gradient(${C.grid} 1px, transparent 1px)`, backgroundSize: "22px 22px" }}>
       <div className="w-full max-w-[380px]">
-        <div className="text-center mb-7"><Wordmark size={42} /><div className="text-[14px] mt-2" style={{ color: C.muted }}>ქართული სოციალური ქსელი</div></div>
+        <div className="text-center mb-7"><Wordmark size={42} /><div className="text-[14px] mt-2" style={{ color: C.muted }}>{t("auth.tagline")}</div></div>
         <div className="p-5" style={card()}>
-          <div className="flex gap-1 p-1 rounded-2xl mb-4" style={{ background: C.surfaceMuted }}>{[["in", "შესვლა"], ["up", "რეგისტრაცია"]].map(([k, l]) => <button key={k} onClick={() => { setMode(k); setErr(""); }} className="flex-1 py-2 rounded-xl text-sm font-bold transition" style={mode === k ? { background: C.surface, color: C.accent, boxShadow: SH.card } : { color: C.muted }}>{l}</button>)}</div>
+          <div className="flex gap-1 p-1 rounded-2xl mb-4" style={{ background: C.surfaceMuted }}>{[["in", t("auth.signin")], ["up", t("auth.signup")]].map(([k, l]) => <button key={k} onClick={() => { setMode(k); setErr(""); }} className="flex-1 py-2 rounded-xl text-sm font-bold transition" style={mode === k ? { background: C.surface, color: C.accent, boxShadow: SH.card } : { color: C.muted }}>{l}</button>)}</div>
           {mode === "up" && <>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder="სახელი და გვარი" className="w-full mb-2.5 px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
+            <input value={name} onChange={e => setName(e.target.value)} placeholder={t("auth.fullname")} className="w-full mb-2.5 px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
             <input value={username} onChange={e => setUsername(e.target.value.replace(/\s/g, "").toLowerCase())} placeholder="username" className="w-full mb-2.5 px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}`, fontFamily: MONO }} />
-            {refCode && <div className="w-full mb-2.5 px-3.5 py-2.5 rounded-xl text-[13px] flex items-center gap-2" style={{ background: C.accentSoft, color: C.accentText }}><UserPlus size={15} /> მოწვეულია კოდით <Mono style={{ fontWeight: 700 }}>{refCode}</Mono></div>}
+            {refCode && <div className="w-full mb-2.5 px-3.5 py-2.5 rounded-xl text-[13px] flex items-center gap-2" style={{ background: C.accentSoft, color: C.accentText }}><UserPlus size={15} /> {t("auth.invitedBy")} <Mono style={{ fontWeight: 700 }}>{refCode}</Mono></div>}
           </>}
-          <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="ელ-ფოსტა" className="w-full mb-2.5 px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
-          <input value={pass} onChange={e => setPass(e.target.value)} type="password" placeholder="პაროლი" onKeyDown={e => e.key === "Enter" && submit()} className="w-full mb-3 px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
+          <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder={t("auth.email")} className="w-full mb-2.5 px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
+          <input value={pass} onChange={e => setPass(e.target.value)} type="password" placeholder={t("auth.password")} onKeyDown={e => e.key === "Enter" && submit()} className="w-full mb-3 px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
           {err && <div className="text-[13px] mb-3 px-1" style={{ color: C.like }}>{err}</div>}
-          <button onClick={submit} disabled={busy || !email || !pass} className="w-full py-3 rounded-2xl font-bold text-white transition active:scale-[.98]" style={{ backgroundImage: GBRAND, boxShadow: SH.glow, opacity: busy || !email || !pass ? 0.55 : 1, fontFamily: DISPLAY }}>{busy ? "..." : mode === "up" ? "ანგარიშის შექმნა" : "შესვლა"}</button>
+          <button onClick={submit} disabled={busy || !email || !pass} className="w-full py-3 rounded-2xl font-bold text-white transition active:scale-[.98]" style={{ backgroundImage: GBRAND, boxShadow: SH.glow, opacity: busy || !email || !pass ? 0.55 : 1, fontFamily: DISPLAY }}>{busy ? "..." : mode === "up" ? t("auth.createAccount") : t("auth.signin")}</button>
         </div>
-        <div className="text-center mt-4 text-[12px]" style={{ color: C.faint }}>Supabase-ით დაცული · შენი მონაცემები შენია</div>
+        <div className="text-center mt-4 text-[12px]" style={{ color: C.faint }}>{t("auth.footer")}</div>
       </div>
     </div>
   );
@@ -939,6 +940,7 @@ export const STORY_STICKERS = ["❤️", "🔥", "😎", "✨", "🎉", "📍", 
 export { useState, useEffect, useRef };
 export { Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Phone, Video, PhoneOff, VideoOff, MicOff, Gamepad2, Clapperboard, Music };
 export { authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, filmsApi, musicApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, questsApi, xpApi, adminApi, pushApi };
+export { t, setLang, LANG, LANGS };
 export { hasSupabase };
 export function setTheme(d) { C = d ? PAL.dark : PAL.light; DARK = d; }
 export function setME(v) { ME = v; }
