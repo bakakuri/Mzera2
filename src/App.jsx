@@ -101,6 +101,7 @@ export default function App() {
   const [profileId, setProfileId] = useState(null);
   const backRef = useRef(() => false);
   const exitArmedRef = useRef(false);
+  const promoSeedRef = useRef(Math.random());
   const me = USERS[ME];
 
   // load my profile + feed once logged in
@@ -199,8 +200,11 @@ export default function App() {
   const onOpenSearchListing = (listing) => { market.ensureListingLoaded(listing); market.setPendingListing(listing.id); setTab("market"); };
   const feedItems = (() => {
     if (!homeVisible.length) return homeVisible.map(p => ({ type: "post", post: p }));
-    const seedDay = new Date().toISOString().slice(0, 10);
-    const pickTop = (arr, scoreFn, topN = 5) => { if (!arr || !arr.length) return null; const pool = arr.slice().sort((a, b) => scoreFn(b) - scoreFn(a)).slice(0, Math.min(topN, arr.length)); return pool[hashIdx(seedDay + pool.length, pool.length)]; };
+    // promoSeedRef is picked once per app load (not per day), so which item wins
+    // each category and how the promo cards are ordered/spaced actually changes
+    // between visits instead of staying frozen all day — makes the feed feel alive.
+    const promoSeed = "s" + promoSeedRef.current;
+    const pickTop = (arr, scoreFn, topN = 5) => { if (!arr || !arr.length) return null; const pool = arr.slice().sort((a, b) => scoreFn(b) - scoreFn(a)).slice(0, Math.min(topN, arr.length)); return pool[hashIdx(promoSeed + pool.length, pool.length)]; };
     const GAME_PROMOS = [
       { kind: "game", id: "bura", image: null, title: "ბურა", subtitle: "ქართული კარტის თამაში — ბოტთან ან ონლაინ მეგობრებთან", cta: "თამაშის დაწყება" },
       { kind: "game", id: "nardi", image: null, title: "ნარდი", subtitle: "კლასიკური ნარდი — ბოტთან ან ონლაინ მეგობრებთან", cta: "თამაშის დაწყება" },
@@ -209,13 +213,18 @@ export default function App() {
       (() => { const p = pickTop(groups.groups.filter(g => !g.joined), g => g.members); return p && { kind: "group", id: p.id, image: p.cover, title: p.name, subtitle: `${p.members} წევრი · გაწევრიანდი`, cta: "გაწევრიანება" }; })(),
       (() => { const p = pickTop(movies.films, f => new Date(f.createdAt || 0).getTime()); return p && { kind: "film", id: p.id, image: p.poster, title: p.title, subtitle: [p.year, p.genre].filter(Boolean).join(" · "), cta: "ნახვა" }; })(),
       (() => { const p = pickTop(music.songs, s => s.plays); return p && { kind: "song", id: p.id, image: p.cover, title: p.title, subtitle: `${p.artist || "უცნობი შემსრულებელი"} · ${p.plays} მოსმენა`, cta: "მოსმენა" }; })(),
-      GAME_PROMOS[hashIdx(seedDay + "g", GAME_PROMOS.length)],
-      (() => { if (!market.listings.length) return null; const p = market.listings[hashIdx(seedDay + "m", market.listings.length)]; return { kind: "market", id: p.id, image: p.image, title: p.title, subtitle: `${p.price} ₾ · ${p.location}`, cta: "ნახვა მარკეტში" }; })(),
+      GAME_PROMOS[hashIdx(promoSeed + "g", GAME_PROMOS.length)],
+      (() => { if (!market.listings.length) return null; const p = market.listings[hashIdx(promoSeed + "m", market.listings.length)]; return { kind: "market", id: p.id, image: p.image, title: p.title, subtitle: `${p.price} ₾ · ${p.location}`, cta: "ნახვა მარკეტში" }; })(),
       (() => { const p = pickTop(forum.threads, t => t.votes); return p && { kind: "forum", id: p.id, image: null, title: p.title, subtitle: `${p.votes} ხმა · ${p.cat}`, cta: "ნახვა ფორუმში" }; })(),
       (() => { const p = pickTop(reelsHook.reels, r => r.views || 0); return p && { kind: "reel", id: p.id, image: p.image, title: p.caption || "Reel", subtitle: `${p.views || 0} ნახვა`, cta: "ნახვა" }; })(),
       { kind: "map", id: "map", image: null, title: "რუკა", subtitle: "ნახე ვინ არის ახლოს და გაუზიარე შენი ლოკაცია", cta: "რუკის გახსნა" },
       { kind: "languages", id: "languages", image: null, title: "ენების სწავლა", subtitle: "ისწავლე ინგლისური, გერმანული, ესპანური ან ფრანგული", cta: "სწავლის დაწყება" },
     ].filter(Boolean);
+    // shuffle the promo order itself (same seed → stable during one visit,
+    // different on the next reload) so it's not always group→film→song→…
+    let shuffleSeed = promoSeedRef.current * 97711;
+    const shuffleRand = () => { shuffleSeed = (shuffleSeed * 9301 + 49297) % 233280; return shuffleSeed / 233280; };
+    const shuffledPromos = promos.map(p => [shuffleRand(), p]).sort((a, b) => a[0] - b[0]).map(([, p]) => p);
     // Reels row: first appearance randomly 1-3 posts down, then again every
     // randomized 20-25 posts — seeded once per session so it's stable while
     // scrolling but lands somewhere different on the next visit/reload
@@ -226,10 +235,19 @@ export default function App() {
       let pos = rand(1, 3);
       while (pos <= homeVisible.length + 25) { reelPositions.add(pos); pos += rand(20, 25); }
     }
+    // Promo cards: randomized spacing (not a rigid "every 4th post") so they land
+    // somewhere different each scroll-through instead of at the same mechanical beat
+    const promoPositions = new Set();
+    if (shuffledPromos.length) {
+      let seed = promoSeedRef.current * 51331;
+      const rand = (min, max) => { seed = (seed * 9301 + 49297) % 233280; return Math.floor(min + (seed / 233280) * (max - min + 1)); };
+      let pos = rand(2, 4);
+      while (pos <= homeVisible.length + 8) { promoPositions.add(pos); pos += rand(5, 8); }
+    }
     const out = []; let pi = 0;
     homeVisible.forEach((p, i) => {
       out.push({ type: "post", post: p });
-      if ((i + 1) % 4 === 0 && promos.length) { out.push({ type: "promo", promo: promos[pi % promos.length] }); pi++; }
+      if (promoPositions.has(i + 1) && shuffledPromos.length) { out.push({ type: "promo", promo: shuffledPromos[pi % shuffledPromos.length] }); pi++; }
       if (reelPositions.has(i + 1)) out.push({ type: "reels" });
     });
     return out;
