@@ -136,12 +136,12 @@ export const MUSIC_GENRES = ["ყველა", "პოპ", "რეპი", "�
 
 /* ─────────────────────────  PRIMITIVES  ───────────────────────── */
 
-export function Pic({ src, grad, style, className = "", round = 0, w }) {
+export function Pic({ src, grad, style, className = "", round = 0, w, fit = "cover" }) {
   const [on, setOn] = useState(false); const [err, setErr] = useState(false); const [fb, setFb] = useState(false);
   const finalSrc = (w && !fb && src) ? tx(src, w) : src;
   return (
     <div className={"overflow-hidden " + className} style={{ borderRadius: round, background: grad ? `linear-gradient(135deg, ${grad[0]}, ${grad[1]})` : C.surfaceMuted, ...style }}>
-      <img src={finalSrc} alt="" onLoad={() => setOn(true)} onError={() => { if (w && !fb) setFb(true); else setErr(true); }} className="w-full h-full object-cover" style={{ opacity: err ? 0 : on ? 1 : 0, transition: "opacity .55s ease" }} />
+      <img src={finalSrc} alt="" onLoad={() => setOn(true)} onError={() => { if (w && !fb) setFb(true); else setErr(true); }} className="w-full h-full" style={{ objectFit: fit, opacity: err ? 0 : on ? 1 : 0, transition: "opacity .55s ease" }} />
     </div>
   );
 }

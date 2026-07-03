@@ -276,7 +276,7 @@ export function PostCard({ post, onLike, onReact, onSave, onComment, onPollVote,
               <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${C.line}` }}>
                 <div className="flex items-center gap-2 px-3 pt-3 pb-2"><Avatar id={target.authorId} size={26} /><div className="min-w-0"><div className="font-bold text-[13px] truncate" style={{ color: C.ink }}>{su ? su.name : "—"}</div><Mono style={{ fontSize: 10.5, color: C.faint }}>@{su ? su.handle : ""}</Mono></div></div>
                 {target.text && <div className="px-3 pb-2 text-[13.5px] line-clamp-3 break-words" style={{ color: C.ink2 }}>{target.text}</div>}
-                {target.video ? <video src={target.video} muted playsInline preload="metadata" className="w-full block" style={{ maxHeight: 200, background: "#000" }} /> : target.image && <Pic src={target.image} grad={GRADS[hashIdx(target.id, GRADS.length)]} className="w-full" style={{ maxHeight: 200, objectFit: "cover" }} />}
+                {target.video ? <video src={target.video} muted playsInline preload="metadata" className="w-full block" style={{ maxHeight: 200, background: "#000" }} /> : target.image && <Pic src={target.image} grad={GRADS[hashIdx(target.id, GRADS.length)]} fit="contain" className="w-full" style={{ height: 200 }} />}
               </div>
             </div>
           </div>

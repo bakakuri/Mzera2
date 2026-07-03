@@ -59,11 +59,24 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
   const cv = convos.find(c => c.id === openId);
   const bottom = () => requestAnimationFrame(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; });
   const [vph, setVph] = useState(null);
+  // top/bottom offsets for the panel — measured directly off the real header/nav
+  // elements' current rendered positions (not the --mz-hdr/--mz-nav CSS vars, which
+  // are only refreshed on tab change/resize and can drift out of sync with the
+  // mobile browser's own address-bar show/hide, leaving a gap above and below the panel)
+  const [panelEdges, setPanelEdges] = useState({ top: null, bottom: null });
   useEffect(() => {
-    const vv = window.visualViewport; if (!vv) return;
-    const onR = () => { setVph(vv.height); requestAnimationFrame(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }); };
-    onR(); vv.addEventListener("resize", onR); vv.addEventListener("scroll", onR);
-    return () => { vv.removeEventListener("resize", onR); vv.removeEventListener("scroll", onR); };
+    const measure = () => {
+      const h = document.querySelector("header.mz-hdr"); const n = document.querySelector("nav.mz-nav");
+      const top = h ? h.getBoundingClientRect().bottom : null;
+      const bottom = n ? Math.max(0, window.innerHeight - n.getBoundingClientRect().top) : null;
+      setPanelEdges({ top, bottom });
+    };
+    const vv = window.visualViewport;
+    const onR = () => { measure(); if (vv) setVph(vv.height); requestAnimationFrame(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }); };
+    onR(); const t1 = setTimeout(onR, 200);
+    window.addEventListener("resize", onR);
+    if (vv) { vv.addEventListener("resize", onR); vv.addEventListener("scroll", onR); }
+    return () => { window.removeEventListener("resize", onR); if (vv) { vv.removeEventListener("resize", onR); vv.removeEventListener("scroll", onR); } clearTimeout(t1); };
   }, []);
   useEffect(() => { bottom(); }, [cv?.messages.length, typing, openId, attach, emoji, vph]);
   useEffect(() => {
@@ -119,7 +132,7 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
     const members = convMembers(cv); const group = convIsGroup(cv); const other = USERS[members[0]];
     const startAdd = (sel) => { const id = onCreateConvo([...members, ...sel]); setPicker(null); setOpenId(id); };
     return (
-      <div className="fixed left-0 right-0 z-40 flex flex-col" style={{ background: C.paper, top: "var(--mz-hdr, 56px)", bottom: "var(--mz-nav, 60px)" }}>
+      <div className="fixed left-0 right-0 z-40 flex flex-col" style={{ background: C.paper, top: panelEdges.top != null ? panelEdges.top + "px" : "var(--mz-hdr, 56px)", bottom: panelEdges.bottom != null ? panelEdges.bottom + "px" : "var(--mz-nav, 60px)" }}>
         <div className="flex-1 min-h-0 flex flex-col w-full" style={{ maxWidth: 600, margin: "0 auto", background: C.paper, borderLeft: `1px solid ${C.line}`, borderRight: `1px solid ${C.line}` }}>
           <div className="flex items-center gap-3 px-3 py-2.5 shrink-0" style={{ background: C.surface + "f2", backdropFilter: "blur(14px)", borderBottom: `1px solid ${C.line}` }}>
             <button onClick={() => setOpenId(null)} className="active:scale-90" style={{ color: C.ink2 }}><ArrowLeft size={22} /></button>
