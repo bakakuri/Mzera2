@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import {
   useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Gamepad2, Clapperboard, Music, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, KA_MONS, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, NOTIF_VERB, levelInfo, kfmt, RSVP_OPTS, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, FILTERS, STORY_STICKERS, setTheme, setME, POST_BGS, FEELINGS } from "./core";
 
@@ -47,7 +48,7 @@ function PostImages({ images, pid }) {
             <div className="absolute top-2.5 right-2.5 rounded-full px-2 py-0.5 text-[11px] font-bold pointer-events-none" style={{ background: "rgba(0,0,0,.55)", color: "#fff", fontFamily: MONO }}>{idx + 1}/{images.length}</div>
             <div className="absolute bottom-2.5 left-0 right-0 flex justify-center gap-1.5 pointer-events-none">{images.map((_, i) => <span key={i} className="rounded-full transition-all" style={{ width: i === idx ? 7 : 5, height: i === idx ? 7 : 5, background: i === idx ? "#fff" : "rgba(255,255,255,.5)" }} />)}</div>
           </div>}
-      {lb >= 0 && <Lightbox images={images} start={lb} onClose={() => setLb(-1)} />}
+      {lb >= 0 && createPortal(<Lightbox images={images} start={lb} onClose={() => setLb(-1)} />, document.body)}
     </>
   );
 }
@@ -253,15 +254,15 @@ export function PostCard({ post, onLike, onReact, onSave, onComment, onPollVote,
           </div>
         </div>
       )}
-      {reactorsOpen && (
+      {reactorsOpen && createPortal((
         <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center" style={{ background: "rgba(0,0,0,.5)" }} onClick={() => setReactorsOpen(false)}>
           <div className="w-full sm:max-w-sm sm:rounded-3xl rounded-t-3xl max-h-[70vh] overflow-y-auto pb-4" style={{ background: C.surface }} onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-3.5 sticky top-0 z-10" style={{ background: C.surface, borderBottom: `1px solid ${C.lineSoft}` }}><span className="font-bold text-[15px]" style={{ color: C.ink }}>რეაქციები</span><button onClick={() => setReactorsOpen(false)} style={{ color: C.muted }}><X size={20} /></button></div>
             {reactors == null ? <div className="flex justify-center py-10"><div style={{ width: 24, height: 24, border: `3px solid ${C.lineSoft}`, borderTopColor: C.accent, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} /></div> : reactors.length === 0 ? <Empty icon={Heart} t="ჯერ არავინ" s="" /> : <div className="px-2 py-1">{reactors.map(r => { if (r.user) mergeProfile(r.user); const id = r.user_id; return (<button key={id} onClick={() => { setReactorsOpen(false); onOpenProfile(id); }} className="w-full flex items-center gap-3 px-3 py-2.5 active:opacity-60"><Avatar id={id} size={38} /><div className="flex-1 text-left min-w-0"><div className="font-bold text-[14px] truncate" style={{ color: C.ink }}>{USERS[id] ? USERS[id].name : "—"}</div><Mono style={{ fontSize: 11.5, color: C.faint }}>@{USERS[id] ? USERS[id].handle : ""}</Mono></div><span style={{ fontSize: 22 }}>{r.emoji || "❤️"}</span></button>); })}</div>}
           </div>
         </div>
-      )}
-      {repostOpen && (() => {
+      ), document.body)}
+      {repostOpen && createPortal((() => {
         // when reposting something that's already a repost, preview the *original* content
         // being shared (not this wrapper post, which usually has no text/image of its own)
         const target = post.shared || post;
@@ -280,7 +281,7 @@ export function PostCard({ post, onLike, onReact, onSave, onComment, onPollVote,
             </div>
           </div>
         </div>
-      ); })()}
+      ); })(), document.body)}
     </article>
   );
 }
