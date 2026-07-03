@@ -913,8 +913,55 @@ drop policy if exists story_likes_read on public.story_likes;
 create policy story_likes_read on public.story_likes for select using (true);
 drop policy if exists story_likes_insert on public.story_likes;
 create policy story_likes_insert on public.story_likes for insert with check (auth.uid() = user_id);
+-- toggleLike() does an upsert (insert ... on conflict do update), which requires an
+-- update policy too, not just insert — found by scripts/check-rls.mjs
+drop policy if exists story_likes_update on public.story_likes;
+create policy story_likes_update on public.story_likes for update using (auth.uid() = user_id);
 drop policy if exists story_likes_delete on public.story_likes;
 create policy story_likes_delete on public.story_likes for delete using (auth.uid() = user_id);
+
+create table if not exists public.story_comments (
+  id         uuid primary key default gen_random_uuid(),
+  story_id   uuid not null references public.stories(id) on delete cascade,
+  author_id  uuid not null references public.profiles(id) on delete cascade,
+  text       text not null,
+  created_at timestamptz not null default now()
+);
+alter table public.story_comments enable row level security;
+drop policy if exists story_comments_read on public.story_comments;
+create policy story_comments_read on public.story_comments for select using (true);
+drop policy if exists story_comments_insert on public.story_comments;
+create policy story_comments_insert on public.story_comments for insert with check (auth.uid() = author_id);
+drop policy if exists story_comments_delete on public.story_comments;
+create policy story_comments_delete on public.story_comments for delete using (auth.uid() = author_id or public.is_admin());
+
+create table if not exists public.reel_comments (
+  id         uuid primary key default gen_random_uuid(),
+  reel_id    uuid not null references public.reels(id) on delete cascade,
+  author_id  uuid not null references public.profiles(id) on delete cascade,
+  text       text not null,
+  created_at timestamptz not null default now()
+);
+alter table public.reel_comments enable row level security;
+drop policy if exists reel_comments_read on public.reel_comments;
+create policy reel_comments_read on public.reel_comments for select using (true);
+drop policy if exists reel_comments_insert on public.reel_comments;
+create policy reel_comments_insert on public.reel_comments for insert with check (auth.uid() = author_id);
+drop policy if exists reel_comments_delete on public.reel_comments;
+create policy reel_comments_delete on public.reel_comments for delete using (auth.uid() = author_id or public.is_admin());
+
+create table if not exists public.quest_claims (
+  user_id    uuid not null references public.profiles(id) on delete cascade,
+  quest      text not null,
+  xp         int not null default 0,
+  day        date not null default current_date,
+  primary key (user_id, quest, day)
+);
+alter table public.quest_claims enable row level security;
+drop policy if exists quest_claims_read on public.quest_claims;
+create policy quest_claims_read on public.quest_claims for select using (auth.uid() = user_id);
+drop policy if exists quest_claims_insert on public.quest_claims;
+create policy quest_claims_insert on public.quest_claims for insert with check (auth.uid() = user_id);
 
 create table if not exists public.reel_saves (
   reel_id    uuid not null references public.reels(id) on delete cascade,
