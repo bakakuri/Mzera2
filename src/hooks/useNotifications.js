@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { notifsApi, mapDbNotif, pushNotif, ensureNotifPerm, NOTIF_VERB, USERS } from "../ui/core";
+import { notifsApi, mapDbNotif, pushNotif, ensureNotifPerm, notifVerb, USERS, t } from "../ui/core";
 
 export function useNotifications({ session, live }) {
   const [notifs, setNotifs] = useState([]);
@@ -9,7 +9,7 @@ export function useNotifications({ session, live }) {
   useEffect(() => {
     if (!session) return;
     ensureNotifPerm();
-    const ch = notifsApi.subscribe(session.user.id, (row) => { loadNotifs(); const who = USERS[row.from_id]; pushNotif((who && who.name) ? who.name : "mzera 🔔", NOTIF_VERB[row.type] || "ახალი აქტივობა"); });
+    const ch = notifsApi.subscribe(session.user.id, (row) => { loadNotifs(); const who = USERS[row.from_id]; pushNotif((who && who.name) ? who.name : "mzera 🔔", notifVerb(row.type) || t("notif.fallback")); });
     return () => { try { ch.unsubscribe(); } catch (e) {} };
   }, [live, session]);
 

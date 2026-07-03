@@ -191,7 +191,7 @@ export const Empty = ({ icon: I, t, s }) => <div className="flex flex-col items-
 
 export const ThemeToggle = ({ mode, setMode, full }) => full ? (
   <div className="flex gap-1 p-1 rounded-2xl" style={{ background: C.surfaceMuted }}>
-    {[["light", "ღია", Sun], ["dark", "მუქი", Moon]].map(([m, l, Ic]) => <button key={m} onClick={() => setMode(m)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-bold transition" style={mode === m ? { background: C.surface, color: C.accent, boxShadow: SH.card } : { color: C.muted }}><Ic size={16} />{l}</button>)}
+    {[["light", t("theme.light"), Sun], ["dark", t("theme.dark"), Moon]].map(([m, l, Ic]) => <button key={m} onClick={() => setMode(m)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-bold transition" style={mode === m ? { background: C.surface, color: C.accent, boxShadow: SH.card } : { color: C.muted }}><Ic size={16} />{l}</button>)}
   </div>
 ) : <button onClick={() => setMode(mode === "dark" ? "light" : "dark")} className="rounded-full active:scale-90 flex items-center justify-center transition" style={{ width: 40, height: 40, color: C.ink2 }}>{mode === "dark" ? <Sun size={22} /> : <Moon size={22} />}</button>;
 
@@ -217,11 +217,11 @@ export function NewThread({ onClose, onCreate, initial }) {
   return (
     <div className="fixed inset-0 z-[60] flex sm:items-center justify-center items-end" style={{ background: "rgba(6,7,12,.55)", backdropFilter: "blur(4px)" }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} className="w-full sm:max-w-[520px] sm:rounded-3xl rounded-t-3xl" style={{ background: C.surface, boxShadow: SH.pop }}>
-        <div className="flex items-center justify-between px-4 py-3.5" style={{ borderBottom: `1px solid ${C.lineSoft}` }}><button onClick={onClose} style={{ color: C.muted }}><X size={22} /></button><span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{initial ? "თემის რედაქტირება" : "ახალი თემა"}</span><button disabled={!title.trim()} onClick={() => onCreate({ title: title.trim(), body: body.trim(), cat })} className="px-4 py-1.5 rounded-full text-sm font-bold" style={{ backgroundImage: GBRAND, color: "#fff", opacity: title.trim() ? 1 : 0.4 }}>{initial ? "შენახვა" : "გამოქვეყნება"}</button></div>
+        <div className="flex items-center justify-between px-4 py-3.5" style={{ borderBottom: `1px solid ${C.lineSoft}` }}><button onClick={onClose} style={{ color: C.muted }}><X size={22} /></button><span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{initial ? t("thread.edit") : t("thread.new")}</span><button disabled={!title.trim()} onClick={() => onCreate({ title: title.trim(), body: body.trim(), cat })} className="px-4 py-1.5 rounded-full text-sm font-bold" style={{ backgroundImage: GBRAND, color: "#fff", opacity: title.trim() ? 1 : 0.4 }}>{initial ? t("action.save") : t("action.publish")}</button></div>
         <div className="p-4 space-y-3" style={{ paddingBottom: "calc(var(--mz-nav, 64px) + 1.25rem)" }}>
           <div className="flex gap-1.5 flex-wrap">{FORUM_CATS.slice(1).map(c => <button key={c} onClick={() => setCat(c)} className="px-3 py-1.5 rounded-full text-sm font-semibold transition" style={cat === c ? { background: catColor(c) + "1f", color: catColor(c) } : { background: C.surfaceMuted, color: C.muted }}>{c}</button>)}</div>
-          <input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder="სათაური…" className="w-full bg-transparent outline-none text-[18px] font-bold" style={{ color: C.ink, fontFamily: DISPLAY }} />
-          <textarea value={body} onChange={e => setBody(e.target.value)} rows={4} placeholder="დაწერე დეტალურად…" className="w-full resize-none bg-transparent outline-none text-[15px]" style={{ color: C.ink2, lineHeight: 1.55 }} />
+          <input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder={t("thread.titlePh")} className="w-full bg-transparent outline-none text-[18px] font-bold" style={{ color: C.ink, fontFamily: DISPLAY }} />
+          <textarea value={body} onChange={e => setBody(e.target.value)} rows={4} placeholder={t("thread.bodyPh")} className="w-full resize-none bg-transparent outline-none text-[15px]" style={{ color: C.ink2, lineHeight: 1.55 }} />
         </div>
       </div>
     </div>
@@ -240,31 +240,31 @@ export function Checkout({ item, onClose, onDone, onPlace }) {
     <div className="fixed inset-0 z-[61] flex items-center justify-center p-6" style={{ background: "rgba(6,7,12,.6)", backdropFilter: "blur(4px)" }} onClick={onDone}>
       <div onClick={e => e.stopPropagation()} className="w-full max-w-[400px] rounded-3xl p-7 text-center" style={{ background: C.surface, boxShadow: SH.pop }}>
         <div className="rounded-full flex items-center justify-center mx-auto mb-4" style={{ width: 72, height: 72, background: C.online + "22" }}><Check size={38} style={{ color: C.online }} /></div>
-        <div className="text-[20px] font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>შეკვეთა მიღებულია! 🎉</div>
-        <div className="text-[14px] mt-1.5" style={{ color: C.muted }}>შეკვეთა <Mono className="font-bold" style={{ color: C.ink }}>#{Math.floor(Math.random() * 9000 + 1000)}</Mono> გაფორმდა. გამყიდველი მალე დაგიკავშირდება.</div>
-        <div className="rounded-2xl p-3 mt-4 flex items-center gap-3" style={{ background: C.surfaceMuted }}><Pic src={item.image} round={10} style={{ width: 48, height: 48 }} /><div className="flex-1 text-left min-w-0"><div className="text-[13px] font-bold truncate" style={{ color: C.ink }}>{item.title}</div><div className="text-[12px]" style={{ color: C.faint }}>{delivery === "ship" ? "მიწოდება" : "თვითგატანა"} · {pay === "card" ? "ბარათი" : "ნაღდი"}</div></div><Mono className="font-bold" style={{ color: C.accent }}>{total}₾</Mono></div>
-        <button onClick={onDone} className="w-full mt-5 py-3 rounded-2xl font-bold text-white active:scale-[.98]" style={{ backgroundImage: GBRAND, boxShadow: SH.glow }}>მზადაა</button>
+        <div className="text-[20px] font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{t("checkout.orderReceived")}</div>
+        <div className="text-[14px] mt-1.5" style={{ color: C.muted }}>{t("checkout.orderConfirmedPre")}<Mono className="font-bold" style={{ color: C.ink }}>#{Math.floor(Math.random() * 9000 + 1000)}</Mono>{t("checkout.orderConfirmedPost")}</div>
+        <div className="rounded-2xl p-3 mt-4 flex items-center gap-3" style={{ background: C.surfaceMuted }}><Pic src={item.image} round={10} style={{ width: 48, height: 48 }} /><div className="flex-1 text-left min-w-0"><div className="text-[13px] font-bold truncate" style={{ color: C.ink }}>{item.title}</div><div className="text-[12px]" style={{ color: C.faint }}>{delivery === "ship" ? t("checkout.delivery") : t("checkout.pickup")} · {pay === "card" ? t("checkout.card") : t("checkout.cash")}</div></div><Mono className="font-bold" style={{ color: C.accent }}>{total}₾</Mono></div>
+        <button onClick={onDone} className="w-full mt-5 py-3 rounded-2xl font-bold text-white active:scale-[.98]" style={{ backgroundImage: GBRAND, boxShadow: SH.glow }}>{t("checkout.done")}</button>
       </div>
     </div>
   );
   return (
     <div className="fixed inset-0 z-[61] flex sm:items-center justify-center items-end" style={{ background: "rgba(6,7,12,.55)", backdropFilter: "blur(4px)" }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} className="w-full sm:max-w-[460px] sm:rounded-3xl rounded-t-3xl max-h-[90vh] overflow-y-auto" style={{ background: C.surface, boxShadow: SH.pop }}>
-        <div className="flex items-center justify-between px-4 py-3.5 sticky top-0" style={{ background: C.surface, borderBottom: `1px solid ${C.lineSoft}` }}><button onClick={onClose} style={{ color: C.muted }}><X size={22} /></button><span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>გადახდა</span><div style={{ width: 22 }} /></div>
+        <div className="flex items-center justify-between px-4 py-3.5 sticky top-0" style={{ background: C.surface, borderBottom: `1px solid ${C.lineSoft}` }}><button onClick={onClose} style={{ color: C.muted }}><X size={22} /></button><span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{t("checkout.pay")}</span><div style={{ width: 22 }} /></div>
         <div className="p-4 flex items-center gap-3" style={{ borderBottom: `1px solid ${C.lineSoft}` }}><Pic src={item.image} round={12} style={{ width: 60, height: 60 }} /><div className="flex-1 min-w-0"><div className="text-[15px] font-bold truncate" style={{ color: C.ink }}>{item.title}</div><div className="text-[13px]" style={{ color: C.muted }}>{item.location}</div></div><div className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY, fontSize: 18 }}>{item.price}₾</div></div>
         <div className="p-4">
-          <div className="text-[13px] font-bold mb-2" style={{ color: C.muted }}>მიწოდება</div>
-          <div className="flex gap-2 mb-4">{[["ship", "მიწოდება", "+5₾"], ["pickup", "თვითგატანა", "უფასო"]].map(([k, l, p]) => <button key={k} onClick={() => setDelivery(k)} className="flex-1 py-3 rounded-2xl text-sm font-bold transition" style={delivery === k ? { background: C.accentSoft, color: C.accentText, border: `1.5px solid ${C.accent}` } : { background: C.surfaceMuted, color: C.muted, border: `1.5px solid transparent` }}>{l}<div className="text-[11px] font-normal mt-0.5">{p}</div></button>)}</div>
-          {delivery === "ship" && <input value={addr} onChange={e => setAddr(e.target.value)} placeholder="მისამართი (ქუჩა, ნომერი)" className="w-full px-3.5 py-3 rounded-xl outline-none text-[15px] mb-4" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />}
-          <div className="text-[13px] font-bold mb-2" style={{ color: C.muted }}>გადახდის მეთოდი</div>
-          <div className="space-y-2 mb-4">{[["card", "ბარათი •••• 4242", true], ["cash", "ნაღდი მიწოდებისას", false]].map(([k, l]) => <button key={k} onClick={() => setPay(k)} className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl transition" style={{ background: pay === k ? C.accentSoft : C.surfaceMuted, border: pay === k ? `1.5px solid ${C.accent}` : `1.5px solid transparent` }}><span style={{ color: pay === k ? C.accent : C.muted }}>{k === "card" ? <Tag size={18} /> : <ShoppingBag size={18} />}</span><span className="flex-1 text-left text-[14px] font-semibold" style={{ color: C.ink }}>{l}</span><span className="rounded-full flex items-center justify-center" style={{ width: 20, height: 20, border: pay === k ? "none" : `2px solid ${C.line}`, backgroundImage: pay === k ? GBRAND : "none" }}>{pay === k && <Check size={13} color="#fff" />}</span></button>)}</div>
+          <div className="text-[13px] font-bold mb-2" style={{ color: C.muted }}>{t("checkout.delivery")}</div>
+          <div className="flex gap-2 mb-4">{[["ship", t("checkout.delivery"), "+5₾"], ["pickup", t("checkout.pickup"), t("checkout.free")]].map(([k, l, p]) => <button key={k} onClick={() => setDelivery(k)} className="flex-1 py-3 rounded-2xl text-sm font-bold transition" style={delivery === k ? { background: C.accentSoft, color: C.accentText, border: `1.5px solid ${C.accent}` } : { background: C.surfaceMuted, color: C.muted, border: `1.5px solid transparent` }}>{l}<div className="text-[11px] font-normal mt-0.5">{p}</div></button>)}</div>
+          {delivery === "ship" && <input value={addr} onChange={e => setAddr(e.target.value)} placeholder={t("checkout.addressPh")} className="w-full px-3.5 py-3 rounded-xl outline-none text-[15px] mb-4" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />}
+          <div className="text-[13px] font-bold mb-2" style={{ color: C.muted }}>{t("checkout.paymentMethod")}</div>
+          <div className="space-y-2 mb-4">{[["card", t("checkout.cardSample"), true], ["cash", t("checkout.cashSample"), false]].map(([k, l]) => <button key={k} onClick={() => setPay(k)} className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl transition" style={{ background: pay === k ? C.accentSoft : C.surfaceMuted, border: pay === k ? `1.5px solid ${C.accent}` : `1.5px solid transparent` }}><span style={{ color: pay === k ? C.accent : C.muted }}>{k === "card" ? <Tag size={18} /> : <ShoppingBag size={18} />}</span><span className="flex-1 text-left text-[14px] font-semibold" style={{ color: C.ink }}>{l}</span><span className="rounded-full flex items-center justify-center" style={{ width: 20, height: 20, border: pay === k ? "none" : `2px solid ${C.line}`, backgroundImage: pay === k ? GBRAND : "none" }}>{pay === k && <Check size={13} color="#fff" />}</span></button>)}</div>
           <div className="rounded-2xl p-3.5 space-y-1.5" style={{ background: C.surfaceMuted }}>
-            <div className="flex justify-between text-[14px]" style={{ color: C.muted }}><span>ნივთი</span><Mono>{item.price}₾</Mono></div>
-            <div className="flex justify-between text-[14px]" style={{ color: C.muted }}><span>მიწოდება</span><Mono>{fee}₾</Mono></div>
-            <div className="flex justify-between text-[16px] font-bold pt-1.5" style={{ color: C.ink, borderTop: `1px solid ${C.line}` }}><span>ჯამი</span><Mono style={{ color: C.accent }}>{total}₾</Mono></div>
+            <div className="flex justify-between text-[14px]" style={{ color: C.muted }}><span>{t("checkout.item")}</span><Mono>{item.price}₾</Mono></div>
+            <div className="flex justify-between text-[14px]" style={{ color: C.muted }}><span>{t("checkout.delivery")}</span><Mono>{fee}₾</Mono></div>
+            <div className="flex justify-between text-[16px] font-bold pt-1.5" style={{ color: C.ink, borderTop: `1px solid ${C.line}` }}><span>{t("checkout.total")}</span><Mono style={{ color: C.accent }}>{total}₾</Mono></div>
           </div>
         </div>
-        <div className="px-4 pb-5"><button onClick={() => { if (onPlace) onPlace({ delivery, payment: pay, address: addr, total }); setPlaced(true); }} className="w-full py-3.5 rounded-2xl font-bold text-white flex items-center justify-center gap-2 active:scale-[.98]" style={{ backgroundImage: GBRAND, boxShadow: SH.glow, fontFamily: DISPLAY }}>შეკვეთის დადასტურება · {total}₾</button></div>
+        <div className="px-4 pb-5"><button onClick={() => { if (onPlace) onPlace({ delivery, payment: pay, address: addr, total }); setPlaced(true); }} className="w-full py-3.5 rounded-2xl font-bold text-white flex items-center justify-center gap-2 active:scale-[.98]" style={{ backgroundImage: GBRAND, boxShadow: SH.glow, fontFamily: DISPLAY }}>{t("checkout.confirm")} · {total}₾</button></div>
       </div>
     </div>
   );
@@ -282,19 +282,19 @@ export function NewListing({ onClose, onCreate, live, onUpload, initial }) {
   return (
     <div className="fixed inset-0 z-[60] flex sm:items-center justify-center items-end" style={{ background: "rgba(6,7,12,.55)", backdropFilter: "blur(4px)", height: vph ? vph + "px" : "100dvh" }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} className="w-full sm:max-w-[520px] sm:rounded-3xl rounded-t-3xl overflow-y-auto" style={{ background: C.surface, boxShadow: SH.pop, maxHeight: vph ? vph + "px" : "88vh" }}>
-        <div className="flex items-center justify-between px-4 py-3.5 sticky top-0" style={{ background: C.surface, borderBottom: `1px solid ${C.lineSoft}` }}><button onClick={onClose} style={{ color: C.muted }}><X size={22} /></button><span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{initial ? "ნივთის რედაქტირება" : "გაყიდე ნივთი"}</span><button disabled={!ok} onClick={() => onCreate({ title: title.trim(), price: Number(price), desc: desc.trim(), cat, image: picked && picked.startsWith("http") ? picked : "", video: pickedVideo })} className="px-4 py-1.5 rounded-full text-sm font-bold" style={{ backgroundImage: GBRAND, color: "#fff", opacity: ok ? 1 : 0.4 }}>{initial ? "შენახვა" : "გამოქვეყნება"}</button></div>
+        <div className="flex items-center justify-between px-4 py-3.5 sticky top-0" style={{ background: C.surface, borderBottom: `1px solid ${C.lineSoft}` }}><button onClick={onClose} style={{ color: C.muted }}><X size={22} /></button><span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{initial ? t("listing.edit") : t("listing.sell")}</span><button disabled={!ok} onClick={() => onCreate({ title: title.trim(), price: Number(price), desc: desc.trim(), cat, image: picked && picked.startsWith("http") ? picked : "", video: pickedVideo })} className="px-4 py-1.5 rounded-full text-sm font-bold" style={{ backgroundImage: GBRAND, color: "#fff", opacity: ok ? 1 : 0.4 }}>{initial ? t("action.save") : t("action.publish")}</button></div>
         <div className="p-4 space-y-3.5" style={{ paddingBottom: "calc(var(--mz-nav, 64px) + 1.25rem)" }}>
           <div className="flex gap-2 items-center flex-wrap">
             <input ref={fileRef} type="file" accept="image/*,video/*" hidden onChange={pickFile} />
-            <button onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading} className="rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95" style={{ width: 72, height: 72, background: C.accentSoft, color: C.accentText }}>{uploading ? <span className="text-[10px] font-bold">…</span> : <><Upload size={20} /><span className="text-[10px] font-bold mt-0.5">ფოტო/ვიდეო</span></>}</button>
+            <button onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading} className="rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95" style={{ width: 72, height: 72, background: C.accentSoft, color: C.accentText }}>{uploading ? <span className="text-[10px] font-bold">…</span> : <><Upload size={20} /><span className="text-[10px] font-bold mt-0.5">{t("listing.addMedia")}</span></>}</button>
             {picked && picked.startsWith("http") && <div className="rounded-xl overflow-hidden shrink-0 relative" style={{ width: 72, height: 72, outline: `2.5px solid ${C.accent}`, outlineOffset: 2 }}><Pic src={picked} className="w-full h-full" /><button onClick={() => setPicked("")} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div>}
             {pickedVideo && <div className="rounded-xl overflow-hidden shrink-0 relative" style={{ width: 72, height: 72, outline: `2.5px solid ${C.accent}`, outlineOffset: 2 }}><video src={pickedVideo} muted playsInline className="w-full h-full" style={{ objectFit: "cover" }} /><div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,.25)" }}><Play size={18} color="#fff" fill="#fff" /></div><button onClick={() => setPickedVideo(null)} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div>}
-            {!picked && !pickedVideo && <span className="text-[12px]" style={{ color: C.faint }}>დაამატე ფოტო ან ვიდეო 📷</span>}
+            {!picked && !pickedVideo && <span className="text-[12px]" style={{ color: C.faint }}>{t("listing.addMediaHint")}</span>}
           </div>
-          <input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder="რას ყიდი?" className="w-full px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
-          <div className="flex items-center gap-2 px-3.5 py-3 rounded-xl" style={{ background: C.surfaceMuted, border: `1px solid ${C.line}` }}><input value={price} onChange={e => setPrice(e.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder="ფასი" className="flex-1 bg-transparent outline-none text-[15px]" style={{ color: C.ink, fontFamily: MONO }} /><span style={{ color: C.accent, fontWeight: 700 }}>₾</span></div>
+          <input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder={t("listing.whatSelling")} className="w-full px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
+          <div className="flex items-center gap-2 px-3.5 py-3 rounded-xl" style={{ background: C.surfaceMuted, border: `1px solid ${C.line}` }}><input value={price} onChange={e => setPrice(e.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder={t("listing.price")} className="flex-1 bg-transparent outline-none text-[15px]" style={{ color: C.ink, fontFamily: MONO }} /><span style={{ color: C.accent, fontWeight: 700 }}>₾</span></div>
           <div className="flex gap-1.5 flex-wrap">{MARKET_CATS.slice(1).map(c => <button key={c} onClick={() => setCat(c)} className="px-3 py-1.5 rounded-full text-sm font-semibold transition" style={cat === c ? { background: C.accentSoft, color: C.accentText } : { background: C.surfaceMuted, color: C.muted }}>{c}</button>)}</div>
-          <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={3} placeholder="აღწერა (მდგომარეობა, დეტალები…)" className="w-full resize-none px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink2, border: `1px solid ${C.line}`, lineHeight: 1.5 }} />
+          <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={3} placeholder={t("listing.descPh")} className="w-full resize-none px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink2, border: `1px solid ${C.line}`, lineHeight: 1.5 }} />
         </div>
       </div>
     </div>
@@ -374,7 +374,7 @@ export function PeoplePicker({ title, cta, exclude = [], onClose, onConfirm, liv
     <div className="fixed inset-0 z-[60] flex sm:items-center justify-center items-end" style={{ background: "rgba(6,7,12,.55)", backdropFilter: "blur(4px)", paddingBottom: "var(--mz-nav, 64px)" }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} className="w-full sm:max-w-[480px] sm:rounded-3xl rounded-t-3xl flex flex-col" style={{ background: C.surface, boxShadow: SH.pop, maxHeight: "calc(100dvh - var(--mz-nav, 64px) - 14px)" }}>
         <div className="flex items-center justify-between px-4 py-3.5 shrink-0" style={{ borderBottom: `1px solid ${C.lineSoft}` }}><button onClick={onClose} style={{ color: C.muted }}><X size={22} /></button><span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{title}</span><button disabled={!sel.length} onClick={() => onConfirm(sel)} className="px-4 py-1.5 rounded-full text-sm font-bold" style={{ backgroundImage: GBRAND, color: "#fff", opacity: sel.length ? 1 : 0.4 }}>{cta}{sel.length ? ` (${sel.length})` : ""}</button></div>
-        <div className="px-3 py-2.5 shrink-0" style={{ borderBottom: `1px solid ${C.lineSoft}` }}><div className="flex items-center gap-2 px-3 py-2 rounded-full" style={{ background: C.surfaceMuted }}><Search size={16} style={{ color: C.faint }} /><input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="მოძებნე ხალხი…" className="flex-1 bg-transparent text-[14px] outline-none" style={{ color: C.ink }} />{searching && <Mono style={{ fontSize: 11, color: C.faint }}>…</Mono>}</div></div>
+        <div className="px-3 py-2.5 shrink-0" style={{ borderBottom: `1px solid ${C.lineSoft}` }}><div className="flex items-center gap-2 px-3 py-2 rounded-full" style={{ background: C.surfaceMuted }}><Search size={16} style={{ color: C.faint }} /><input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder={t("picker.searchPeoplePh")} className="flex-1 bg-transparent text-[14px] outline-none" style={{ color: C.ink }} />{searching && <Mono style={{ fontSize: 11, color: C.faint }}>…</Mono>}</div></div>
         {sel.length > 0 && <div className="flex gap-2 overflow-x-auto no-scrollbar px-4 py-3 shrink-0" style={{ borderBottom: `1px solid ${C.lineSoft}` }}>{sel.map(id => <div key={id} className="flex flex-col items-center gap-1 shrink-0"><div className="relative"><Avatar id={id} size={44} /><button onClick={() => toggle(id)} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div><span className="text-[11px]" style={{ color: C.muted }}>{USERS[id].name.split(" ")[0]}</span></div>)}</div>}
         <div className="overflow-y-auto p-2 flex-1" style={{ minHeight: 0 }}>{avail.map(u => { const on = sel.includes(u.id); return (
           <button key={u.id} onClick={() => toggle(u.id)} className="w-full flex items-center gap-3 px-2 py-2.5 rounded-xl transition" style={{ background: on ? C.accentSoft : "transparent" }}>
@@ -382,7 +382,7 @@ export function PeoplePicker({ title, cta, exclude = [], onClose, onConfirm, liv
             <div className="flex-1 text-left min-w-0"><Name id={u.id} className="text-[15px]" /><Mono className="block truncate" style={{ fontSize: 12, color: C.faint }}>@{u.handle}</Mono></div>
             <div className="rounded-full flex items-center justify-center shrink-0" style={{ width: 24, height: 24, border: on ? "none" : `2px solid ${C.line}`, backgroundImage: on ? GBRAND : "none" }}>{on && <Check size={15} color="#fff" />}</div>
           </button>
-        ); })}{avail.length === 0 && <div className="text-center py-10 text-[13px]" style={{ color: C.faint }}>{q.trim() ? "ვერ მოიძებნა" : "—"}</div>}</div>
+        ); })}{avail.length === 0 && <div className="text-center py-10 text-[13px]" style={{ color: C.faint }}>{q.trim() ? t("picker.notFound") : "—"}</div>}</div>
         {sel.length > 0 && <div className="p-3 shrink-0" style={{ borderTop: `1px solid ${C.lineSoft}`, paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}><button onClick={() => onConfirm(sel)} className="w-full py-3.5 rounded-2xl font-bold text-[15px] active:scale-95 flex items-center justify-center gap-2" style={{ backgroundImage: GBRAND, color: "#fff", boxShadow: SH.glow }}><Send size={18} /> {cta}{sel.length > 1 ? ` (${sel.length})` : ""}</button></div>}
       </div>
     </div>
@@ -396,16 +396,16 @@ export function convIsGroup(cv) { return !!(cv && (cv.isGroup || (Array.isArray(
 
 export function msgPreview(m) {
   if (!m) return "—";
-  if (m.type === "image") return "📷 ფოტო";
-  if (m.type === "voice") return "🎤 ხმოვანი";
-  if (m.type === "doc") return "📄 " + ((m.doc && m.doc.name) ? m.doc.name : "ფაილი");
-  if (m.type === "location") return "📍 ლოკაცია";
+  if (m.type === "image") return t("msg.photo");
+  if (m.type === "voice") return t("msg.voice");
+  if (m.type === "doc") return t("msg.file") + ((m.doc && m.doc.name) ? m.doc.name : t("msg.fileFallback"));
+  if (m.type === "location") return t("msg.location");
   return m.text || "—";
 }
 
 export function FollowBtn({ id, isFollowing, onToggle }) {
   const on = isFollowing(id);
-  return <button onClick={(e) => { e.stopPropagation(); onToggle(id); }} className="px-4 py-1.5 rounded-full text-sm font-bold transition active:scale-95 shrink-0" style={on ? { background: C.surfaceMuted, color: C.ink2, border: `1px solid ${C.line}` } : { backgroundImage: GBRAND, color: "#fff", boxShadow: SH.glow }}>{on ? "მიჰყვები" : "მიყევი"}</button>;
+  return <button onClick={(e) => { e.stopPropagation(); onToggle(id); }} className="px-4 py-1.5 rounded-full text-sm font-bold transition active:scale-95 shrink-0" style={on ? { background: C.surfaceMuted, color: C.ink2, border: `1px solid ${C.line}` } : { backgroundImage: GBRAND, color: "#fff", boxShadow: SH.glow }}>{on ? t("follow.following") : t("follow.follow")}</button>;
 }
 
 
@@ -433,9 +433,9 @@ export function FollowList({ view, following, onToggleFollow, onOpenProfile, onC
           <button onClick={onClose} className="active:scale-90" style={{ color: C.ink2 }}><ArrowLeft size={22} /></button>
           <Mono className="font-bold text-[15px]" style={{ color: C.ink }}>@{u.handle}</Mono>
         </div>
-        <div className="flex shrink-0" style={{ background: C.surface, borderBottom: `1px solid ${C.line}` }}>{[["followers", "მიმდევრები"], ["following", "მიჰყვება"]].map(([k, l]) => <button key={k} onClick={() => setType(k)} className="flex-1 py-3 text-sm font-bold transition" style={{ color: type === k ? C.accent : C.faint, borderBottom: type === k ? `2px solid ${C.accent}` : "2px solid transparent" }}>{l}</button>)}</div>
+        <div className="flex shrink-0" style={{ background: C.surface, borderBottom: `1px solid ${C.line}` }}>{[["followers", t("follow.followers")], ["following", t("follow.followingTab")]].map(([k, l]) => <button key={k} onClick={() => setType(k)} className="flex-1 py-3 text-sm font-bold transition" style={{ color: type === k ? C.accent : C.faint, borderBottom: type === k ? `2px solid ${C.accent}` : "2px solid transparent" }}>{l}</button>)}</div>
         <div className="flex-1 overflow-y-auto p-2">
-          {loading ? <div className="flex justify-center py-16"><div className="rounded-full" style={{ width: 30, height: 30, border: `3px solid ${C.accentSoft}`, borderTopColor: C.accent, animation: "spin 0.8s linear infinite" }} /></div> : ids.length === 0 ? <Empty icon={Users} t="ცარიელია" s="ჯერ არავინ." /> : ids.map(id => (
+          {loading ? <div className="flex justify-center py-16"><div className="rounded-full" style={{ width: 30, height: 30, border: `3px solid ${C.accentSoft}`, borderTopColor: C.accent, animation: "spin 0.8s linear infinite" }} /></div> : ids.length === 0 ? <Empty icon={Users} t={t("empty.title")} s={t("empty.nobodyYet")} /> : ids.map(id => (
             <button key={id} onClick={() => { onOpenProfile(id); onClose(); }} className="w-full flex items-center gap-3 px-2 py-2.5 rounded-xl transition hover:opacity-80">
               <div className="relative"><Avatar id={id} size={46} />{USERS[id].online && <span className="absolute bottom-0 right-0"><Dot size={11} /></span>}</div>
               <div className="flex-1 text-left min-w-0"><Name id={id} className="text-[15px]" /><Mono className="block truncate" style={{ fontSize: 12, color: C.faint }}>@{USERS[id].handle}</Mono></div>
@@ -452,10 +452,10 @@ export function FollowList({ view, following, onToggleFollow, onOpenProfile, onC
 
 export function timeAgo(ts) {
   const d = (Date.now() - new Date(ts).getTime()) / 1000;
-  if (d < 60) return "ახლა";
-  if (d < 3600) return Math.floor(d / 60) + "წთ";
-  if (d < 86400) return Math.floor(d / 3600) + "სთ";
-  return Math.floor(d / 86400) + "დღ";
+  if (d < 60) return t("time.now");
+  if (d < 3600) return Math.floor(d / 60) + t("time.min");
+  if (d < 86400) return Math.floor(d / 3600) + t("time.hour");
+  return Math.floor(d / 86400) + t("time.day");
 }
 
 export function mergeProfile(p) {
@@ -566,7 +566,7 @@ export function mapDbThread(row, uid) {
   return { id: row.id, authorId: row.author_id, cat: row.category || "სხვა", title: row.title, body: row.body || "", votes: votes.length, views: "0", time: timeAgo(row.created_at), likedByMe: votes.some(v => v.user_id === uid), replies };
 }
 
-export const KA_MONS = ["იან", "თებ", "მარ", "აპრ", "მაი", "ივნ", "ივლ", "აგვ", "სექ", "ოქტ", "ნოე", "დეკ"];
+export function getMons() { return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => t("mon." + n)); }
 
 export function mapDbListing(row) {
   if (row.seller) mergeProfile(row.seller);
@@ -610,7 +610,7 @@ export function mapDbEvent(row, uid) {
   const rs = row.event_rsvps || [];
   const mine = rs.find(r => r.user_id === uid);
   const d = row.starts_at ? new Date(row.starts_at) : null;
-  return { id: row.id, title: row.title, cover: row.cover_url || img("ev" + row.id, 600, 300), day: d ? String(d.getDate()).padStart(2, "0") : "—", mon: d ? KA_MONS[d.getMonth()] : "", time: d ? d.toLocaleTimeString("ka-GE", { hour: "2-digit", minute: "2-digit" }) : "", location: row.location || "", going: rs.filter(r => r.status === "going").length, rsvp: mine ? mine.status : null, hostId: row.host_id, about: row.about || "" };
+  return { id: row.id, title: row.title, cover: row.cover_url || img("ev" + row.id, 600, 300), day: d ? String(d.getDate()).padStart(2, "0") : "—", mon: d ? getMons()[d.getMonth()] : "", time: d ? d.toLocaleTimeString("ka-GE", { hour: "2-digit", minute: "2-digit" }) : "", location: row.location || "", going: rs.filter(r => r.status === "going").length, rsvp: mine ? mine.status : null, hostId: row.host_id, about: row.about || "" };
 }
 
 
@@ -676,27 +676,27 @@ export function HighlightCreate({ onClose, onCreated, flash }) {
   const [title, setTitle] = useState(""); const [cover, setCover] = useState(null); const [coverUrl, setCoverUrl] = useState(null); const [busy, setBusy] = useState(false);
   const [vph, setVph] = useState(null);
   useEffect(() => { const vv = window.visualViewport; if (!vv) return; const onR = () => setVph(vv.height); onR(); vv.addEventListener("resize", onR); vv.addEventListener("scroll", onR); return () => { vv.removeEventListener("resize", onR); vv.removeEventListener("scroll", onR); }; }, []);
-  const pick = async (file) => { if (!file) return; setCover(URL.createObjectURL(file)); setBusy(true); try { const url = await storageApi.upload(file, "highlights"); setCoverUrl(url); } catch (e) { flash && flash("ფოტო ვერ აიტვირთა"); } setBusy(false); };
-  const save = async () => { if (!title.trim() || busy) return; setBusy(true); try { await highlightsApi.create({ title: title.trim(), cover_url: coverUrl }); onCreated(); onClose(); } catch (e) { flash && flash("ვერ შეიქმნა: " + (e.message || "")); setBusy(false); } };
+  const pick = async (file) => { if (!file) return; setCover(URL.createObjectURL(file)); setBusy(true); try { const url = await storageApi.upload(file, "highlights"); setCoverUrl(url); } catch (e) { flash && flash(t("highlight.uploadFailed")); } setBusy(false); };
+  const save = async () => { if (!title.trim() || busy) return; setBusy(true); try { await highlightsApi.create({ title: title.trim(), cover_url: coverUrl }); onCreated(); onClose(); } catch (e) { flash && flash(t("highlight.createFailedPre") + (e.message || "")); setBusy(false); } };
   return (
     <div className="fixed inset-0 z-[210] flex items-end justify-center" onClick={onClose} style={{ background: "rgba(0,0,0,.55)", height: vph ? vph + "px" : "100dvh" }}>
       <div onClick={e => e.stopPropagation()} className="w-full max-w-[440px] rounded-t-3xl flex flex-col" style={{ background: C.paper, maxHeight: vph ? vph + "px" : "90vh" }}>
         <div className="flex justify-center pt-3 pb-2 shrink-0"><div style={{ width: 38, height: 4, borderRadius: 2, background: C.line }} /></div>
         <div className="px-5 overflow-y-auto" style={{ flex: "1 1 auto", minHeight: 0 }}>
-          <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 17, color: C.ink, marginBottom: 14 }}>ახალი Highlight</div>
+          <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 17, color: C.ink, marginBottom: 14 }}>{t("highlight.new")}</div>
           <div className="flex items-center gap-3 mb-2">
             <label style={{ cursor: "pointer", flexShrink: 0 }}>
               <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const f = e.target.files && e.target.files[0]; if (f) pick(f); e.target.value = ""; }} />
               <div className="rounded-full flex items-center justify-center overflow-hidden" style={{ width: 68, height: 68, border: `2px dashed ${C.line}`, color: C.muted, background: C.surfaceMuted }}>{cover ? <img src={cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <Camera size={24} />}</div>
             </label>
             <div className="flex-1">
-              <div className="text-[12px] mb-1" style={{ color: C.faint }}>სათაური</div>
-              <input value={title} onChange={e => setTitle(e.target.value)} maxLength={20} placeholder="მაგ. მოგზაურობა" className="w-full rounded-xl px-3 py-2.5 text-[15px] outline-none" style={{ background: C.surfaceMuted, color: C.ink }} />
+              <div className="text-[12px] mb-1" style={{ color: C.faint }}>{t("field.title")}</div>
+              <input value={title} onChange={e => setTitle(e.target.value)} maxLength={20} placeholder={t("highlight.titlePh")} className="w-full rounded-xl px-3 py-2.5 text-[15px] outline-none" style={{ background: C.surfaceMuted, color: C.ink }} />
             </div>
           </div>
         </div>
         <div className="px-5 shrink-0" style={{ paddingTop: 10, paddingBottom: "max(26px, env(safe-area-inset-bottom))" }}>
-          <button onClick={save} disabled={!title.trim() || busy} className="w-full py-3.5 rounded-xl font-bold text-[15px] active:scale-95" style={{ backgroundImage: GBRAND, color: "#fff", opacity: (!title.trim() || busy) ? 0.5 : 1 }}>{busy ? "..." : "შექმნა"}</button>
+          <button onClick={save} disabled={!title.trim() || busy} className="w-full py-3.5 rounded-xl font-bold text-[15px] active:scale-95" style={{ backgroundImage: GBRAND, color: "#fff", opacity: (!title.trim() || busy) ? 0.5 : 1 }}>{busy ? "..." : t("action.create")}</button>
         </div>
       </div>
     </div>
@@ -745,7 +745,7 @@ export function ReelComments({ data, onClose, onAdd }) {
             ); })}
         </div>
         <div className="px-3 py-2.5 flex items-center gap-2" style={{ borderTop: `1px solid ${C.lineSoft}`, paddingBottom: "max(10px, env(safe-area-inset-bottom))" }}>
-          <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} placeholder="დაამატე კომენტარი…" className="flex-1 rounded-full px-4 py-2.5 text-[14px] outline-none" style={{ background: C.surfaceMuted, color: C.ink }} />
+          <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} placeholder={t("reelcomments.addPh")} className="flex-1 rounded-full px-4 py-2.5 text-[14px] outline-none" style={{ background: C.surfaceMuted, color: C.ink }} />
           <button onClick={send} disabled={!text.trim()} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 40, height: 40, backgroundImage: GBRAND, color: "#fff", opacity: text.trim() ? 1 : 0.5 }}><Send size={18} /></button>
         </div>
       </div>
@@ -766,7 +766,14 @@ export function ensureNotifPerm() {
   try { if (typeof Notification !== "undefined" && Notification.permission === "default") Notification.requestPermission().catch(() => {}); } catch (e) {}
 }
 
-export const NOTIF_VERB = { like: "მოიწონა შენი პოსტი ❤️", comment: "დააკომენტარა შენი პოსტი 💬", follow: "გამოგყვა 👤", mention: "მოგიხსენია პოსტში", announcement: "📢 განცხადება", public_approved: "შენი საჯარო პოსტი დამტკიცდა ✅", public_rejected: "შენი საჯარო პოსტი უარყოფილია ❌" };
+// a function (not a precomputed object) so it always reads the *current*
+// language — it's called both from React render (Notifications page) and
+// from a realtime subscription callback outside any render (useNotifications),
+// so a frozen object would go stale the moment the language changed.
+export function notifVerb(type) {
+  const map = { like: "notif.liked", comment: "notif.commented", follow: "notif.followed", mention: "notif.tagged", announcement: "notif.announcement", public_approved: "notif.publicApproved", public_rejected: "notif.publicRejected" };
+  return map[type] ? t(map[type]) : null;
+}
 
 
 export const levelInfo = (xp) => { const lvl = Math.floor(xp / 100) + 1; const into = xp % 100; return { lvl, into, pct: into }; };
@@ -780,7 +787,7 @@ export const kfmt = (n) => n > 999 ? (n / 1000).toFixed(1) + "k" : "" + n;
 
 
 
-export const RSVP_OPTS = [["going", "მივდივარ"], ["maybe", "ფიქრობ"], ["no", "ვერ"]];
+export function getRsvpOpts() { return [["going", t("rsvp.going")], ["maybe", t("rsvp.maybe")], ["no", t("rsvp.no")]]; }
 
 /* ─────────────────────────  REELS  ───────────────────────── */
 
@@ -833,7 +840,7 @@ export function ReelCard({ r, onLike, onSave, onOpenProfile, flash, onComments, 
         <button onClick={like} className="flex flex-col items-center gap-1 active:scale-90" style={{ color: "#fff" }}><Heart size={34} fill={r.likedByMe ? C.like : "none"} color={r.likedByMe ? C.like : "#fff"} style={{ transform: pop ? "scale(1.3)" : "scale(1)", transition: "transform .3s cubic-bezier(.34,1.56,.64,1)", filter: "drop-shadow(0 2px 6px rgba(0,0,0,.4))" }} /><Mono className="text-xs font-bold" style={{ textShadow: "0 1px 3px rgba(0,0,0,.6)" }}>{kfmt(r.likes + (r.likedByMe ? 1 : 0))}</Mono></button>
         <button onClick={() => onComments && onComments(r)} className="flex flex-col items-center gap-1 active:scale-90" style={{ color: "#fff" }}><MessageCircle size={32} style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,.4))" }} /><Mono className="text-xs font-bold" style={{ textShadow: "0 1px 3px rgba(0,0,0,.6)" }}>{r.comments}</Mono></button>
         <button onClick={() => onSave(r.id)} className="flex flex-col items-center gap-1 active:scale-90" style={{ color: r.savedByMe ? C.star : "#fff" }}><Bookmark size={31} fill={r.savedByMe ? C.star : "none"} style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,.4))" }} /></button>
-        <button onClick={() => { const url = typeof location !== "undefined" ? location.origin : "https://mzera2.vercel.app"; if (navigator.share) { navigator.share({ title: "mzera", text: r.caption || "ნახე ეს reel mzera-ზე", url }).catch(() => {}); } else if (navigator.clipboard) { navigator.clipboard.writeText(url).then(() => flash && flash("ლინკი დაკოპირდა 🔗")).catch(() => flash && flash("ლინკი: " + url)); } else { flash && flash("ლინკი: " + url); } }} className="flex flex-col items-center gap-1 active:scale-90" style={{ color: "#fff" }}><Send size={31} style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,.4))" }} /><Mono className="text-xs font-bold" style={{ textShadow: "0 1px 3px rgba(0,0,0,.6)" }}>{r.shares}</Mono></button>
+        <button onClick={() => { const url = typeof location !== "undefined" ? location.origin : "https://mzera2.vercel.app"; if (navigator.share) { navigator.share({ title: "mzera", text: r.caption || t("reel.shareText"), url }).catch(() => {}); } else if (navigator.clipboard) { navigator.clipboard.writeText(url).then(() => flash && flash(t("link.copied"))).catch(() => flash && flash(t("link.prefix") + url)); } else { flash && flash(t("link.prefix") + url); } }} className="flex flex-col items-center gap-1 active:scale-90" style={{ color: "#fff" }}><Send size={31} style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,.4))" }} /><Mono className="text-xs font-bold" style={{ textShadow: "0 1px 3px rgba(0,0,0,.6)" }}>{r.shares}</Mono></button>
       </div>
       <div className="absolute left-3 right-16 text-white" style={{ bottom: 100 }}>
         <button onClick={() => onOpenProfile(u.id)} className="flex items-center gap-1.5 mb-2"><span className="font-bold text-[15px]" style={{ fontFamily: DISPLAY }}>@{u.handle}</span>{u.verified && <ShieldCheck size={14} />}</button>
@@ -859,13 +866,13 @@ export function ReelCreate({ onClose, onPublish, onUpload, onUploadThumb, flash 
     setUp(true); setUpSize(mb < 1 ? Math.round(f.size / 1024) + "KB" : mb.toFixed(1) + "MB");
     try {
       const { v, duration } = await probe(f);
-      if (duration && duration > 180) { flash && flash("ვიდეო გრძელია — მაქს. 3 წუთი (შენი: " + Math.round(duration) + "წმ)"); setUp(false); e.target.value = ""; return; }
+      if (duration && duration > 180) { flash && flash(t("video.tooLongPre") + Math.round(duration) + t("video.tooLongPost")); setUp(false); e.target.value = ""; return; }
       setDur(duration ? Math.round(duration) : null);
       let thumbFile = null; if (v) { try { thumbFile = await grabThumb(v); } catch (er) {} }
       const url = await onUpload(f);
       let turl = null; if (thumbFile && onUploadThumb) { try { turl = await onUploadThumb(thumbFile); } catch (er) {} }
       setVid(url); setThumb(turl);
-    } catch (err) { flash && flash("ატვირთვა ვერ მოხერხდა: " + (err && err.message ? err.message : "სცადე თავიდან")); }
+    } catch (err) { flash && flash(t("video.uploadFailedPre") + (err && err.message ? err.message : t("video.tryAgain"))); }
     setUp(false); e.target.value = "";
   };
   return (
@@ -933,7 +940,11 @@ export const SettingsSection = ({ title, children }) => <div className="mt-5"><d
 
 export const SettingsRow = ({ label, sub, on, onToggle, first }) => <div className="flex items-center justify-between px-4 py-3" style={{ borderTop: first ? "none" : `1px solid ${C.lineSoft}` }}><div className="pr-3"><div className="text-[15px]" style={{ color: C.ink }}>{label}</div>{sub && <div className="text-[12px] mt-0.5" style={{ color: C.faint }}>{sub}</div>}</div><Switch on={on} onClick={onToggle} /></div>;
 
-export const FILTERS = [["ნორმ", "none"], ["მონო", "grayscale(1)"], ["თბილი", "sepia(.4) saturate(1.5) hue-rotate(-10deg)"], ["ცივი", "saturate(1.2) hue-rotate(18deg) brightness(1.05)"], ["ვივიდი", "saturate(1.8) contrast(1.1)"], ["ფეიდი", "contrast(.85) brightness(1.12) saturate(.85)"]];
+// a function (not a precomputed array) so the labels stay reactive to a
+// language change — see the notifVerb() comment above for why.
+export function getFilters() {
+  return [[t("filter.normal"), "none"], [t("filter.mono"), "grayscale(1)"], [t("filter.warm"), "sepia(.4) saturate(1.5) hue-rotate(-10deg)"], [t("filter.cool"), "saturate(1.2) hue-rotate(18deg) brightness(1.05)"], [t("filter.vivid"), "saturate(1.8) contrast(1.1)"], [t("filter.fade"), "contrast(.85) brightness(1.12) saturate(.85)"]];
+}
 
 export const STORY_STICKERS = ["❤️", "🔥", "😎", "✨", "🎉", "📍", "☕", "🌅", "💯", "👀", "🥳", "🙌"];
 
