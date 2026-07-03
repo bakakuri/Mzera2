@@ -809,14 +809,19 @@ export default function App() {
         *{box-sizing:border-box}
         html,body{margin:0;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
         .no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
-        @keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+        /* these end on transform:none (not translateY(0)/translateX(0)) because animation-fill-mode:both
+           keeps that end value applied forever, and any non-"none" transform — even the identity one —
+           creates a new containing block for fixed-position descendants. Every full-screen "fixed inset-0"
+           modal rendered inside an animated post card or tab (repost sheet, lightbox, reactors list, ...)
+           was getting sized to that small card instead of the viewport. */
+        @keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
         @keyframes pin{0%{opacity:0;transform:translate(-50%,8px) scale(.96)}100%{opacity:1;transform:translate(-50%,0) scale(1)}}
         @keyframes tdot{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
         @keyframes floatUp{0%{opacity:0;transform:translateY(20px) scale(.9)}12%{opacity:1;transform:translateY(0) scale(1)}75%{opacity:1;transform:translateY(-90px)}100%{opacity:0;transform:translateY(-140px) scale(.95)}}
         @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes pulse{0%{transform:translate(-50%,-50%) scale(.6);opacity:.7}100%{transform:translate(-50%,-50%) scale(1.6);opacity:0}}
         @keyframes fadeOnly{from{opacity:0}to{opacity:1}}
-        @keyframes slideIn{from{opacity:0;transform:translateX(22px)}to{opacity:1;transform:translateX(0)}}
+        @keyframes slideIn{from{opacity:0;transform:translateX(22px)}to{opacity:1;transform:none}}
         .fadein{animation:fadeOnly .35s ease both}
         .slidein{animation:slideIn .28s cubic-bezier(.2,.8,.2,1) both}
         .stagger>*{animation:up .5s cubic-bezier(.22,.61,.36,1) both}
