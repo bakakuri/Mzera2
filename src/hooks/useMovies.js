@@ -43,9 +43,15 @@ export function useMovies({ tab, session, flash, dbErr }) {
   const getFilmReviews = (filmId) => filmsApi.reviews(filmId).then(rows => rows.map(mapDbReview));
   const addFilmReviewApi = (filmId, rating, text) => filmsApi.addReview(filmId, rating, text);
 
+  const [pendingFilm, setPendingFilm] = useState(null);
+  // opening a film from search may reference one not yet on the loaded page —
+  // splice it in so the detail view (matched by id) can actually find it
+  const ensureFilmLoaded = (film) => setFilms(fs => fs.some(f => f.id === film.id) ? fs : [film, ...fs]);
+
   return {
     films, filmWatch, filmCursor, filmMore, filmLoadingMore, filmSentinelRef,
     loadFilms, loadMoreFilms, loadFilmWatch, onSetFilmWatch, onClearFilmWatch,
     onNewFilm, onEditFilm, onDeleteFilm, getFilmReviews, addFilmReviewApi,
+    pendingFilm, setPendingFilm, ensureFilmLoaded,
   };
 }

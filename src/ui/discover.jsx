@@ -77,8 +77,9 @@ export function Forum({ threads, onReply, onVote, onNew, onOpenProfile, onEdit, 
   );
 }
 
-export function Market({ listings, onSave, onNew, onMessage, onOpenProfile, flash, live, onOrder, getReviews, onAddReview, onUpload, onEdit, onDelete, sentinelRef, hasMore, loadingMore }) {
+export function Market({ listings, onSave, onNew, onMessage, onOpenProfile, flash, live, onOrder, getReviews, onAddReview, onUpload, onEdit, onDelete, sentinelRef, hasMore, loadingMore, pendingOpen, clearPending }) {
   const [cat, setCat] = useState("ყველა"); const [openId, setOpenId] = useState(null); const [creating, setCreating] = useState(false); const [checkout, setCheckout] = useState(null); const [editing, setEditing] = useState(null); const [confirmDel, setConfirmDel] = useState(false);
+  useEffect(() => { if (pendingOpen) { setOpenId(pendingOpen); clearPending && clearPending(); } }, [pendingOpen]);
   const [reviews, setReviews] = useState({}); const [writing, setWriting] = useState(false); const [rStars, setRStars] = useState(5); const [rText, setRText] = useState("");
   useEffect(() => { if (!openId) return; const it2 = listings.find(l => l.id === openId); if (!it2 || !getReviews) return; const sid = it2.sellerId; getReviews(sid).then(list => setReviews(rv => ({ ...rv, [sid]: list }))).catch(() => {}); }, [openId]);
   const it = listings.find(l => l.id === openId);

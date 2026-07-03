@@ -14,12 +14,12 @@ const need = () => {
 
 /* ───────────── AUTH ───────────── */
 export const auth = {
-  signUp: async (email, password, username, name) => {
+  signUp: async (email, password, username, name, refCode) => {
     const sb = need();
     const { data, error } = await sb.auth.signUp({
       email,
       password,
-      options: { data: { username, name } },
+      options: { data: { username, name, ...(refCode ? { ref_code: refCode } : {}) } },
     });
     if (error) throw error;
     return data;
@@ -95,6 +95,16 @@ export const profiles = {
   unblock: async (id) => {
     const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;
     await sb.from("user_blocks").delete().eq("blocker_id", uid).eq("blocked_id", id);
+  },
+  myReferralStats: async () => {
+    const { data, error } = await need().rpc("my_referral_stats");
+    if (error) throw error;
+    return (data && data[0]) || null;
+  },
+  myReferredUsers: async () => {
+    const { data, error } = await need().rpc("my_referred_users");
+    if (error) throw error;
+    return data || [];
   },
   blockedList: async () => {
     const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;
@@ -687,6 +697,12 @@ export const market = {
     if (error) throw error;
     return data;
   },
+  search: async (q, limit = 20) => {
+    const t = "%" + String(q).replace(/[%,()]/g, "") + "%";
+    const { data, error } = await need().from("listings").select("*, seller:profiles!listings_seller_id_fkey(*)").or(`title.ilike.${t},category.ilike.${t}`).order("created_at", { ascending: false }).limit(limit);
+    if (error) throw error;
+    return data || [];
+  },
 };
 
 /* ───────────── FILMS (user-submitted movie catalog) ───────────── */
@@ -780,6 +796,12 @@ export const music = {
     return data;
   },
   incrementPlays: async (id) => { const { error } = await need().rpc("increment_song_plays", { p_song_id: id }); if (error) throw error; },
+  search: async (q, limit = 20) => {
+    const t = "%" + String(q).replace(/[%,()]/g, "") + "%";
+    const { data, error } = await need().from("songs").select("*, author:profiles!songs_author_id_fkey(*)").or(`title.ilike.${t},artist.ilike.${t}`).order("created_at", { ascending: false }).limit(limit);
+    if (error) throw error;
+    return data || [];
+  },
 };
 
 /* ───────────── STORIES ───────────── */
@@ -1137,6 +1159,8 @@ export const admin = {
   deleteUser: async (id) => { const { error } = await need().rpc("admin_delete_user", { target: id }); if (error) throw error; },
   broadcast: async (msg) => { const { data, error } = await need().rpc("admin_broadcast", { msg }); if (error) throw error; return data; },
   stats: async () => { const { data, error } = await need().rpc("admin_stats"); if (error) throw error; return data; },
+  // 14-day daily buckets (new users/posts/comments) for the analytics dashboard's trend chart
+  dailyTrends: async () => { const { data, error } = await need().rpc("admin_daily_trends"); if (error) throw error; return data || []; },
   deleteListing: async (id) => { const { error } = await need().from("listings").delete().eq("id", id); if (error) throw error; },
   deleteThread: async (id) => { const { error } = await need().from("threads").delete().eq("id", id); if (error) throw error; },
   deleteReel: async (id) => { const { error } = await need().from("reels").delete().eq("id", id); if (error) throw error; },

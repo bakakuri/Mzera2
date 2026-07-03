@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import {
   postsApi, reactionsApi, commentsApi, profilesApi, pollsApi,
-  mapDbPost, mergeProfile, timeAgo, ME, USERS, hasSupabase, resolveImg,
+  filmsApi, musicApi, marketApi,
+  mapDbPost, mapDbFilm, mapDbSong, mapDbListing, mergeProfile, timeAgo, ME, USERS, hasSupabase, resolveImg,
 } from "../ui/core";
 
 const lsGet = (k, def) => { try { const v = typeof localStorage !== "undefined" && localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch (e) { return def; } };
@@ -132,11 +133,15 @@ export function useFeed({ tab, session, flash, dbErr, setDbError, gainXp }) {
 
   const runSearch = async (term) => {
     const q = (term || "").trim();
-    if (!q || !hasSupabase) return { people: [], posts: [] };
-    let people = [], foundPosts = [];
+    const empty = { people: [], posts: [], films: [], songs: [], listings: [] };
+    if (!q || !hasSupabase) return empty;
+    let people = [], foundPosts = [], foundFilms = [], foundSongs = [], foundListings = [];
     try { const profs = await profilesApi.search(q, 20); profs.forEach(p => mergeProfile(p)); people = profs.filter(p => p.id !== ME).map(p => USERS[p.id]).filter(Boolean); } catch (e) {}
     try { const rows = await postsApi.search(q, 20); foundPosts = rows.map(mapDbPost); } catch (e) {}
-    return { people, posts: foundPosts };
+    try { const rows = await filmsApi.page(null, { search: q }, 12); foundFilms = rows.map(mapDbFilm); } catch (e) {}
+    try { const rows = await musicApi.search(q, 12); foundSongs = rows.map(mapDbSong); } catch (e) {}
+    try { const rows = await marketApi.search(q, 12); foundListings = rows.map(mapDbListing); } catch (e) {}
+    return { people, posts: foundPosts, films: foundFilms, songs: foundSongs, listings: foundListings };
   };
 
   const onLike = (id) => setPosts(ps => ps.map(p => p.id === id ? { ...p, likedByMe: !p.likedByMe, likes: p.likes + (p.likedByMe ? -1 : 1) } : p));

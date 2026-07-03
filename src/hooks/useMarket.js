@@ -37,9 +37,15 @@ export function useMarket({ tab, flash, dbErr, setDbError }) {
   const getReviews = (sellerId) => marketApi.reviews(sellerId).then(rows => rows.map(mapDbReview));
   const addReviewApi = (sellerId, rating, text) => marketApi.addReview(sellerId, rating, text);
 
+  const [pendingListing, setPendingListing] = useState(null);
+  // opening a listing from search may reference one not yet on the loaded page —
+  // splice it in so the detail view (matched by id) can actually find it
+  const ensureListingLoaded = (listing) => setListings(ls => ls.some(l => l.id === listing.id) ? ls : [listing, ...ls]);
+
   return {
     listings, listCursor, listMore, listLoadingMore, listSentinelRef,
     loadListings, loadMoreListings, onListingSave, onNewListing, onEditListing,
     onDeleteListing, onOrder, getReviews, addReviewApi,
+    pendingListing, setPendingListing, ensureListingLoaded,
   };
 }

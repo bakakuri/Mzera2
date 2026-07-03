@@ -244,7 +244,7 @@ export function Notifications({ notifs, onOpenProfile, onOpenPost, isFollowing, 
 
 /* ─────────────────────────  ADMIN  ───────────────────────── */
 
-export function Admin({ reports, posts, allUsers, userCount, postCount, online, stats, onResolve, onRemovePost, onSetVerified, onSetAdmin, onOpenProfile, onBanUser, onGrantXp, onSetXp, onDeleteUser, onBroadcast, pendingPublic, onReviewPublic, listings, threads, reels, onDeleteListing, onDeleteThread, onDeleteReel, onEditListing, onEditThread, groups, events, films, songs, onEditGroup, onDeleteGroup, onEditEvent, onDeleteEvent, onEditFilm, onDeleteFilm, onEditSong, onDeleteSong }) {
+export function Admin({ reports, posts, allUsers, userCount, postCount, online, stats, dailyTrends, onResolve, onRemovePost, onSetVerified, onSetAdmin, onOpenProfile, onBanUser, onGrantXp, onSetXp, onDeleteUser, onBroadcast, pendingPublic, onReviewPublic, listings, threads, reels, onDeleteListing, onDeleteThread, onDeleteReel, onEditListing, onEditThread, groups, events, films, songs, onEditGroup, onDeleteGroup, onEditEvent, onDeleteEvent, onEditFilm, onDeleteFilm, onEditSong, onDeleteSong }) {
   const [seg, setSeg] = useState("reports"); const [q, setQ] = useState(""); const [cseg, setCseg] = useState("listings"); const [confirm, setConfirm] = useState(null); const [bcast, setBcast] = useState(""); const [delUser, setDelUser] = useState(null);
   const open = reports.filter(r => r.status === "open");
   const S = stats || {};
@@ -252,10 +252,45 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
   const ql = q.trim().toLowerCase();
   const users = (allUsers || []).filter(u => !ql || (u.name || "").toLowerCase().includes(ql) || (u.username || "").toLowerCase().includes(ql));
   const allPosts = (posts || []).filter(p => !p.hidden).filter(p => !ql || (p.text || "").toLowerCase().includes(ql) || (USERS[p.authorId] && USERS[p.authorId].name.toLowerCase().includes(ql)));
+  const topGroups = (groups || []).slice().sort((a, b) => (b.members || 0) - (a.members || 0)).slice(0, 5);
+  const topThreads = (threads || []).slice().sort((a, b) => ((b.votes || 0) + (b.replies ? b.replies.length : 0)) - ((a.votes || 0) + (a.replies ? a.replies.length : 0))).slice(0, 5);
   return (
     <div className="pb-28 md:pb-10">
       <div className="flex items-center gap-2 px-4 pt-5 pb-4"><Shield size={24} style={{ color: C.accent }} /><Title>მოდერაცია</Title></div>
       <div className="grid grid-cols-2 gap-2.5 px-4 mb-4">{statCards.map(s => <div key={s.l} className="p-4" style={card()}><div className="rounded-xl flex items-center justify-center mb-2.5" style={{ width: 36, height: 36, background: s.c + "22" }}><s.i size={18} color={s.c} /></div><Mono className="text-2xl font-bold" style={{ color: C.ink }}>{(s.v || 0).toLocaleString()}</Mono><div className="text-[12px]" style={{ color: C.muted }}>{s.l}</div></div>)}</div>
+
+      {dailyTrends && dailyTrends.length > 0 && <div className="px-4 mb-4">
+        <div className="p-4" style={card()}>
+          <div className="flex items-center gap-2 mb-3"><TrendingUp size={16} style={{ color: C.accent }} /><span className="font-bold text-[14px]" style={{ color: C.ink }}>ტრენდები — ბოლო 14 დღე</span></div>
+          <div className="space-y-3">
+            {[["new_users", "ახალი მომხმარებელი", C.accent], ["new_posts", "პოსტი", C.online], ["new_comments", "კომენტარი", C.cyan]].map(([key, label, color]) => {
+              const vals = dailyTrends.map(d => Number(d[key] || 0));
+              const max = Math.max(1, ...vals);
+              const total = vals.reduce((a, v) => a + v, 0);
+              return (
+                <div key={key}>
+                  <div className="flex items-center justify-between mb-1"><span className="text-[12px]" style={{ color: C.muted }}>{label}</span><Mono style={{ fontSize: 12, color: C.ink, fontWeight: 700 }}>{total}</Mono></div>
+                  <div className="flex items-end gap-[3px]" style={{ height: 36 }}>
+                    {dailyTrends.map((d, i) => <div key={d.day} title={`${d.day}: ${vals[i]}`} className="flex-1 rounded-t" style={{ height: Math.max(3, Math.round((vals[i] / max) * 36)), background: color, opacity: 0.85, minWidth: 4 }} />)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex justify-between mt-2"><Mono style={{ fontSize: 10, color: C.faint }}>{dailyTrends[0] && dailyTrends[0].day}</Mono><Mono style={{ fontSize: 10, color: C.faint }}>{dailyTrends[dailyTrends.length - 1] && dailyTrends[dailyTrends.length - 1].day}</Mono></div>
+        </div>
+      </div>}
+
+      {(topGroups.length > 0 || topThreads.length > 0) && <div className="grid grid-cols-1 gap-2.5 px-4 mb-4 md:grid-cols-2">
+        {topGroups.length > 0 && <div className="p-4" style={card()}>
+          <div className="flex items-center gap-2 mb-2.5"><Users size={16} style={{ color: C.accent }} /><span className="font-bold text-[14px]" style={{ color: C.ink }}>ყველაზე აქტიური ჯგუფები</span></div>
+          <div className="space-y-2">{topGroups.map((g, i) => <div key={g.id} className="flex items-center gap-2.5"><Mono style={{ fontSize: 12, color: C.faint, width: 14 }}>{i + 1}</Mono><Pic src={g.cover} grad={GRADS[hashIdx(g.id, GRADS.length)]} round={8} style={{ width: 32, height: 32 }} className="shrink-0" /><span className="text-[13px] font-semibold truncate flex-1" style={{ color: C.ink }}>{g.name}</span><Mono style={{ fontSize: 11, color: C.muted }}>{g.members} წევრი</Mono></div>)}</div>
+        </div>}
+        {topThreads.length > 0 && <div className="p-4" style={card()}>
+          <div className="flex items-center gap-2 mb-2.5"><MessageSquare size={16} style={{ color: C.accent }} /><span className="font-bold text-[14px]" style={{ color: C.ink }}>ყველაზე აქტიური თემები</span></div>
+          <div className="space-y-2">{topThreads.map((t, i) => <div key={t.id} className="flex items-center gap-2.5"><Mono style={{ fontSize: 12, color: C.faint, width: 14 }}>{i + 1}</Mono><span className="text-[13px] font-semibold truncate flex-1" style={{ color: C.ink }}>{t.title}</span><Mono style={{ fontSize: 11, color: C.muted }}>{t.votes || 0} ხმა · {(t.replies ? t.replies.length : 0)} პასუხი</Mono></div>)}</div>
+        </div>}
+      </div>}
 
       <div className="px-4 mb-3"><div className="flex gap-1 p-1 rounded-2xl overflow-x-auto no-scrollbar" style={{ background: C.surfaceMuted }}>{[["reports", "რეპორტები"], ["pending", "🌍 საჯარო" + ((pendingPublic || []).length ? " (" + pendingPublic.length + ")" : "")], ["users", "მომხმარებლები"], ["posts", "პოსტები"], ["content", "კონტენტი"], ["broadcast", "📢 გზავნილი"]].map(([k, l]) => <button key={k} onClick={() => setSeg(k)} className="flex-1 py-2 px-3 rounded-xl text-[13px] font-bold transition whitespace-nowrap" style={seg === k ? { background: C.surface, color: C.accent, boxShadow: SH.card } : { color: C.muted }}>{l}</button>)}</div></div>
 
@@ -504,7 +539,7 @@ export function Progress({ xp, posts, myFollowers, questData, onClaim }) {
 
 /* ─────────────────────────  SETTINGS  ───────────────────────── */
 
-export function SettingsView({ settings, setSettings, meProfile, setMeProfile, mode, setMode, onClose, flash, onSignOut, onUploadAvatar, pushState, onTogglePush, blockedIds, mutedIds, onUnblock, onUnmute, onOpenProfile, following, closeFriends, onToggleCloseFriend, onExportData, onDeleteAccount, birthday, onSetBirthday }) {
+export function SettingsView({ settings, setSettings, meProfile, setMeProfile, mode, setMode, onClose, flash, onSignOut, onUploadAvatar, pushState, onTogglePush, blockedIds, mutedIds, onUnblock, onUnmute, onOpenProfile, following, closeFriends, onToggleCloseFriend, onExportData, onDeleteAccount, birthday, onSetBirthday, referralCode, invitedCount, invitedUsers, inviteLink, onCopyInviteLink }) {
   const set = (k, v) => setSettings(s => ({ ...s, [k]: v }));
   const [delMode, setDelMode] = useState(false); const [delTxt, setDelTxt] = useState("");
   const tog = (k) => setSettings(s => ({ ...s, [k]: !s[k] }));
@@ -518,6 +553,17 @@ export function SettingsView({ settings, setSettings, meProfile, setMeProfile, m
             <div className="px-4 py-3"><div className="text-[12px] mb-1" style={{ color: C.faint }}>სახელი</div><input value={meProfile.name} onChange={e => setMeProfile(p => ({ ...p, name: e.target.value }))} className="w-full bg-transparent outline-none text-[15px]" style={{ color: C.ink }} /></div>
             <div className="px-4 py-3" style={{ borderTop: `1px solid ${C.lineSoft}` }}><div className="text-[12px] mb-1" style={{ color: C.faint }}>ბიო</div><textarea value={meProfile.bio} onChange={e => setMeProfile(p => ({ ...p, bio: e.target.value }))} rows={2} className="w-full bg-transparent outline-none text-[15px] resize-none" style={{ color: C.ink, lineHeight: 1.5 }} /></div>
           </SettingsSection>
+          {referralCode && <SettingsSection title="მოწვევა მეგობრების 🎁">
+            <div className="px-4 py-3">
+              <div className="text-[13px] mb-2.5" style={{ color: C.muted }}>მოიწვიე მეგობარი — შენც და ისიც XP-ს მიიღებთ ბონუსად</div>
+              <div className="flex items-center gap-2 px-3.5 py-3 rounded-xl" style={{ background: C.surfaceMuted, border: `1px solid ${C.line}` }}>
+                <Mono className="flex-1 truncate text-[13px]" style={{ color: C.ink }}>{inviteLink}</Mono>
+                <button onClick={onCopyInviteLink} className="px-3 py-1.5 rounded-lg text-[12px] font-bold shrink-0 active:scale-95" style={{ backgroundImage: GBRAND, color: "#fff" }}><Copy size={13} className="inline mr-1" />კოპირება</button>
+              </div>
+              <div className="flex items-center gap-1.5 mt-2.5"><UserPlus size={14} style={{ color: C.accent }} /><span className="text-[13px] font-bold" style={{ color: C.ink }}>{invitedCount || 0} მოწვეული მეგობარი</span></div>
+              {invitedUsers && invitedUsers.length > 0 && <div className="flex -space-x-2 mt-2">{invitedUsers.slice(0, 8).map(id => <div key={id} style={{ border: `2px solid ${C.surface}`, borderRadius: "50%" }}><Avatar id={id} size={30} /></div>)}</div>}
+            </div>
+          </SettingsSection>}
           <SettingsSection title="ვიზუალი">
             <div className="px-4 py-3"><ThemeToggle mode={mode} setMode={setMode} full /></div>
             <div className="px-4 py-3" style={{ borderTop: `1px solid ${C.lineSoft}` }}><div className="text-[13px] mb-2" style={{ color: C.muted }}>ენა</div><div className="flex gap-1 p-1 rounded-2xl" style={{ background: C.surfaceMuted }}>{[["ka", "ქართული"], ["en", "English"]].map(([k, l]) => <button key={k} onClick={() => set("lang", k)} className="flex-1 py-2 rounded-xl text-sm font-bold transition" style={settings.lang === k ? { background: C.surface, color: C.accent, boxShadow: SH.card } : { color: C.muted }}>{l}</button>)}</div></div>
@@ -651,23 +697,28 @@ export function Leaderboard({ xp, allUsers, posts, onOpenProfile }) {
 
 /* ─────────────────────────  SEARCH  ───────────────────────── */
 
-export function SearchView({ posts, onOpenProfile, onTag, onClose, runSearch }) {
+const EMPTY_SEARCH = { people: [], posts: [], films: [], songs: [], listings: [] };
+export function SearchView({ posts, onOpenProfile, onTag, onClose, runSearch, onOpenFilm, onOpenSong, onOpenListing }) {
   const [q, setQ] = useState(""); const ql = q.trim().toLowerCase();
-  const [results, setResults] = useState({ people: [], posts: [] });
+  const [results, setResults] = useState(EMPTY_SEARCH);
   const [searching, setSearching] = useState(false);
   useEffect(() => {
     const term = q.trim();
-    if (!term) { setResults({ people: [], posts: [] }); setSearching(false); return; }
+    if (!term) { setResults(EMPTY_SEARCH); setSearching(false); return; }
     setSearching(true);
     let active = true;
     const h = setTimeout(async () => {
-      try { const r = runSearch ? await runSearch(term) : { people: [], posts: [] }; if (active) setResults(r || { people: [], posts: [] }); }
+      try { const r = runSearch ? await runSearch(term) : EMPTY_SEARCH; if (active) setResults(r || EMPTY_SEARCH); }
       catch (e) {} finally { if (active) setSearching(false); }
     }, 320);
     return () => { active = false; clearTimeout(h); };
   }, [q]);
   const people = results.people || [];
   const foundPosts = results.posts || [];
+  const foundFilms = results.films || [];
+  const foundSongs = results.songs || [];
+  const foundListings = results.listings || [];
+  const noResults = ql && !searching && !people.length && !foundPosts.length && !foundFilms.length && !foundSongs.length && !foundListings.length;
   const tags = ql ? computeTrends(posts).filter(t => t.tag.toLowerCase().includes(ql)) : computeTrends(posts);
   const suggested = Object.values(USERS).filter(u => u.id !== ME).slice(0, 4);
   const goTag = (t) => { onTag(t); onClose(); };
@@ -677,15 +728,19 @@ export function SearchView({ posts, onOpenProfile, onTag, onClose, runSearch }) 
       <div className="w-full max-w-[600px] flex flex-col" style={{ height: "100dvh", borderLeft: `1px solid ${C.line}`, borderRight: `1px solid ${C.line}` }}>
         <div className="flex items-center gap-2 px-3 py-2.5 shrink-0" style={{ background: C.surface, borderBottom: `1px solid ${C.line}` }}>
           <button onClick={onClose} className="active:scale-90" style={{ color: C.ink2 }}><ArrowLeft size={22} /></button>
-          <div className="flex-1 flex items-center gap-2 px-3.5 py-2.5 rounded-full" style={{ background: C.surfaceMuted, border: `1px solid ${C.line}` }}><Search size={18} style={{ color: C.faint }} /><input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="ძებნა — ხალხი, ჰეშთეგი, პოსტი" className="flex-1 bg-transparent text-[15px] outline-none" style={{ color: C.ink }} />{q && <button onClick={() => setQ("")} style={{ color: C.faint }}><X size={18} /></button>}</div>
+          <div className="flex-1 flex items-center gap-2 px-3.5 py-2.5 rounded-full" style={{ background: C.surfaceMuted, border: `1px solid ${C.line}` }}><Search size={18} style={{ color: C.faint }} /><input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="ძებნა — ხალხი, პოსტი, ფილმი, მუსიკა, განცხადება" className="flex-1 bg-transparent text-[15px] outline-none" style={{ color: C.ink }} />{q && <button onClick={() => setQ("")} style={{ color: C.faint }}><X size={18} /></button>}</div>
         </div>
         <div className="flex-1 overflow-y-auto">
           {searching && <div className="flex justify-center items-center py-8"><div style={{ width: 26, height: 26, border: `3px solid ${C.lineSoft}`, borderTopColor: C.accent, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} /></div>}
           {!ql && <div className="p-4"><div className="flex items-center gap-2 mb-3"><Star size={16} style={{ color: C.accent }} /><span className="text-[14px] font-bold" style={{ color: C.ink }}>შემოთავაზებული</span></div><div className="space-y-1">{suggested.map(u => <button key={u.id} onClick={() => goUser(u.id)} className="w-full flex items-center gap-3 px-2 py-2.5 rounded-xl hover:opacity-80"><Avatar id={u.id} size={44} /><div className="flex-1 text-left min-w-0"><Name id={u.id} className="text-[15px]" /><Mono className="block truncate" style={{ fontSize: 12, color: C.faint }}>@{u.handle}</Mono></div></button>)}</div></div>}
           {ql && people.length > 0 && <div className="pt-2"><div className="px-4 py-1.5 text-[12px] font-bold uppercase" style={{ color: C.faint, fontFamily: MONO }}>ხალხი</div>{people.map(u => <button key={u.id} onClick={() => goUser(u.id)} className="w-full flex items-center gap-3 px-4 py-2.5 hover:opacity-80"><div className="relative"><Avatar id={u.id} size={44} />{u.online && <span className="absolute bottom-0 right-0"><Dot size={11} /></span>}</div><div className="flex-1 text-left min-w-0"><Name id={u.id} className="text-[15px]" /><Mono className="block truncate" style={{ fontSize: 12, color: C.faint }}>@{u.handle}</Mono></div></button>)}</div>}
           {(ql || tags.length > 0) && <div className="pt-2"><div className="px-4 py-1.5 text-[12px] font-bold uppercase" style={{ color: C.faint, fontFamily: MONO }}>ჰეშთეგები</div>{ql && <button onClick={() => goTag(ql)} className="w-full flex items-center gap-3 px-4 py-2.5 hover:opacity-80"><div className="rounded-xl flex items-center justify-center" style={{ width: 44, height: 44, background: C.accentSoft }}><Hash size={20} style={{ color: C.accent }} /></div><div className="flex-1 text-left"><div className="font-bold text-[15px]" style={{ color: C.ink }}>#{ql}</div><Mono style={{ fontSize: 12, color: C.faint }}>ნახე ყველა პოსტი →</Mono></div></button>}{tags.filter(t => t.tag.toLowerCase() !== ql).map(t => <button key={t.tag} onClick={() => goTag(t.tag)} className="w-full flex items-center gap-3 px-4 py-2.5 hover:opacity-80"><div className="rounded-xl flex items-center justify-center" style={{ width: 44, height: 44, background: C.accentSoft }}><Hash size={20} style={{ color: C.accent }} /></div><div className="flex-1 text-left"><div className="font-bold text-[15px]" style={{ color: C.ink }}>#{t.tag}</div><Mono style={{ fontSize: 12, color: C.faint }}>{t.posts} პოსტი</Mono></div></button>)}</div>}
-          {ql && foundPosts.length > 0 && <div className="pt-2 pb-6"><div className="px-4 py-1.5 text-[12px] font-bold uppercase" style={{ color: C.faint, fontFamily: MONO }}>პოსტები</div><div className="px-3 space-y-2">{foundPosts.map(p => <button key={p.id} onClick={() => goUser(p.authorId)} className="w-full p-3 flex gap-3 text-left" style={card()}><Avatar id={p.authorId} size={36} /><div className="min-w-0 flex-1"><Name id={p.authorId} className="text-[13px]" /><div className="text-[13px] line-clamp-2" style={{ color: C.ink2 }}>{p.text}</div></div>{p.image && <Pic src={p.image} round={10} style={{ width: 48, height: 48 }} className="shrink-0" />}</button>)}</div></div>}
-          {ql && !searching && people.length === 0 && foundPosts.length === 0 && <div className="px-4 pt-6 pb-2 text-center"><Mono style={{ fontSize: 13, color: C.faint }}>ხალხი ან პოსტი ვერ მოიძებნა — სცადე ჰეშთეგი ზემოთ</Mono></div>}
+          {ql && foundPosts.length > 0 && <div className="pt-2"><div className="px-4 py-1.5 text-[12px] font-bold uppercase" style={{ color: C.faint, fontFamily: MONO }}>პოსტები</div><div className="px-3 space-y-2">{foundPosts.map(p => <button key={p.id} onClick={() => goUser(p.authorId)} className="w-full p-3 flex gap-3 text-left" style={card()}><Avatar id={p.authorId} size={36} /><div className="min-w-0 flex-1"><Name id={p.authorId} className="text-[13px]" /><div className="text-[13px] line-clamp-2" style={{ color: C.ink2 }}>{p.text}</div></div>{p.image && <Pic src={p.image} round={10} style={{ width: 48, height: 48 }} className="shrink-0" />}</button>)}</div></div>}
+          {ql && foundFilms.length > 0 && <div className="pt-2"><div className="px-4 py-1.5 text-[12px] font-bold uppercase" style={{ color: C.faint, fontFamily: MONO }}>ფილმები</div><div className="px-3 space-y-2">{foundFilms.map(f => <button key={f.id} onClick={() => { onOpenFilm && onOpenFilm(f); }} className="w-full p-3 flex items-center gap-3 text-left" style={card()}><Pic src={f.poster} grad={GRADS[hashIdx(f.id, GRADS.length)]} round={10} style={{ width: 46, height: 46 }} className="shrink-0" /><div className="min-w-0 flex-1"><div className="font-bold text-[14px] truncate" style={{ color: C.ink }}>{f.title}</div><Mono style={{ fontSize: 12, color: C.faint }}>{[f.year, f.genre].filter(Boolean).join(" · ")}</Mono></div><Clapperboard size={18} style={{ color: C.faint }} /></button>)}</div></div>}
+          {ql && foundSongs.length > 0 && <div className="pt-2"><div className="px-4 py-1.5 text-[12px] font-bold uppercase" style={{ color: C.faint, fontFamily: MONO }}>მუსიკა</div><div className="px-3 space-y-2">{foundSongs.map(s => <button key={s.id} onClick={() => { onOpenSong && onOpenSong(s); }} className="w-full p-3 flex items-center gap-3 text-left" style={card()}><Pic src={s.cover} grad={GRADS[hashIdx(s.id, GRADS.length)]} round={10} style={{ width: 46, height: 46 }} className="shrink-0" /><div className="min-w-0 flex-1"><div className="font-bold text-[14px] truncate" style={{ color: C.ink }}>{s.title}</div><Mono style={{ fontSize: 12, color: C.faint }} className="truncate block">{s.artist || "უცნობი"}</Mono></div><Play size={18} style={{ color: C.faint }} /></button>)}</div></div>}
+          {ql && foundListings.length > 0 && <div className="pt-2 pb-6"><div className="px-4 py-1.5 text-[12px] font-bold uppercase" style={{ color: C.faint, fontFamily: MONO }}>განცხადებები</div><div className="px-3 space-y-2">{foundListings.map(l => <button key={l.id} onClick={() => { onOpenListing && onOpenListing(l); }} className="w-full p-3 flex items-center gap-3 text-left" style={card()}><Pic src={l.image} grad={GRADS[hashIdx(l.id, GRADS.length)]} round={10} style={{ width: 46, height: 46 }} className="shrink-0" /><div className="min-w-0 flex-1"><div className="font-bold text-[14px] truncate" style={{ color: C.ink }}>{l.title}</div><div className="text-[12px]" style={{ color: C.accent, fontWeight: 700 }}>{(l.price || 0).toLocaleString()}₾</div></div><ShoppingBag size={18} style={{ color: C.faint }} /></button>)}</div></div>}
+          {noResults && <div className="px-4 pt-6 pb-2 text-center"><Mono style={{ fontSize: 13, color: C.faint }}>არაფერი მოიძებნა — სცადე ჰეშთეგი ზემოთ</Mono></div>}
+          {ql && <div className="pb-6" />}
         </div>
       </div>
     </div>

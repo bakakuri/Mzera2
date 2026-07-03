@@ -5,6 +5,7 @@ import { profilesApi, postsApi, adminApi, mapDbPost, mergeProfile, hasSupabase, 
 export function useAdmin({ tab, session, flash, dbErr, setXp, setPosts }) {
   const [allUsers, setAllUsers] = useState([]);
   const [adminStats, setAdminStats] = useState(null);
+  const [dailyTrends, setDailyTrends] = useState([]);
   const [pendingPublic, setPendingPublic] = useState([]);
   const [userCount, setUserCount] = useState(0);
   const [postCount, setPostCount] = useState(0);
@@ -13,6 +14,7 @@ export function useAdmin({ tab, session, flash, dbErr, setXp, setPosts }) {
   useEffect(() => {
     if (tab === "admin" && USERS[ME] && USERS[ME].admin && hasSupabase) {
       adminApi.stats().then(setAdminStats).catch(() => {});
+      adminApi.dailyTrends().then(setDailyTrends).catch(() => {});
       adminApi.pendingPublic().then(rows => { rows.forEach(r => { if (r.author) mergeProfile(r.author); }); setPendingPublic(rows.map(mapDbPost)); }).catch(() => {});
     }
   }, [tab]);
@@ -38,7 +40,7 @@ export function useAdmin({ tab, session, flash, dbErr, setXp, setPosts }) {
   const onReviewPublic = (id, approve) => { setPendingPublic(pp => pp.filter(p => p.id !== id)); if (approve) setPosts(ps => ps.map(p => p.id === id ? { ...p, publicStatus: "approved" } : p)); adminApi.reviewPublic(id, approve).then(() => flash(approve ? "დამტკიცდა — საჯაროა ✅" : "უარყოფილია")).catch(dbErr("მოდერაცია")); };
 
   return {
-    allUsers, adminStats, pendingPublic, userCount, postCount, reports,
+    allUsers, adminStats, dailyTrends, pendingPublic, userCount, postCount, reports,
     onReport, onResolve, onSetVerified, onSetAdmin, onBanUser, onGrantXp,
     onSetXp, onDeleteUser, onBroadcast, onReviewPublic,
   };

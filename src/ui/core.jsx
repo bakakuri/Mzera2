@@ -639,10 +639,11 @@ export const LoadingScreen = () => (
 export function AuthScreen() {
   const [mode, setMode] = useState("in"); const [email, setEmail] = useState(""); const [pass, setPass] = useState("");
   const [username, setUsername] = useState(""); const [name, setName] = useState(""); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+  const [refCode] = useState(() => { try { return new URLSearchParams(window.location.search).get("ref") || ""; } catch (e) { return ""; } });
   const submit = async () => {
     setErr(""); setBusy(true);
     try {
-      if (mode === "up") await authApi.signUp(email.trim(), pass, username.trim() || email.split("@")[0], name.trim());
+      if (mode === "up") await authApi.signUp(email.trim(), pass, username.trim() || email.split("@")[0], name.trim(), refCode);
       else await authApi.signIn(email.trim(), pass);
     } catch (e) { setErr(e.message || "შეცდომა"); setBusy(false); }
   };
@@ -655,6 +656,7 @@ export function AuthScreen() {
           {mode === "up" && <>
             <input value={name} onChange={e => setName(e.target.value)} placeholder="სახელი და გვარი" className="w-full mb-2.5 px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
             <input value={username} onChange={e => setUsername(e.target.value.replace(/\s/g, "").toLowerCase())} placeholder="username" className="w-full mb-2.5 px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}`, fontFamily: MONO }} />
+            {refCode && <div className="w-full mb-2.5 px-3.5 py-2.5 rounded-xl text-[13px] flex items-center gap-2" style={{ background: C.accentSoft, color: C.accentText }}><UserPlus size={15} /> მოწვეულია კოდით <Mono style={{ fontWeight: 700 }}>{refCode}</Mono></div>}
           </>}
           <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="ელ-ფოსტა" className="w-full mb-2.5 px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
           <input value={pass} onChange={e => setPass(e.target.value)} type="password" placeholder="პაროლი" onKeyDown={e => e.key === "Enter" && submit()} className="w-full mb-3 px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />

@@ -77,11 +77,12 @@ function NewFilm({ onClose, onCreate, onUpload, onUploadVideo, initial }) {
   );
 }
 
-export function Movies({ films, watch, onNew, onEdit, onDelete, onOpenProfile, flash, onUpload, onUploadVideo, getReviews, onAddReview, onSetWatch, onClearWatch, sentinelRef, hasMore, loadingMore }) {
+export function Movies({ films, watch, onNew, onEdit, onDelete, onOpenProfile, flash, onUpload, onUploadVideo, getReviews, onAddReview, onSetWatch, onClearWatch, sentinelRef, hasMore, loadingMore, pendingOpen, clearPending }) {
   const [genre, setGenre] = useState("ყველა");
   const [year, setYear] = useState("");
   const [q, setQ] = useState("");
   const [openId, setOpenId] = useState(null);
+  useEffect(() => { if (pendingOpen) { setOpenId(pendingOpen); clearPending && clearPending(); } }, [pendingOpen]);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState(null);
   const [confirmDel, setConfirmDel] = useState(false);

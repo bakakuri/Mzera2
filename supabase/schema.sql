@@ -1010,6 +1010,90 @@ drop policy if exists push_subscriptions_delete on public.push_subscriptions;
 create policy push_subscriptions_delete on public.push_subscriptions for delete using (auth.uid() = user_id);
 
 -- ============================================================================
+--  ADMIN ANALYTICS — daily trends for the admin dashboard's "trends by day"
+--  chart (new users/posts/comments, last 14 days). admin_stats() (the summary
+--  cards' RPC) already exists on the live project but was never checked into
+--  this file — this is purely additive and doesn't touch it.
+-- ============================================================================
+create or replace function public.admin_daily_trends()
+returns table(day date, new_users bigint, new_posts bigint, new_comments bigint)
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then
+    raise exception 'not authorized';
+  end if;
+  return query
+  select gs.day,
+    (select count(*) from public.profiles p where p.created_at::date = gs.day)::bigint as new_users,
+    (select count(*) from public.posts po where po.created_at::date = gs.day)::bigint as new_posts,
+    (select count(*) from public.comments c where c.created_at::date = gs.day)::bigint as new_comments
+  from generate_series((current_date - interval '13 days')::date, current_date, interval '1 day') as gs(day);
+end;
+$$;
+grant execute on function public.admin_daily_trends() to authenticated;
+
+-- ============================================================================
+--  REFERRAL / INVITE SYSTEM — every profile gets a stable referral_code;
+--  passing it at signup (as user_metadata.ref_code, see AuthScreen/?ref= in
+--  the app) attributes the new account to the referrer and grants a
+--  one-time XP bonus to both sides. Also documents `banned` (used by
+--  admin.setBanned in src/lib/api.js — live on the project but, like
+--  admin_stats()/admin_set_xp() etc., never checked into this file before).
+-- ============================================================================
+alter table public.profiles add column if not exists banned boolean not null default false;
+alter table public.profiles add column if not exists referral_code text;
+alter table public.profiles add column if not exists referred_by uuid references public.profiles(id);
+
+update public.profiles set referral_code = substr(replace(gen_random_uuid()::text, '-', ''), 1, 8) where referral_code is null;
+
+do $$ begin
+  alter table public.profiles add constraint profiles_referral_code_key unique (referral_code);
+exception when duplicate_object then null; end $$;
+
+create index if not exists profiles_referred_by_idx on public.profiles(referred_by);
+
+create or replace function public.handle_new_user()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  ref_id uuid;
+begin
+  if new.raw_user_meta_data->>'ref_code' is not null then
+    select id into ref_id from public.profiles where referral_code = new.raw_user_meta_data->>'ref_code' and id <> new.id limit 1;
+  end if;
+  insert into public.profiles (id, username, name, referral_code, referred_by)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1)),
+    coalesce(new.raw_user_meta_data->>'name', ''),
+    substr(replace(gen_random_uuid()::text, '-', ''), 1, 8),
+    ref_id
+  )
+  on conflict (id) do nothing;
+  if ref_id is not null then
+    update public.profiles set xp = xp + 100 where id = ref_id;
+    update public.profiles set xp = xp + 50 where id = new.id;
+  end if;
+  return new;
+end; $$;
+
+-- your own referral code + how many people you've brought in, for the invite UI
+create or replace function public.my_referral_stats()
+returns table(referral_code text, invited_count bigint)
+language sql stable security definer set search_path = public as $$
+  select p.referral_code, (select count(*) from public.profiles r where r.referred_by = p.id)
+  from public.profiles p where p.id = auth.uid();
+$$;
+grant execute on function public.my_referral_stats() to authenticated;
+
+-- the actual list of people you referred, for an "invited friends" list
+create or replace function public.my_referred_users()
+returns setof public.profiles
+language sql stable security definer set search_path = public as $$
+  select * from public.profiles where referred_by = auth.uid() order by created_at desc;
+$$;
+grant execute on function public.my_referred_users() to authenticated;
+
+-- ============================================================================
 --  REALTIME (live chat / notifications / presence)
 -- ============================================================================
 do $$ begin
