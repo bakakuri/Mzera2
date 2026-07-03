@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft, X, Star, Plus, Pencil, Trash2, Bookmark, Check, Upload, ChevronRight, Clapperboard, Play,
-  C, SH, card, Tilt, DISPLAY, MONO, GBRAND, Mono, GRADS, hashIdx, Pic, Avatar, Name, Title, Chips, Empty, Stars, FILM_GENRES, USERS, ME,
+  C, SH, card, Tilt, DISPLAY, MONO, GBRAND, Mono, GRADS, hashIdx, Pic, Avatar, Name, Title, Chips, Empty, Stars, FILM_GENRES, USERS, ME, t,
 } from "./core";
 
-function ConfirmDialog({ title, msg, confirmText = "წაშლა", onCancel, onConfirm }) {
+function ConfirmDialog({ title, msg, confirmText = t("action.delete"), onCancel, onConfirm }) {
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-6" style={{ background: "rgba(6,7,12,.6)", backdropFilter: "blur(4px)" }} onClick={onCancel}>
       <div onClick={(e) => e.stopPropagation()} className="w-full max-w-[360px] rounded-3xl p-6 text-center" style={{ background: C.surface, boxShadow: SH.pop }}>
@@ -12,7 +12,7 @@ function ConfirmDialog({ title, msg, confirmText = "წაშლა", onCancel, 
         <div className="text-[18px] font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{title}</div>
         <div className="text-[14px] mt-1.5" style={{ color: C.muted, lineHeight: 1.5 }}>{msg}</div>
         <div className="flex gap-2.5 mt-5">
-          <button onClick={onCancel} className="flex-1 py-3 rounded-2xl font-bold text-[14px] active:scale-[.98]" style={{ background: C.surfaceMuted, color: C.ink2 }}>გაუქმება</button>
+          <button onClick={onCancel} className="flex-1 py-3 rounded-2xl font-bold text-[14px] active:scale-[.98]" style={{ background: C.surfaceMuted, color: C.ink2 }}>{t("action.cancel")}</button>
           <button onClick={onConfirm} className="flex-1 py-3 rounded-2xl font-bold text-[14px] text-white active:scale-[.98]" style={{ background: C.like }}>{confirmText}</button>
         </div>
       </div>
@@ -51,26 +51,26 @@ function NewFilm({ onClose, onCreate, onUpload, onUploadVideo, initial }) {
       <div onClick={(e) => e.stopPropagation()} className="w-full sm:max-w-[520px] sm:rounded-3xl rounded-t-3xl overflow-y-auto" style={{ background: C.surface, boxShadow: SH.pop, maxHeight: vph ? vph + "px" : "88vh" }}>
         <div className="flex items-center justify-between px-4 py-3.5 sticky top-0" style={{ background: C.surface, borderBottom: `1px solid ${C.lineSoft}` }}>
           <button onClick={onClose} style={{ color: C.muted }}><X size={22} /></button>
-          <span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{initial ? "ფილმის რედაქტირება" : "ფილმის დამატება"}</span>
-          <button disabled={!ok} onClick={() => onCreate({ title: title.trim(), year: year ? Number(year) : null, genre, desc: desc.trim(), poster: picked, video: video || null })} className="px-4 py-1.5 rounded-full text-sm font-bold" style={{ backgroundImage: GBRAND, color: "#fff", opacity: ok ? 1 : 0.4 }}>{initial ? "შენახვა" : "დამატება"}</button>
+          <span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{initial ? t("film.editTitle") : t("film.addTitle")}</span>
+          <button disabled={!ok} onClick={() => onCreate({ title: title.trim(), year: year ? Number(year) : null, genre, desc: desc.trim(), poster: picked, video: video || null })} className="px-4 py-1.5 rounded-full text-sm font-bold" style={{ backgroundImage: GBRAND, color: "#fff", opacity: ok ? 1 : 0.4 }}>{initial ? t("action.save") : t("action.add")}</button>
         </div>
         <div className="p-4 space-y-3.5" style={{ paddingBottom: "calc(var(--mz-nav, 64px) + 1.25rem)" }}>
           <div className="flex gap-2 items-center flex-wrap">
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickFile} />
-            <button onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading} className="rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95" style={{ width: 72, height: 96, background: C.accentSoft, color: C.accentText }}>{uploading ? <span className="text-[10px] font-bold">…</span> : <><Upload size={20} /><span className="text-[10px] font-bold mt-0.5 text-center">პოსტერი</span></>}</button>
+            <button onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading} className="rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95" style={{ width: 72, height: 96, background: C.accentSoft, color: C.accentText }}>{uploading ? <span className="text-[10px] font-bold">…</span> : <><Upload size={20} /><span className="text-[10px] font-bold mt-0.5 text-center">{t("film.posterWord")}</span></>}</button>
             {picked && <div className="rounded-xl overflow-hidden shrink-0 relative" style={{ width: 72, height: 96, outline: `2.5px solid ${C.accent}`, outlineOffset: 2 }}><Pic src={picked} className="w-full h-full" /><button onClick={() => setPicked("")} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div>}
-            {!picked && <span className="text-[12px]" style={{ color: C.faint }}>დაამატე პოსტერი (არასავალდებულო) 🎬</span>}
+            {!picked && <span className="text-[12px]" style={{ color: C.faint }}>{t("film.addPosterHint")}</span>}
           </div>
           <div className="flex gap-2 items-center flex-wrap">
             <input ref={videoRef} type="file" accept="video/*" hidden onChange={pickVideo} />
-            <button onClick={() => videoRef.current && videoRef.current.click()} disabled={uploadingVideo} className="rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95" style={{ width: 72, height: 72, background: C.accentSoft, color: C.accentText }}>{uploadingVideo ? <span className="text-[10px] font-bold">…</span> : <><Play size={20} /><span className="text-[10px] font-bold mt-0.5 text-center">ფილმი</span></>}</button>
+            <button onClick={() => videoRef.current && videoRef.current.click()} disabled={uploadingVideo} className="rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95" style={{ width: 72, height: 72, background: C.accentSoft, color: C.accentText }}>{uploadingVideo ? <span className="text-[10px] font-bold">…</span> : <><Play size={20} /><span className="text-[10px] font-bold mt-0.5 text-center">{t("word.film")}</span></>}</button>
             {video && <div className="rounded-xl overflow-hidden shrink-0 relative flex items-center justify-center" style={{ width: 72, height: 72, background: "#000", outline: `2.5px solid ${C.accent}`, outlineOffset: 2 }}><Play size={22} color="#fff" fill="#fff" /><button onClick={() => setVideo("")} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div>}
-            {!video && <span className="text-[12px]" style={{ color: C.faint }}>ატვირთე ფილმის ვიდეო (არასავალდებულო) ▶️</span>}
+            {!video && <span className="text-[12px]" style={{ color: C.faint }}>{t("film.uploadVideoHint")}</span>}
           </div>
-          <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="ფილმის სახელი" className="w-full px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
-          <input value={year} onChange={(e) => setYear(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" placeholder="გამოშვების წელი" className="w-full px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, fontFamily: MONO, border: `1px solid ${C.line}` }} />
+          <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("film.namePh")} className="w-full px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
+          <input value={year} onChange={(e) => setYear(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" placeholder={t("film.yearPh")} className="w-full px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, fontFamily: MONO, border: `1px solid ${C.line}` }} />
           <div className="flex gap-1.5 flex-wrap">{FILM_GENRES.slice(1).map((g) => <button key={g} onClick={() => setGenre(g)} className="px-3 py-1.5 rounded-full text-sm font-semibold transition" style={genre === g ? { background: C.accentSoft, color: C.accentText } : { background: C.surfaceMuted, color: C.muted }}>{g}</button>)}</div>
-          <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} placeholder="მოკლე აღწერა/სიუჟეტი…" className="w-full resize-none px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink2, border: `1px solid ${C.line}`, lineHeight: 1.5 }} />
+          <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} placeholder={t("film.descPh")} className="w-full resize-none px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink2, border: `1px solid ${C.line}`, lineHeight: 1.5 }} />
         </div>
       </div>
     </div>
@@ -101,10 +101,10 @@ export function Movies({ films, watch, onNew, onEdit, onDelete, onOpenProfile, f
   const addReview = (filmId) => {
     if (!rText.trim()) return;
     const txt = rText.trim();
-    setReviews((rv) => ({ ...rv, [filmId]: [{ id: "rv" + Date.now(), authorId: ME, rating: rStars, text: txt, time: "ახლა" }, ...(rv[filmId] || [])] }));
+    setReviews((rv) => ({ ...rv, [filmId]: [{ id: "rv" + Date.now(), authorId: ME, rating: rStars, text: txt, time: t("time.now") }, ...(rv[filmId] || [])] }));
     if (onAddReview) onAddReview(filmId, rStars, txt).catch(() => {});
     setRText(""); setRStars(5); setWriting(false);
-    flash && flash("შეფასება დაემატა ⭐");
+    flash && flash(t("review.added"));
   };
 
   if (it) {
@@ -127,12 +127,12 @@ export function Movies({ films, watch, onNew, onEdit, onDelete, onOpenProfile, f
               {it.year && <Mono style={{ fontSize: 13, color: C.faint }}>{it.year}</Mono>}
               <span className="rounded-md px-1.5 py-0.5 text-[11px] font-bold" style={{ background: C.accentSoft, color: C.accentText }}>{it.genre}</span>
             </div>
-            <div className="flex items-center gap-1.5 mt-2.5"><Stars n={Math.round(avg)} size={14} /><Mono style={{ fontSize: 12.5, color: C.muted }}>{avg ? avg.toFixed(1) : "—"} · {revs.length} შეფასება</Mono></div>
+            <div className="flex items-center gap-1.5 mt-2.5"><Stars n={Math.round(avg)} size={14} /><Mono style={{ fontSize: 12.5, color: C.muted }}>{avg ? avg.toFixed(1) : "—"} · {revs.length} {t("review.countSuffix")}</Mono></div>
             <div className="flex gap-1.5 mt-3">
-              <button onClick={() => onSetWatch(it.id, "watchlist")} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12.5px] font-bold active:scale-95 transition" style={myStatus === "watchlist" ? { backgroundImage: GBRAND, color: "#fff" } : { background: C.surfaceMuted, color: C.ink2 }}><Bookmark size={14} fill={myStatus === "watchlist" ? "#fff" : "none"} /> სანახავი</button>
-              <button onClick={() => onSetWatch(it.id, "watched")} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12.5px] font-bold active:scale-95 transition" style={myStatus === "watched" ? { backgroundImage: GBRAND, color: "#fff" } : { background: C.surfaceMuted, color: C.ink2 }}><Check size={14} /> ნანახი</button>
+              <button onClick={() => onSetWatch(it.id, "watchlist")} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12.5px] font-bold active:scale-95 transition" style={myStatus === "watchlist" ? { backgroundImage: GBRAND, color: "#fff" } : { background: C.surfaceMuted, color: C.ink2 }}><Bookmark size={14} fill={myStatus === "watchlist" ? "#fff" : "none"} /> {t("film.watching")}</button>
+              <button onClick={() => onSetWatch(it.id, "watched")} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12.5px] font-bold active:scale-95 transition" style={myStatus === "watched" ? { backgroundImage: GBRAND, color: "#fff" } : { background: C.surfaceMuted, color: C.ink2 }}><Check size={14} /> {t("film.watched")}</button>
             </div>
-            {myStatus && <button onClick={() => onClearWatch(it.id)} className="text-[11.5px] mt-1.5" style={{ color: C.faint }}>მონიშვნის მოხსნა</button>}
+            {myStatus && <button onClick={() => onClearWatch(it.id)} className="text-[11.5px] mt-1.5" style={{ color: C.faint }}>{t("film.clearWatch")}</button>}
           </div>
         </div>
         <div className="px-4 mt-4">
@@ -142,14 +142,14 @@ export function Movies({ films, watch, onNew, onEdit, onDelete, onOpenProfile, f
               <video src={it.video} controls playsInline className="w-full" style={{ aspectRatio: "16/9", display: "block" }} />
             </div>
           )}
-          <button onClick={() => onOpenProfile(u.id)} className="w-full flex items-center gap-3 mt-4 p-3.5" style={card()}><Avatar id={u.id} size={40} /><div className="flex-1 text-left"><Name id={u.id} className="text-[14px]" /><div className="text-[12px]" style={{ color: C.faint }}>დაამატა {it.time}</div></div><ChevronRight size={20} style={{ color: C.faint }} /></button>
+          <button onClick={() => onOpenProfile(u.id)} className="w-full flex items-center gap-3 mt-4 p-3.5" style={card()}><Avatar id={u.id} size={40} /><div className="flex-1 text-left"><Name id={u.id} className="text-[14px]" /><div className="text-[12px]" style={{ color: C.faint }}>{t("word.addedByPre")}{it.time}</div></div><ChevronRight size={20} style={{ color: C.faint }} /></button>
 
-          <div className="flex items-center justify-between mt-6 mb-3"><h3 className="text-[16px]" style={{ color: C.ink, fontFamily: DISPLAY, fontWeight: 700 }}>შეფასებები</h3><button onClick={() => setWriting((w) => !w)} className="text-sm font-bold flex items-center gap-1" style={{ color: C.accent }}><Plus size={16} /> დაწერე</button></div>
+          <div className="flex items-center justify-between mt-6 mb-3"><h3 className="text-[16px]" style={{ color: C.ink, fontFamily: DISPLAY, fontWeight: 700 }}>{t("review.title")}</h3><button onClick={() => setWriting((w) => !w)} className="text-sm font-bold flex items-center gap-1" style={{ color: C.accent }}><Plus size={16} /> {t("review.write")}</button></div>
           {writing && (
             <div className="p-3.5 mb-3" style={card()}>
-              <div className="flex items-center gap-2 mb-2"><span className="text-[13px]" style={{ color: C.muted }}>შენი შეფასება:</span><div className="flex gap-0.5">{[1, 2, 3, 4, 5].map((i) => <button key={i} onClick={() => setRStars(i)} className="active:scale-110"><Star size={22} style={{ color: C.star }} fill={i <= rStars ? C.star : "none"} /></button>)}</div></div>
-              <textarea value={rText} onChange={(e) => setRText(e.target.value)} rows={2} placeholder="დაწერე შენი შთაბეჭდილება…" className="w-full resize-none px-3 py-2.5 rounded-xl outline-none text-[14px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
-              <button onClick={() => addReview(it.id)} disabled={!rText.trim()} className="mt-2 w-full py-2.5 rounded-xl text-sm font-bold" style={{ backgroundImage: GBRAND, color: "#fff", opacity: rText.trim() ? 1 : 0.4 }}>გამოქვეყნება</button>
+              <div className="flex items-center gap-2 mb-2"><span className="text-[13px]" style={{ color: C.muted }}>{t("review.yourRating")}</span><div className="flex gap-0.5">{[1, 2, 3, 4, 5].map((i) => <button key={i} onClick={() => setRStars(i)} className="active:scale-110"><Star size={22} style={{ color: C.star }} fill={i <= rStars ? C.star : "none"} /></button>)}</div></div>
+              <textarea value={rText} onChange={(e) => setRText(e.target.value)} rows={2} placeholder={t("review.impressionPh")} className="w-full resize-none px-3 py-2.5 rounded-xl outline-none text-[14px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
+              <button onClick={() => addReview(it.id)} disabled={!rText.trim()} className="mt-2 w-full py-2.5 rounded-xl text-sm font-bold" style={{ backgroundImage: GBRAND, color: "#fff", opacity: rText.trim() ? 1 : 0.4 }}>{t("action.publish")}</button>
             </div>
           )}
           <div className="space-y-2.5">
@@ -158,11 +158,11 @@ export function Movies({ films, watch, onNew, onEdit, onDelete, onOpenProfile, f
                 <div className="flex items-center gap-2.5"><button onClick={() => onOpenProfile(r.authorId)}><Avatar id={r.authorId} size={34} /></button><div className="flex-1 min-w-0"><Name id={r.authorId} className="text-[14px]" /><div className="flex items-center gap-2"><Stars n={r.rating} size={11} /><Mono style={{ fontSize: 11, color: C.faint }}>{r.time}</Mono></div></div></div>
                 {r.text && <div className="text-[14px] mt-2" style={{ color: C.ink2, lineHeight: 1.5 }}>{r.text}</div>}
               </div>
-            )) : <Empty icon={Star} t="ჯერ შეფასება არ არის" s="იყავი პირველი." />}
+            )) : <Empty icon={Star} t={t("review.noneYet")} s={t("review.beFirst")} />}
           </div>
         </div>
         {editing && <NewFilm initial={editing} onClose={() => setEditing(null)} onUpload={onUpload} onUploadVideo={onUploadVideo} onCreate={(d) => { onEdit && onEdit(editing.id, { title: d.title, year: d.year, genre: d.genre, description: d.desc, poster_url: d.poster || null, video_url: d.video || null }); setEditing(null); }} />}
-        {confirmDel && <ConfirmDialog title="ფილმის წაშლა" msg="ნამდვილად წაშლი ამ ფილმს? შეფასებებიც წაიშლება." onCancel={() => setConfirmDel(false)} onConfirm={() => { onDelete && onDelete(it.id); setConfirmDel(false); setOpenId(null); }} />}
+        {confirmDel && <ConfirmDialog title={t("film.deleteTitle")} msg={t("film.deleteMsg")} onCancel={() => setConfirmDel(false)} onConfirm={() => { onDelete && onDelete(it.id); setConfirmDel(false); setOpenId(null); }} />}
       </div>
     );
   }
@@ -174,10 +174,10 @@ export function Movies({ films, watch, onNew, onEdit, onDelete, onOpenProfile, f
 
   return (
     <div className="pb-28 md:pb-10">
-      <div className="flex items-center justify-between px-4 pt-5 pb-3"><Title>ფილმები</Title><button onClick={() => setCreating(true)} className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-bold text-white active:scale-95" style={{ backgroundImage: GBRAND, boxShadow: SH.glow }}><Plus size={16} /> ფილმი</button></div>
+      <div className="flex items-center justify-between px-4 pt-5 pb-3"><Title>{t("word.films")}</Title><button onClick={() => setCreating(true)} className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-bold text-white active:scale-95" style={{ backgroundImage: GBRAND, boxShadow: SH.glow }}><Plus size={16} /> {t("word.film")}</button></div>
       <div className="flex gap-2 px-4 pb-3">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ძებნა სახელით…" className="flex-1 px-4 py-2.5 rounded-full text-[14px] outline-none" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
-        <input value={year} onChange={(e) => setYear(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" placeholder="წელი" className="w-[84px] px-3 py-2.5 rounded-full text-[14px] outline-none text-center" style={{ background: C.surfaceMuted, color: C.ink, fontFamily: MONO, border: `1px solid ${C.line}` }} />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("films.searchPh")} className="flex-1 px-4 py-2.5 rounded-full text-[14px] outline-none" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
+        <input value={year} onChange={(e) => setYear(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" placeholder={t("word.year")} className="w-[84px] px-3 py-2.5 rounded-full text-[14px] outline-none text-center" style={{ background: C.surfaceMuted, color: C.ink, fontFamily: MONO, border: `1px solid ${C.line}` }} />
       </div>
       <Chips items={FILM_GENRES} value={genre} onChange={setGenre} />
       {list.length ? (
@@ -207,7 +207,7 @@ export function Movies({ films, watch, onNew, onEdit, onDelete, onOpenProfile, f
           })}
         </div>
       ) : (
-        <Empty icon={Clapperboard} t="ფილმი ვერ მოიძებნა" s="დაამატე პირველი ფილმი ან შეცვალე ფილტრი." />
+        <Empty icon={Clapperboard} t={t("films.notFound")} s={t("films.addFirstOrFilter")} />
       )}
       {hasMore && <div ref={sentinelRef} className="flex justify-center items-center" style={{ minHeight: 60, paddingTop: 8 }}><div style={{ width: 24, height: 24, border: `3px solid ${C.lineSoft}`, borderTopColor: C.accent, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} /></div>}
       {creating && <NewFilm onClose={() => setCreating(false)} onUpload={onUpload} onUploadVideo={onUploadVideo} onCreate={(d) => { onNew(d); setCreating(false); }} />}
