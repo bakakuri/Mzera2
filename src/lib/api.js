@@ -303,6 +303,15 @@ export const posts = {
     const { error } = await need().from("posts").update(patch).eq("id", id);
     if (error) throw error;
   },
+  // real repost counts per original post id, computed client-side from shared_post_id
+  // rows (no shares column to keep in sync — the repost rows themselves are the source of truth)
+  shareCounts: async () => {
+    const { data, error } = await need().from("posts").select("shared_post_id").not("shared_post_id", "is", null);
+    if (error) throw error;
+    const counts = {};
+    (data || []).forEach(r => { counts[r.shared_post_id] = (counts[r.shared_post_id] || 0) + 1; });
+    return counts;
+  },
 };
 
 /* ───────────── REACTIONS (like / emoji) ───────────── */

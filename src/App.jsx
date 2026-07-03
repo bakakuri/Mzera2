@@ -1,6 +1,6 @@
 import {
   useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Gamepad2, Clapperboard, Music, MiniPlayer, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, filmsApi, musicApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, questsApi, xpApi, adminApi, pushApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, KA_MONS, mapDbListing, mapDbReview, mapDbFilm, mapDbSong, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, NOTIF_VERB, levelInfo, kfmt, RSVP_OPTS, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, FILTERS, STORY_STICKERS, setTheme, setME, compressImage, POST_BGS} from "./ui/core";
-import { PostCard, StoryViewer, CreateSheet, Explore, StoryEditor } from "./ui/feed";
+import { PostCard, StoryViewer, CreateSheet, Explore, StoryEditor, FeedPromoCard, FeedReelsRow } from "./ui/feed";
 import { Profile, Notifications, Admin, Drawer, OnlinePage, Progress, SettingsView, Leaderboard, SearchView, SuggestedPeople, Onboarding } from "./ui/social";
 import { registerPush, unregisterPush, currentPushState, pushSupported } from "./lib/push";
 import { lazy, Suspense } from "react";
@@ -46,6 +46,7 @@ export default function App() {
   const [favorites, setFavorites] = useState(() => lsGet("mz_favs", []));
   const [seeLess, setSeeLess] = useState(() => lsGet("mz_seeless", []));
   const [posts, setPosts] = useState([]);
+  const [shareCounts, setShareCounts] = useState({});
   const [newPosts, setNewPosts] = useState(0);
   const [feedCursor, setFeedCursor] = useState(null);
   const [feedMore, setFeedMore] = useState(true);
@@ -214,7 +215,7 @@ export default function App() {
       profilesApi.listCollections().then(cols => { if (!cancelled) setCollections(cols); }).catch(() => {});
       postsApi.memories().then(mem => { if (!cancelled && mem.length) setMemories(mem.map(mapDbPost)); }).catch(() => {});
       profilesApi.suggested().then(sug => { sug.forEach(mergeProfile); if (!cancelled) setSuggested(sug); }).catch(() => {});
-      loadNotifs().catch(() => {}); loadConvos().catch(() => {}); loadStories().catch(() => {}); loadReels().catch(() => {}); loadListings().catch(() => {}); loadFilms().catch(() => {}); loadFilmWatch().catch(() => {}); loadMusic().catch(() => {}); loadGroups().catch(() => {}); loadEvents().catch(() => {}); loadThreads().catch(() => {});
+      loadNotifs().catch(() => {}); loadConvos().catch(() => {}); loadStories().catch(() => {}); loadReels().catch(() => {}); loadListings().catch(() => {}); loadFilms().catch(() => {}); loadFilmWatch().catch(() => {}); loadMusic().catch(() => {}); loadGroups().catch(() => {}); loadEvents().catch(() => {}); loadThreads().catch(() => {}); loadShareCounts().catch(() => {});
     })();
     return () => { cancelled = true; };
   }, [session]);
@@ -248,6 +249,7 @@ export default function App() {
       try { const sv = await postsApi.mySaves(); sv.forEach(r => { if (r.author) mergeProfile(r.author); }); setSavedPosts(sv.map(r => ({ ...mapDbPost(r), savedByMe: true, collectionId: r._collection_id || null }))); } catch (e) {}
     } catch (e) { console.error("feed:", e); setDbError("Feed: " + (e.message || JSON.stringify(e)) + (e.hint ? " · hint: " + e.hint : "") + (e.code ? " · code: " + e.code : "")); }
   };
+  const loadShareCounts = async () => { if (!hasSupabase) return; const counts = await postsApi.shareCounts(); setShareCounts(counts); setPosts(ps => ps.map(p => ({ ...p, shares: counts[p.id] || 0 }))); };
   const loadMorePosts = async () => {
     if (feedLoadingMore || !feedMore || !feedCursor || !hasSupabase) return;
     setFeedLoadingMore(true);
@@ -259,6 +261,7 @@ export default function App() {
       try { const rx = await reactionsApi.forPosts(ids); const cnt = {}, mineM = {}; rx.forEach(r => { cnt[r.post_id] = (cnt[r.post_id] || 0) + 1; if (r.user_id === ME) mineM[r.post_id] = r.emoji; }); mapped.forEach(p => { p.likes = cnt[p.id] || 0; if (mineM[p.id]) { p.likedByMe = true; p.reaction = mineM[p.id]; } }); } catch (e) {}
       try { const cms = await commentsApi.forPosts(ids); const by = {}; cms.forEach(c => { if (c.author) mergeProfile(c.author); (by[c.post_id] = by[c.post_id] || []).push({ id: c.id, authorId: c.author_id, text: c.text, time: timeAgo(c.created_at), createdAt: c.created_at, parentId: c.parent_id || null, likes: (c.comment_likes || []).length, likedByMe: (c.comment_likes || []).some(l => l.user_id === ME) }); }); mapped.forEach(p => { if (by[p.id]) p.comments = by[p.id]; }); } catch (e) {}
       try { const savedIds = new Set(await postsApi.mySaveIds()); mapped.forEach(p => { if (savedIds.has(p.id)) p.savedByMe = true; }); } catch (e) {}
+      mapped.forEach(p => { p.shares = shareCounts[p.id] || 0; });
       setPosts(prev => { const seen = new Set(prev.map(p => p.id)); return [...prev, ...mapped.filter(p => !seen.has(p.id))]; });
       setFeedCursor(mapped[mapped.length - 1].createdAt);
       setFeedMore(feed.length >= 12);
@@ -532,7 +535,7 @@ export default function App() {
   const onComment = (id, text, parentId) => { const tempId = "c" + Date.now(); const now = new Date().toISOString(); setPosts(ps => ps.map(p => p.id === id ? { ...p, comments: [...p.comments, { id: tempId, authorId: ME, text, time: "ახლა", createdAt: now, parentId: parentId || null, likes: 0, likedByMe: false }] } : p)); gainXp(5); commentsApi.add(id, text, parentId).then(c => { if (c && c.id) setPosts(ps => ps.map(p => p.id === id ? { ...p, comments: p.comments.map(cm => cm.id === tempId ? { ...cm, id: c.id } : cm) } : p)); }).catch(dbErr("კომენტარი")); };
   const onLikeComment = (postId, commentId) => { setPosts(ps => ps.map(p => p.id === postId ? { ...p, comments: p.comments.map(c => c.id === commentId ? { ...c, likedByMe: !c.likedByMe, likes: (c.likes || 0) + (c.likedByMe ? -1 : 1) } : c) } : p)); commentsApi.toggleLike(commentId).catch(dbErr("მოწონება")); };
   const onEditPost = (id, text) => { setPosts(ps => ps.map(p => p.id === id ? { ...p, text, edited: true } : p)); setSavedPosts(sp => sp.map(p => p.id === id ? { ...p, text, edited: true } : p)); postsApi.update(id, { text, edited: true }).catch(dbErr("პოსტის რედაქტირება")); flash("პოსტი განახლდა ✓"); };
-  const onRepost = (postId, quote) => { gainXp(8); flash("გააზიარე კედელზე 🔁"); postsApi.create({ text: quote || "", shared_post_id: postId }).then(reloadFeed).catch(dbErr("გაზიარება")); };
+  const onRepost = (postId, quote) => { postsApi.create({ text: quote || "", shared_post_id: postId }).then(() => { gainXp(8); flash("გააზიარე კედელზე 🔁"); return Promise.resolve(reloadFeed()).then(() => loadShareCounts()); }).catch(dbErr("გაზიარება")); };
   const onHidePost = (id) => { setHiddenPosts(h => h.includes(id) ? h : [...h, id]); flash("პოსტი დაიმალა ფიდიდან"); };
   const onSeeLess = (authorId) => { setSeeLess(s => s.includes(authorId) ? s : [...s, authorId]); setFavorites(f => f.filter(x => x !== authorId)); flash("ნაკლებს გაჩვენებთ ამ ავტორს 👇"); };
   const onToggleFavorite = (authorId) => { const now = favorites.includes(authorId); setFavorites(f => now ? f.filter(x => x !== authorId) : [...f, authorId]); setSeeLess(s => s.filter(x => x !== authorId)); flash(now ? "მოიხსნა „ჯერ ეს მაჩვენე“" : "დაემატა „ჯერ ეს მაჩვენე“ ⭐"); };
@@ -645,6 +648,41 @@ export default function App() {
     return base.slice().sort((a, b) => tier(a) - tier(b) || (feedSort === "top" ? score(b) - score(a) : new Date(b.createdAt || 0) - new Date(a.createdAt || 0)));
   })();
   const todayBdays = (() => { const now = new Date(); const mm = now.getMonth() + 1, dd = now.getDate(); const ids = Array.from(new Set([ME, ...following])); return ids.filter(id => { const b = USERS[id] && USERS[id].birthday; if (!b || typeof b !== "string") return false; const parts = b.split("-"); return Number(parts[1]) === mm && Number(parts[2]) === dd; }); })();
+
+  // ── Feed discovery cards: pull people toward Groups/Films/Music/Games/Market/Forum
+  // by dropping one popular-item promo card every few posts. Picks are reshuffled once
+  // a day (via seedDay) so they don't jump around on every re-render/interaction.
+  const openPromo = (promo) => {
+    if (promo.kind === "group") { setPendingGroup(promo.id); setTab("groups"); }
+    else if (promo.kind === "film") setTab("movies");
+    else if (promo.kind === "song") setTab("music");
+    else if (promo.kind === "market") setTab("market");
+    else if (promo.kind === "forum") setTab("forum");
+    else if (promo.kind === "game") { if (promo.id === "bura") setBuraOpen(true); else setNardiOpen(true); }
+  };
+  const feedItems = (() => {
+    if (!homeVisible.length) return homeVisible.map(p => ({ type: "post", post: p }));
+    const seedDay = new Date().toISOString().slice(0, 10);
+    const pickTop = (arr, scoreFn, topN = 5) => { if (!arr || !arr.length) return null; const pool = arr.slice().sort((a, b) => scoreFn(b) - scoreFn(a)).slice(0, Math.min(topN, arr.length)); return pool[hashIdx(seedDay + pool.length, pool.length)]; };
+    const GAME_PROMOS = [
+      { kind: "game", id: "bura", image: null, title: "ბურა", subtitle: "ქართული კარტის თამაში — ბოტთან ან ონლაინ მეგობრებთან", cta: "თამაშის დაწყება" },
+      { kind: "game", id: "nardi", image: null, title: "ნარდი", subtitle: "კლასიკური ნარდი — ბოტთან ან ონლაინ მეგობრებთან", cta: "თამაშის დაწყება" },
+    ];
+    const promos = [
+      (() => { const p = pickTop(groups.filter(g => !g.joined), g => g.members); return p && { kind: "group", id: p.id, image: p.cover, title: p.name, subtitle: `${p.members} წევრი · გაწევრიანდი`, cta: "გაწევრიანება" }; })(),
+      (() => { const p = pickTop(films, f => new Date(f.createdAt || 0).getTime()); return p && { kind: "film", id: p.id, image: p.poster, title: p.title, subtitle: [p.year, p.genre].filter(Boolean).join(" · "), cta: "ნახვა" }; })(),
+      (() => { const p = pickTop(songs, s => s.plays); return p && { kind: "song", id: p.id, image: p.cover, title: p.title, subtitle: `${p.artist || "უცნობი შემსრულებელი"} · ${p.plays} მოსმენა`, cta: "მოსმენა" }; })(),
+      GAME_PROMOS[hashIdx(seedDay + "g", GAME_PROMOS.length)],
+      (() => { if (!listings.length) return null; const p = listings[hashIdx(seedDay + "m", listings.length)]; return { kind: "market", id: p.id, image: p.image, title: p.title, subtitle: `${p.price} ₾ · ${p.location}`, cta: "ნახვა მარკეტში" }; })(),
+      (() => { const p = pickTop(threads, t => t.votes); return p && { kind: "forum", id: p.id, image: null, title: p.title, subtitle: `${p.votes} ხმა · ${p.cat}`, cta: "ნახვა ფორუმში" }; })(),
+    ].filter(Boolean);
+    const out = []; let pi = 0;
+    homeVisible.forEach((p, i) => {
+      out.push({ type: "post", post: p });
+      if ((i + 1) % 4 === 0 && promos.length) { out.push({ type: "promo", promo: promos[pi % promos.length] }); pi++; }
+    });
+    return out;
+  })();
   const feedProps = { onLike, onReact, onSave, onComment, onPollVote, onTag, onReport, onRemove: onRemovePost, onOpenProfile: openProfile, isAdmin: me.admin, onEdit: onEditPost, onDelete: onDeletePost, onEditComment, onDeleteComment, onLikeComment, onRepost, onReactors: (pid) => reactionsApi.listForPost(pid) };
 
   // ── Hardware / gesture "back" → step one level back inside the app (не exit) ──
@@ -761,11 +799,15 @@ export default function App() {
               <>
                 {newPosts > 0 && <button onClick={() => { setNewPosts(0); reloadFeed(); if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" }); }} className="fixed left-1/2 z-40 px-4 py-2 rounded-full text-[13px] font-bold text-white active:scale-95 flex items-center gap-1.5" style={{ top: 70, transform: "translateX(-50%)", backgroundImage: GBRAND, boxShadow: SH.glow }}>↑ {newPosts} ახალი პოსტი</button>}
                 <div style={{ borderBottom: `1px solid ${C.lineSoft}`, background: C.surface }}><StoryRow stories={stories} onOpen={openStory} onAdd={() => setStoryEditorOpen(true)} /></div>
+                <FeedReelsRow reels={reels} onOpen={() => goTab("reels")} />
                 <SuggestedPeople people={suggested.filter(u => !dismissedSug.includes(u.id) && u.id !== ME)} isFollowing={(id) => following.includes(id)} onToggle={toggleFollow} onDismiss={(id) => setDismissedSug(d => [...d, id])} onOpenProfile={openProfile} />
                 {todayBdays.length > 0 && <div className="mx-4 mt-3 rounded-2xl p-3.5 flex items-center gap-3" style={{ background: C.accentSoft }}><span style={{ fontSize: 26 }}>🎂</span><div className="min-w-0 flex-1"><div className="text-[14px] font-bold" style={{ color: C.accentText }}>დღეს დაბადების დღეა!</div><div className="text-[13px] truncate" style={{ color: C.ink2 }}>{todayBdays.map(id => id === ME ? "შენ 🎉" : (USERS[id] ? USERS[id].name : "")).filter(Boolean).join(", ")}</div></div>{todayBdays.filter(id => id !== ME).length > 0 && <button onClick={() => openProfile(todayBdays.find(id => id !== ME))} className="shrink-0 px-3 py-1.5 rounded-full text-[12.5px] font-bold text-white active:scale-95" style={{ backgroundImage: GBRAND }}>მიულოცე</button>}</div>}
                 {memories.length > 0 && <div className="mx-4 mt-3 rounded-2xl p-3" style={{ background: C.surface, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 mb-2"><span style={{ fontSize: 18 }}>🗓</span><span className="text-[14px] font-bold" style={{ color: C.ink }}>ამ დღეს</span></div><div className="flex gap-2 overflow-x-auto no-scrollbar">{memories.map(m => <div key={m.id} className="shrink-0 rounded-xl overflow-hidden" style={{ width: 130 }}>{m.image ? <Pic src={m.image} grad={GRADS[hashIdx(m.id, GRADS.length)]} style={{ width: 130, height: 130 }} /> : <div className="flex items-center justify-center p-2.5 text-center" style={{ width: 130, height: 130, background: (m.bg && POST_BGS[m.bg]) ? undefined : C.surfaceMuted, backgroundImage: (m.bg && POST_BGS[m.bg]) ? `linear-gradient(140deg, ${POST_BGS[m.bg][0]}, ${POST_BGS[m.bg][1]})` : undefined }}><span className="text-[12px] font-semibold line-clamp-4" style={{ color: m.bg ? "#fff" : C.ink2 }}>{(m.text || "პოსტი").slice(0, 90)}</span></div>}<div className="text-[11px] px-1 pt-1" style={{ color: C.faint }}>{m.time}</div></div>)}</div></div>}
                 {homeVisible.length > 0 && <div className="flex items-center px-4 pt-3"><div className="flex gap-1 p-0.5 rounded-full" style={{ background: C.surfaceMuted }}>{[["top", "ტოპ"], ["recent", "ბოლო"]].map(([k, l]) => <button key={k} onClick={() => setFeedSort(k)} className="px-4 py-1.5 rounded-full text-[12.5px] font-bold transition" style={feedSort === k ? { background: C.surface, color: C.accent, boxShadow: SH.card } : { color: C.muted }}>{l}</button>)}</div></div>}
-                {homeVisible.length ? <div className="stagger space-y-4 p-4">{homeVisible.map(p => <PostCard key={p.id} post={p} onLike={onLike} onReact={onReact} onSave={onSave} onComment={onComment} onPollVote={onPollVote} onTag={onTag} onReport={onReport} onRemove={onRemovePost} onOpenProfile={openProfile} isAdmin={me.admin} onEdit={onEditPost} onDelete={onDeletePost} onEditComment={onEditComment} onDeleteComment={onDeleteComment} onLikeComment={onLikeComment} onRepost={onRepost} onReactors={(pid) => reactionsApi.listForPost(pid)} onHide={onHidePost} onSeeLess={onSeeLess} onFavorite={onToggleFavorite} isFavorite={favorites.includes(p.authorId)} />)}</div> : <div className="px-6 py-16 text-center"><div className="text-[16px] font-bold" style={{ color: C.ink2 }}>ფიდი ცარიელია 🌱</div><div className="text-[13.5px] mt-1.5" style={{ color: C.muted, lineHeight: 1.6 }}>აქ მხოლოდ შენი და დაფოლოვებულების პოსტები ჩანს. აღმოაჩინე ხალხი და დააფოლოვე.</div><button onClick={() => setTab("explore")} className="mt-4 px-5 py-2.5 rounded-full text-[14px] font-bold text-white active:scale-95" style={{ backgroundImage: GBRAND }}>აღმოჩენა</button></div>}
+                {homeVisible.length ? <div className="stagger space-y-4 p-4">{feedItems.map((it, i) => it.type === "post"
+                  ? <PostCard key={it.post.id} post={it.post} onLike={onLike} onReact={onReact} onSave={onSave} onComment={onComment} onPollVote={onPollVote} onTag={onTag} onReport={onReport} onRemove={onRemovePost} onOpenProfile={openProfile} isAdmin={me.admin} onEdit={onEditPost} onDelete={onDeletePost} onEditComment={onEditComment} onDeleteComment={onDeleteComment} onLikeComment={onLikeComment} onRepost={onRepost} onReactors={(pid) => reactionsApi.listForPost(pid)} onHide={onHidePost} onSeeLess={onSeeLess} onFavorite={onToggleFavorite} isFavorite={favorites.includes(it.post.authorId)} />
+                  : <FeedPromoCard key={"promo" + i} kind={it.promo.kind} data={it.promo} onOpen={() => openPromo(it.promo)} />
+                )}</div> : <div className="px-6 py-16 text-center"><div className="text-[16px] font-bold" style={{ color: C.ink2 }}>ფიდი ცარიელია 🌱</div><div className="text-[13.5px] mt-1.5" style={{ color: C.muted, lineHeight: 1.6 }}>აქ მხოლოდ შენი და დაფოლოვებულების პოსტები ჩანს. აღმოაჩინე ხალხი და დააფოლოვე.</div><button onClick={() => setTab("explore")} className="mt-4 px-5 py-2.5 rounded-full text-[14px] font-bold text-white active:scale-95" style={{ backgroundImage: GBRAND }}>აღმოჩენა</button></div>}
                 {feedMore ? (
                   <div ref={feedSentinelRef} className="flex justify-center items-center pt-1 pb-28 md:pb-10" style={{ minHeight: 60 }}>
                     <div style={{ width: 26, height: 26, border: `3px solid ${C.lineSoft}`, borderTopColor: C.accent, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />

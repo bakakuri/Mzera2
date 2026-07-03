@@ -1,5 +1,5 @@
 import {
-  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, KA_MONS, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, NOTIF_VERB, levelInfo, kfmt, RSVP_OPTS, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, FILTERS, STORY_STICKERS, setTheme, setME, POST_BGS, FEELINGS } from "./core";
+  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Gamepad2, Clapperboard, Music, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, KA_MONS, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, NOTIF_VERB, levelInfo, kfmt, RSVP_OPTS, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, FILTERS, STORY_STICKERS, setTheme, setME, POST_BGS, FEELINGS } from "./core";
 
 export function Lightbox({ images, start, onClose }) {
   const [idx, setIdx] = useState(start || 0);
@@ -79,6 +79,57 @@ function LinkPreview({ text }) {
       <div className="min-w-0 flex-1"><div className="text-[13.5px] font-bold truncate" style={{ color: C.accent }}>{domain || "ბმული"}</div><div className="text-[11.5px] truncate" style={{ color: C.faint }}>{url}</div></div>
       <Link2 size={16} style={{ color: C.faint }} />
     </button>
+  );
+}
+
+/* ─────────────────────────  FEED DISCOVERY (promo cards + reels row)  ───────────────────────── */
+
+const PROMO_META = {
+  group: { icon: Users, label: "ჯგუფი" },
+  film: { icon: Clapperboard, label: "ფილმი" },
+  song: { icon: Music, label: "მუსიკა" },
+  game: { icon: Gamepad2, label: "თამაში" },
+  market: { icon: ShoppingBag, label: "მარკეტი" },
+  forum: { icon: MessageSquare, label: "ფორუმი" },
+};
+
+// Injected discovery card shown between feed posts — pulls people toward Groups/Films/
+// Music/Games/Market/Forum without those sections needing their own feed of "posts".
+export function FeedPromoCard({ kind, data, onOpen }) {
+  const meta = PROMO_META[kind];
+  if (!meta || !data) return null;
+  return (
+    <article className="overflow-hidden" style={card()}>
+      <div className="flex items-center gap-1.5 px-4 pt-3.5 pb-2 text-[12px] font-bold uppercase tracking-wide" style={{ color: C.accent, fontFamily: MONO }}><meta.icon size={14} /> {meta.label}</div>
+      <button onClick={onOpen} className="block w-full text-left active:opacity-90">
+        {data.image !== null && <div className="relative w-full" style={{ aspectRatio: kind === "film" ? "2/1" : "2.2/1" }}><Pic src={data.image} grad={GRADS[hashIdx(String(data.id), GRADS.length)]} className="w-full h-full" /></div>}
+        <div className="px-4 pt-3"><div className="text-[16px] font-bold truncate" style={{ color: C.ink, fontFamily: DISPLAY }}>{data.title}</div>{data.subtitle && <div className="text-[13px] mt-0.5 truncate" style={{ color: C.muted }}>{data.subtitle}</div>}</div>
+      </button>
+      <div className="px-4 pb-4 pt-2.5"><button onClick={onOpen} className="w-full py-2.5 rounded-xl text-[14px] font-bold text-white active:scale-[.98]" style={{ backgroundImage: GBRAND }}>{data.cta}</button></div>
+    </article>
+  );
+}
+
+// Facebook-style horizontal reels strip embedded in the main feed (below stories, above posts).
+export function FeedReelsRow({ reels, onOpen }) {
+  if (!reels || !reels.length) return null;
+  return (
+    <div className="pt-3 pb-1" style={{ borderBottom: `1px solid ${C.lineSoft}`, background: C.surface }}>
+      <div className="flex items-center justify-between px-4 pb-2">
+        <span className="text-[15px] font-bold flex items-center gap-1.5" style={{ color: C.ink, fontFamily: DISPLAY }}><Film size={17} /> Reels</span>
+        <button onClick={onOpen} className="flex items-center gap-0.5 text-[12.5px] font-bold active:opacity-70" style={{ color: C.accent }}>ყველა <ChevronRight size={14} /></button>
+      </div>
+      <div className="flex gap-2 overflow-x-auto no-scrollbar px-4 pb-2.5">
+        {reels.slice(0, 12).map(r => (
+          <button key={r.id} onClick={onOpen} className="relative shrink-0 rounded-2xl overflow-hidden active:scale-[.97] transition" style={{ width: 108, height: 180 }}>
+            <Pic src={r.image} grad={GRADS[hashIdx(r.id, GRADS.length)]} className="w-full h-full" />
+            <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(0,0,0,.65), transparent 45%)" }} />
+            <Play size={20} fill="#fff" className="absolute top-2 left-2" style={{ color: "#fff", filter: "drop-shadow(0 1px 3px rgba(0,0,0,.5))" }} />
+            <div className="absolute bottom-2 left-2 right-2 flex items-center gap-1 text-white text-[11px] font-bold truncate" style={{ textShadow: "0 1px 2px rgba(0,0,0,.5)" }}><Avatar id={r.authorId} size={18} />{USERS[r.authorId] ? USERS[r.authorId].name.split(" ")[0] : ""}</div>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -205,16 +256,21 @@ export function PostCard({ post, onLike, onReact, onSave, onComment, onPollVote,
           </div>
         </div>
       )}
-      {repostOpen && (() => { const su = USERS[post.authorId]; return (
+      {repostOpen && (() => {
+        // when reposting something that's already a repost, preview the *original* content
+        // being shared (not this wrapper post, which usually has no text/image of its own)
+        const target = post.shared || post;
+        const su = USERS[target.authorId];
+        return (
         <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center" style={{ background: "rgba(0,0,0,.55)" }} onClick={() => setRepostOpen(false)}>
-          <div className="w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl" style={{ background: C.surface }} onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-4 py-3.5" style={{ borderBottom: `1px solid ${C.lineSoft}` }}><button onClick={() => setRepostOpen(false)} style={{ color: C.muted }}><X size={22} /></button><span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>გაზიარება</span><button onClick={() => { if (onRepost) onRepost(post.shared ? post.shared.id : post.id, repostText.trim()); setRepostOpen(false); }} className="px-4 py-1.5 rounded-full text-sm font-bold text-white active:scale-95" style={{ backgroundImage: GBRAND }}>გააზიარე</button></div>
+          <div className="w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl max-h-[85vh] overflow-y-auto" style={{ background: C.surface }} onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-4 py-3.5 sticky top-0 z-10" style={{ background: C.surface, borderBottom: `1px solid ${C.lineSoft}` }}><button onClick={() => setRepostOpen(false)} style={{ color: C.muted }}><X size={22} /></button><span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>გაზიარება</span><button onClick={() => { if (onRepost) onRepost(target.id, repostText.trim()); setRepostOpen(false); }} className="px-4 py-1.5 rounded-full text-sm font-bold text-white active:scale-95" style={{ backgroundImage: GBRAND }}>გააზიარე</button></div>
             <div className="p-4">
               <textarea value={repostText} onChange={e => setRepostText(e.target.value)} rows={2} placeholder="დაამატე კომენტარი… (სურვილისამებრ)" className="w-full resize-none px-3.5 py-3 rounded-xl outline-none text-[15px] mb-3" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} autoFocus />
               <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${C.line}` }}>
-                <div className="flex items-center gap-2 px-3 pt-3 pb-2"><Avatar id={post.authorId} size={26} /><div className="min-w-0"><div className="font-bold text-[13px] truncate" style={{ color: C.ink }}>{su ? su.name : "—"}</div><Mono style={{ fontSize: 10.5, color: C.faint }}>@{su ? su.handle : ""}</Mono></div></div>
-                {post.text && <div className="px-3 pb-2 text-[13.5px] line-clamp-3" style={{ color: C.ink2 }}>{post.text}</div>}
-                {post.image && <Pic src={post.image} grad={GRADS[hashIdx(post.id, GRADS.length)]} className="w-full" style={{ maxHeight: 200, objectFit: "cover" }} />}
+                <div className="flex items-center gap-2 px-3 pt-3 pb-2"><Avatar id={target.authorId} size={26} /><div className="min-w-0"><div className="font-bold text-[13px] truncate" style={{ color: C.ink }}>{su ? su.name : "—"}</div><Mono style={{ fontSize: 10.5, color: C.faint }}>@{su ? su.handle : ""}</Mono></div></div>
+                {target.text && <div className="px-3 pb-2 text-[13.5px] line-clamp-3 break-words" style={{ color: C.ink2 }}>{target.text}</div>}
+                {target.video ? <video src={target.video} muted playsInline preload="metadata" className="w-full block" style={{ maxHeight: 200, background: "#000" }} /> : target.image && <Pic src={target.image} grad={GRADS[hashIdx(target.id, GRADS.length)]} className="w-full" style={{ maxHeight: 200, objectFit: "cover" }} />}
               </div>
             </div>
           </div>
