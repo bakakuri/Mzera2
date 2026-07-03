@@ -639,6 +639,112 @@ create policy reports_update on public.reports for update using (
 );
 
 -- ============================================================================
+--  ADMIN FULL CONTROL + missing update/delete policies
+--  (several tables only ever had insert/select policies, so their own owners'
+--  edit/delete features were silently no-ops; this both fixes that and lets an
+--  admin manage/edit/delete anything site-wide from the moderation panel)
+-- ============================================================================
+create or replace function public.is_admin()
+returns boolean language sql stable as $$
+  select exists (select 1 from public.profiles where id = auth.uid() and is_admin);
+$$;
+
+-- PROFILES: admins can now actually verify/promote/ban other users
+-- (onSetVerified/onSetAdmin/setBanned go through a plain table update)
+drop policy if exists profiles_update on public.profiles;
+create policy profiles_update on public.profiles for update using (auth.uid() = id or public.is_admin());
+
+-- POSTS
+drop policy if exists posts_update on public.posts;
+create policy posts_update on public.posts for update using (auth.uid() = author_id or public.is_admin());
+drop policy if exists posts_delete on public.posts;
+create policy posts_delete on public.posts for delete using (auth.uid() = author_id or public.is_admin());
+
+-- COMMENTS (update policy never existed — comment editing was always a no-op)
+drop policy if exists comments_update on public.comments;
+create policy comments_update on public.comments for update using (auth.uid() = author_id or public.is_admin());
+drop policy if exists comments_delete on public.comments;
+create policy comments_delete on public.comments for delete using (auth.uid() = author_id or public.is_admin());
+
+-- STORIES
+drop policy if exists stories_delete on public.stories;
+create policy stories_delete on public.stories for delete using (auth.uid() = author_id or public.is_admin());
+
+-- THREADS / FORUM (update policy never existed — thread editing was always a no-op)
+drop policy if exists threads_update on public.threads;
+create policy threads_update on public.threads for update using (auth.uid() = author_id or public.is_admin());
+drop policy if exists threads_delete on public.threads;
+create policy threads_delete on public.threads for delete using (auth.uid() = author_id or public.is_admin());
+
+-- REELS (update/delete never existed — reel editing/deleting was always a no-op,
+-- even for the reel's own author)
+drop policy if exists reels_update on public.reels;
+create policy reels_update on public.reels for update using (auth.uid() = author_id or public.is_admin());
+drop policy if exists reels_delete on public.reels;
+create policy reels_delete on public.reels for delete using (auth.uid() = author_id or public.is_admin());
+
+-- GROUPS (update/delete never existed — editing/deleting your own group was always a no-op)
+drop policy if exists groups_update on public.groups;
+create policy groups_update on public.groups for update using (auth.uid() = created_by or public.is_admin());
+drop policy if exists groups_delete on public.groups;
+create policy groups_delete on public.groups for delete using (auth.uid() = created_by or public.is_admin());
+
+-- GROUP MEMBERS: owners approving join requests (update) or kicking someone else
+-- (delete) never had a matching policy — those buttons were always no-ops
+drop policy if exists gmem_update on public.group_members;
+create policy gmem_update on public.group_members for update using (
+  exists (select 1 from public.groups g where g.id = group_id and g.created_by = auth.uid()) or public.is_admin()
+);
+drop policy if exists gmem_del on public.group_members;
+create policy gmem_del on public.group_members for delete using (
+  auth.uid() = user_id
+  or exists (select 1 from public.groups g where g.id = group_id and g.created_by = auth.uid())
+  or public.is_admin()
+);
+
+-- GROUP POSTS (update/delete never existed)
+drop policy if exists gposts_update on public.group_posts;
+create policy gposts_update on public.group_posts for update using (auth.uid() = author_id or public.is_admin());
+drop policy if exists gposts_delete on public.group_posts;
+create policy gposts_delete on public.group_posts for delete using (
+  auth.uid() = author_id
+  or exists (select 1 from public.groups g where g.id = group_id and g.created_by = auth.uid())
+  or public.is_admin()
+);
+
+-- EVENTS (update/delete never existed)
+drop policy if exists events_update on public.events;
+create policy events_update on public.events for update using (auth.uid() = host_id or public.is_admin());
+drop policy if exists events_delete on public.events;
+create policy events_delete on public.events for delete using (auth.uid() = host_id or public.is_admin());
+
+-- MARKET LISTINGS (delete never existed — deleting your own listing was always a no-op)
+drop policy if exists listings_update on public.listings;
+create policy listings_update on public.listings for update using (auth.uid() = seller_id or public.is_admin());
+drop policy if exists listings_delete on public.listings;
+create policy listings_delete on public.listings for delete using (auth.uid() = seller_id or public.is_admin());
+
+-- MARKET REVIEWS (never had update/delete — allow the author or admin to remove)
+drop policy if exists reviews_delete on public.reviews;
+create policy reviews_delete on public.reviews for delete using (auth.uid() = author_id or public.is_admin());
+
+-- FILMS
+drop policy if exists films_update on public.films;
+create policy films_update on public.films for update using (auth.uid() = author_id or public.is_admin());
+drop policy if exists films_delete on public.films;
+create policy films_delete on public.films for delete using (auth.uid() = author_id or public.is_admin());
+
+-- FILM REVIEWS (never had update/delete)
+drop policy if exists film_reviews_delete on public.film_reviews;
+create policy film_reviews_delete on public.film_reviews for delete using (auth.uid() = author_id or public.is_admin());
+
+-- SONGS
+drop policy if exists songs_update on public.songs;
+create policy songs_update on public.songs for update using (auth.uid() = author_id or public.is_admin());
+drop policy if exists songs_delete on public.songs;
+create policy songs_delete on public.songs for delete using (auth.uid() = author_id or public.is_admin());
+
+-- ============================================================================
 --  REALTIME (live chat / notifications / presence)
 -- ============================================================================
 do $$ begin
