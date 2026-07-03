@@ -1150,6 +1150,85 @@ begin
 end; $$;
 
 -- ============================================================================
+--  LANGUAGE LEARNING — vocabulary/grammar content ships as static data in
+--  the client bundle (src/data/langWords.js, langGrammar.js), same idea as
+--  MARKET_CATS/FILM_GENRES: curated content doesn't need a DB round trip.
+--  Only per-user word mastery + a site-wide on/off toggle live here.
+-- ============================================================================
+create table if not exists public.lang_word_progress (
+  user_id    uuid not null references public.profiles(id) on delete cascade,
+  lang       text not null,
+  word_id    text not null,
+  mastery    int not null default 0 check (mastery between 0 and 100),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, lang, word_id)
+);
+create index if not exists lang_word_progress_user_idx on public.lang_word_progress(user_id, lang);
+
+alter table public.lang_word_progress enable row level security;
+-- read is public (like film_watch) so a cross-user leaderboard/admin view can
+-- read directly instead of needing a security-definer RPC for every query;
+-- write stays owner-only.
+drop policy if exists lang_word_progress_read on public.lang_word_progress;
+create policy lang_word_progress_read on public.lang_word_progress for select using (true);
+drop policy if exists lang_word_progress_insert on public.lang_word_progress;
+create policy lang_word_progress_insert on public.lang_word_progress for insert with check (auth.uid() = user_id);
+drop policy if exists lang_word_progress_update on public.lang_word_progress;
+create policy lang_word_progress_update on public.lang_word_progress for update using (auth.uid() = user_id);
+drop policy if exists lang_word_progress_delete on public.lang_word_progress;
+create policy lang_word_progress_delete on public.lang_word_progress for delete using (auth.uid() = user_id);
+
+-- site-wide feature toggles (currently just the language-learning tab); one
+-- small table so the admin panel can flip a feature on/off without a new
+-- migration each time.
+create table if not exists public.app_settings (
+  key   text primary key,
+  value jsonb not null default 'true'::jsonb
+);
+alter table public.app_settings enable row level security;
+drop policy if exists app_settings_read on public.app_settings;
+create policy app_settings_read on public.app_settings for select using (true);
+drop policy if exists app_settings_write on public.app_settings;
+create policy app_settings_write on public.app_settings for all using (public.is_admin()) with check (public.is_admin());
+insert into public.app_settings (key, value) values ('languages_enabled', 'true'::jsonb) on conflict (key) do nothing;
+
+-- per-language leaderboard (mastered word count + average mastery), for the
+-- in-app "leaderboard by language" view.
+create or replace function public.lang_leaderboard(p_lang text, p_limit int default 20)
+returns table(user_id uuid, mastered bigint, avg_mastery numeric)
+language sql stable security definer set search_path = public as $$
+  select lwp.user_id,
+    count(*) filter (where lwp.mastery >= 100),
+    coalesce(avg(lwp.mastery), 0)
+  from public.lang_word_progress lwp
+  where lwp.lang = p_lang
+  group by lwp.user_id
+  order by count(*) filter (where lwp.mastery >= 100) desc
+  limit p_limit;
+$$;
+grant execute on function public.lang_leaderboard(text, int) to authenticated;
+
+-- admin-only rollup of every user's progress across all languages
+create or replace function public.admin_lang_progress()
+returns table(user_id uuid, lang text, mastered bigint, in_progress bigint, avg_mastery numeric)
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then
+    raise exception 'not authorized';
+  end if;
+  return query
+  select lwp.user_id, lwp.lang,
+    count(*) filter (where lwp.mastery >= 100),
+    count(*) filter (where lwp.mastery > 0 and lwp.mastery < 100),
+    coalesce(avg(lwp.mastery), 0)
+  from public.lang_word_progress lwp
+  group by lwp.user_id, lwp.lang
+  order by count(*) filter (where lwp.mastery >= 100) desc;
+end;
+$$;
+grant execute on function public.admin_lang_progress() to authenticated;
+
+-- ============================================================================
 --  REALTIME (live chat / notifications / presence)
 -- ============================================================================
 do $$ begin

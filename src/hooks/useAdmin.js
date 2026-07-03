@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { profilesApi, postsApi, adminApi, mapDbPost, mergeProfile, hasSupabase, ME, USERS, t } from "../ui/core";
+import { profilesApi, postsApi, adminApi, languagesApi, mapDbPost, mergeProfile, hasSupabase, ME, USERS, t } from "../ui/core";
 
 // Moderation queue (reports) + admin-only user/content management.
 export function useAdmin({ tab, session, flash, dbErr, setXp, setPosts }) {
@@ -10,12 +10,16 @@ export function useAdmin({ tab, session, flash, dbErr, setXp, setPosts }) {
   const [userCount, setUserCount] = useState(0);
   const [postCount, setPostCount] = useState(0);
   const [reports, setReports] = useState([]);
+  const [langEnabled, setLangEnabled] = useState(true);
+  const [langProgress, setLangProgress] = useState([]);
 
   useEffect(() => {
     if (tab === "admin" && USERS[ME] && USERS[ME].admin && hasSupabase) {
       adminApi.stats().then(setAdminStats).catch(() => {});
       adminApi.dailyTrends().then(setDailyTrends).catch(() => {});
       adminApi.pendingPublic().then(rows => { rows.forEach(r => { if (r.author) mergeProfile(r.author); }); setPendingPublic(rows.map(mapDbPost)); }).catch(() => {});
+      languagesApi.getSetting("languages_enabled").then(v => { if (v === false) setLangEnabled(false); }).catch(() => {});
+      languagesApi.adminProgress().then(rows => { rows.forEach(r => { if (!USERS[r.user_id]) profilesApi.byIds([r.user_id]).then(ps => ps.forEach(mergeProfile)).catch(() => {}); }); setLangProgress(rows); }).catch(() => {});
     }
   }, [tab]);
 
@@ -38,9 +42,11 @@ export function useAdmin({ tab, session, flash, dbErr, setXp, setPosts }) {
   const onDeleteUser = (id) => { setAllUsers(us => us.filter(u => u.id !== id)); adminApi.deleteUser(id).then(() => flash(t("toast.userDeletedForever"))).catch(dbErr("მომხმარებლის წაშლა")); };
   const onBroadcast = (msg) => { if (!msg || !msg.trim()) return; adminApi.broadcast(msg.trim()).then(n => flash(t("toast.broadcastSentPre") + (n || 0) + t("toast.broadcastSentPost"))).catch(dbErr("broadcast")); };
   const onReviewPublic = (id, approve) => { setPendingPublic(pp => pp.filter(p => p.id !== id)); if (approve) setPosts(ps => ps.map(p => p.id === id ? { ...p, publicStatus: "approved" } : p)); adminApi.reviewPublic(id, approve).then(() => flash(approve ? t("toast.publicApprovedNow") : t("toast.rejected"))).catch(dbErr("მოდერაცია")); };
+  const onToggleLanguages = (v) => { setLangEnabled(v); languagesApi.setSetting("languages_enabled", v).catch(dbErr("ენების სწავლა")); };
 
   return {
     allUsers, adminStats, dailyTrends, pendingPublic, userCount, postCount, reports,
+    langEnabled, langProgress, onToggleLanguages,
     onReport, onResolve, onSetVerified, onSetAdmin, onBanUser, onGrantXp,
     onSetXp, onDeleteUser, onBroadcast, onReviewPublic,
   };

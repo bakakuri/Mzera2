@@ -1184,3 +1184,40 @@ export const push = {
   },
   unsubscribe: async (endpoint) => { const { error } = await need().from("push_subscriptions").delete().eq("endpoint", endpoint); if (error) throw error; },
 };
+
+/* ───────────── LANGUAGE LEARNING ───────────── */
+export const languages = {
+  progress: async (lang) => {
+    const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;
+    const { data, error } = await sb.from("lang_word_progress").select("word_id,mastery,updated_at").eq("user_id", uid).eq("lang", lang);
+    if (error) throw error;
+    return Object.fromEntries((data || []).map(r => [r.word_id, { mastery: r.mastery, ts: new Date(r.updated_at).getTime() }]));
+  },
+  saveProgress: async (lang, wordId, mastery) => {
+    const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;
+    const { error } = await sb.from("lang_word_progress").upsert(
+      { user_id: uid, lang, word_id: wordId, mastery, updated_at: new Date().toISOString() },
+      { onConflict: "user_id,lang,word_id" }
+    );
+    if (error) throw error;
+  },
+  leaderboard: async (lang, limit = 20) => {
+    const { data, error } = await need().rpc("lang_leaderboard", { p_lang: lang, p_limit: limit });
+    if (error) throw error;
+    return data || [];
+  },
+  getSetting: async (key) => {
+    const { data, error } = await need().from("app_settings").select("value").eq("key", key).maybeSingle();
+    if (error) throw error;
+    return data ? data.value : null;
+  },
+  setSetting: async (key, value) => {
+    const { error } = await need().from("app_settings").upsert({ key, value });
+    if (error) throw error;
+  },
+  adminProgress: async () => {
+    const { data, error } = await need().rpc("admin_lang_progress");
+    if (error) throw error;
+    return data || [];
+  },
+};

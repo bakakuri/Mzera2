@@ -1,5 +1,5 @@
 import {
-  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Clapperboard, Music, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, questsApi, xpApi, adminApi, pushApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Tilt, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, levelInfo, kfmt, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, STORY_STICKERS, setTheme, setME, t, LANGS,
+  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Clapperboard, Music, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, questsApi, xpApi, adminApi, pushApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Tilt, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, levelInfo, kfmt, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, STORY_STICKERS, setTheme, setME, t, LANGS, Languages,
 } from "./core";
 import { PostCard, Lightbox } from "./feed";
 
@@ -244,7 +244,7 @@ export function Notifications({ notifs, onOpenProfile, onOpenPost, isFollowing, 
 
 /* ─────────────────────────  ADMIN  ───────────────────────── */
 
-export function Admin({ reports, posts, allUsers, userCount, postCount, online, stats, dailyTrends, onResolve, onRemovePost, onSetVerified, onSetAdmin, onOpenProfile, onBanUser, onGrantXp, onSetXp, onDeleteUser, onBroadcast, pendingPublic, onReviewPublic, listings, threads, reels, onDeleteListing, onDeleteThread, onDeleteReel, onEditListing, onEditThread, groups, events, films, songs, onEditGroup, onDeleteGroup, onEditEvent, onDeleteEvent, onEditFilm, onDeleteFilm, onEditSong, onDeleteSong }) {
+export function Admin({ reports, posts, allUsers, userCount, postCount, online, stats, dailyTrends, onResolve, onRemovePost, onSetVerified, onSetAdmin, onOpenProfile, onBanUser, onGrantXp, onSetXp, onDeleteUser, onBroadcast, pendingPublic, onReviewPublic, listings, threads, reels, onDeleteListing, onDeleteThread, onDeleteReel, onEditListing, onEditThread, groups, events, films, songs, onEditGroup, onDeleteGroup, onEditEvent, onDeleteEvent, onEditFilm, onDeleteFilm, onEditSong, onDeleteSong, langEnabled, langProgress, onToggleLanguages }) {
   const [seg, setSeg] = useState("reports"); const [q, setQ] = useState(""); const [cseg, setCseg] = useState("listings"); const [confirm, setConfirm] = useState(null); const [bcast, setBcast] = useState(""); const [delUser, setDelUser] = useState(null);
   const open = reports.filter(r => r.status === "open");
   const S = stats || {};
@@ -292,7 +292,31 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
         </div>}
       </div>}
 
-      <div className="px-4 mb-3"><div className="flex gap-1 p-1 rounded-2xl overflow-x-auto no-scrollbar" style={{ background: C.surfaceMuted }}>{[["reports", "რეპორტები"], ["pending", "🌍 საჯარო" + ((pendingPublic || []).length ? " (" + pendingPublic.length + ")" : "")], ["users", "მომხმარებლები"], ["posts", "პოსტები"], ["content", "კონტენტი"], ["broadcast", "📢 გზავნილი"]].map(([k, l]) => <button key={k} onClick={() => setSeg(k)} className="flex-1 py-2 px-3 rounded-xl text-[13px] font-bold transition whitespace-nowrap" style={seg === k ? { background: C.surface, color: C.accent, boxShadow: SH.card } : { color: C.muted }}>{l}</button>)}</div></div>
+      <div className="px-4 mb-3"><div className="flex gap-1 p-1 rounded-2xl overflow-x-auto no-scrollbar" style={{ background: C.surfaceMuted }}>{[["reports", "რეპორტები"], ["pending", "🌍 საჯარო" + ((pendingPublic || []).length ? " (" + pendingPublic.length + ")" : "")], ["users", "მომხმარებლები"], ["posts", "პოსტები"], ["content", "კონტენტი"], ["languages", "🌐 ენები"], ["broadcast", "📢 გზავნილი"]].map(([k, l]) => <button key={k} onClick={() => setSeg(k)} className="flex-1 py-2 px-3 rounded-xl text-[13px] font-bold transition whitespace-nowrap" style={seg === k ? { background: C.surface, color: C.accent, boxShadow: SH.card } : { color: C.muted }}>{l}</button>)}</div></div>
+
+      {seg === "languages" && <div className="px-4 space-y-3">
+        <div className="p-4" style={card()}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2"><Languages size={18} style={{ color: C.accent }} /><span className="font-bold text-[15px]" style={{ color: C.ink }}>{t("admin.langSectionTitle")}</span></div>
+            <Switch on={langEnabled} onClick={() => onToggleLanguages(!langEnabled)} />
+          </div>
+          <div className="text-[12.5px] mt-1.5" style={{ color: C.faint }}>{t("admin.langToggleLabel")}</div>
+        </div>
+        <div className="p-4" style={card()}>
+          <div className="font-bold text-[14px] mb-2.5" style={{ color: C.ink }}>{t("admin.langUserProgress")}</div>
+          {(langProgress || []).length === 0 ? <Empty icon={Languages} t="—" s="" /> : (
+            <div className="space-y-2.5">
+              {langProgress.map((r) => (
+                <div key={r.user_id + r.lang} className="flex items-center gap-2.5">
+                  <Avatar id={r.user_id} size={30} />
+                  <div className="flex-1 min-w-0"><span className="text-[13px] font-semibold truncate block" style={{ color: C.ink }}>{USERS[r.user_id] ? USERS[r.user_id].name : "—"}</span></div>
+                  <Mono style={{ fontSize: 11, color: C.muted }}>{r.lang} · {r.mastered}/{Number(r.mastered) + Number(r.in_progress)}</Mono>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>}
 
       {seg === "pending" && <div className="px-4">
         {(pendingPublic || []).length === 0 ? <Empty icon={Check} t="სუფთაა ✨" s="მომლოდინე საჯარო განცხადება არ არის." /> : (
