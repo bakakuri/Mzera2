@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import {
   useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, KA_MONS, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, NOTIF_VERB, levelInfo, kfmt, RSVP_OPTS, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, FILTERS, STORY_STICKERS, setTheme, setME, compressImage, Phone, Video,
 } from "./core";
@@ -118,13 +119,16 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
   if (cv) {
     const members = convMembers(cv); const group = convIsGroup(cv); const other = USERS[members[0]];
     const startAdd = (sel) => { const id = onCreateConvo([...members, ...sel]); setPicker(null); setOpenId(id); };
-    // height (not "bottom") on purpose: "bottom" forced mixing getBoundingClientRect()
-    // (visual-viewport-relative) with window.innerHeight (layout-viewport-relative), which
-    // disagree whenever the mobile browser's address bar is showing — the panel's bottom
-    // edge would land far from the real nav. 100dvh is the one viewport unit that already
-    // tracks the *actual* visible height live, with zero JS measurement needed.
-    return (
-      <div className="fixed left-0 right-0 z-40 flex flex-col" style={{ background: C.paper, top: "var(--mz-hdr, 56px)", height: "calc(100dvh - var(--mz-hdr, 56px) - var(--mz-nav, 60px))" }}>
+    // top+bottom (no explicit height) lets the browser's native fixed-positioning stretch
+    // this panel to fill exactly that gap on its own, tracking address-bar show/hide
+    // correctly without any JS measurement or dvh (which — combined with an outer
+    // ancestor that can end up creating a containing block, e.g. mid tab-transition —
+    // was making the panel's computed height run long, pushing the input off past the
+    // bottom of what's visible). Portalled straight to <body> so nothing above it in the
+    // tree (transforms, filters, animations) can ever turn its "fixed" into something
+    // sized relative to a smaller ancestor instead of the real viewport.
+    return createPortal((
+      <div className="fixed left-0 right-0 z-40 flex flex-col" style={{ background: C.paper, top: "var(--mz-hdr, 56px)", bottom: "var(--mz-nav, 60px)" }}>
         <div className="flex-1 min-h-0 flex flex-col w-full" style={{ maxWidth: 600, margin: "0 auto", background: C.paper, borderLeft: `1px solid ${C.line}`, borderRight: `1px solid ${C.line}` }}>
           <div className="flex items-center gap-3 px-3 py-2.5 shrink-0" style={{ background: C.surface + "f2", backdropFilter: "blur(14px)", borderBottom: `1px solid ${C.line}` }}>
             <button onClick={() => setOpenId(null)} className="active:scale-90" style={{ color: C.ink2 }}><ArrowLeft size={22} /></button>
@@ -244,7 +248,7 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
           </div>
         )}
       </div>
-    );
+    ), document.body);
   }
 
   const startNew = (sel) => {
