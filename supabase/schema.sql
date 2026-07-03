@@ -1070,6 +1070,10 @@ begin
   )
   on conflict (id) do nothing;
   if ref_id is not null then
+    -- needed since protect_profile_columns (below) now locks xp down to
+    -- admin-only for ordinary UPDATE calls; this signup bonus is a trusted
+    -- internal write, not a user editing their own row
+    perform set_config('app.trusted_profile_write', 'on', true);
     update public.profiles set xp = xp + 100 where id = ref_id;
     update public.profiles set xp = xp + 50 where id = new.id;
   end if;
@@ -1092,6 +1096,58 @@ language sql stable security definer set search_path = public as $$
   select * from public.profiles where referred_by = auth.uid() order by created_at desc;
 $$;
 grant execute on function public.my_referred_users() to authenticated;
+
+-- ============================================================================
+--  PROFILE COLUMN PROTECTION — closes a real gap: profiles_update's RLS
+--  policy only ever checked *which row* (auth.uid() = id or is_admin()),
+--  never *which columns*. Any authenticated user could PATCH their own row
+--  directly (bypassing the app entirely, e.g. via a raw fetch to the
+--  PostgREST API) and set is_admin/verified/xp/banned/referral_code/
+--  referred_by to whatever they liked. This trigger locks those columns to
+--  admin-only for ordinary UPDATE calls; is_admin() is evaluated for the
+--  ACTING user (auth.uid()), not the row being edited, so the existing
+--  admin-panel flows (onSetVerified/onSetAdmin/setBanned, which go through
+--  a plain profiles.update() as an actual admin) keep working unchanged.
+--  The couple of trusted internal writes that touch xp for a user who
+--  *isn't* the acting admin (the signup referral bonus, self-serve add_xp)
+--  opt in explicitly via a transaction-local flag.
+-- ============================================================================
+create or replace function public.protect_profile_columns()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if coalesce(current_setting('app.trusted_profile_write', true), '') = 'on' then
+    return new;
+  end if;
+  if not public.is_admin() then
+    new.is_admin := old.is_admin;
+    new.verified := old.verified;
+    new.xp := old.xp;
+    new.banned := old.banned;
+    new.referral_code := old.referral_code;
+    new.referred_by := old.referred_by;
+  end if;
+  return new;
+end; $$;
+
+drop trigger if exists protect_profile_columns on public.profiles;
+create trigger protect_profile_columns before update on public.profiles
+for each row execute function public.protect_profile_columns();
+
+-- add_xp: previously callable by *any* authenticated user with an arbitrary
+-- uid — meaning anyone could grant XP to someone else's account (or their
+-- own, repeatedly) with zero authorization check. Now only self-serve
+-- (uid = the caller, used by every "+N XP" quest/action reward in the app)
+-- or an actual admin (granting XP to someone else from the moderation
+-- panel) may call it.
+create or replace function public.add_xp(uid uuid, amount int)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is distinct from uid and not public.is_admin() then
+    raise exception 'not authorized';
+  end if;
+  perform set_config('app.trusted_profile_write', 'on', true);
+  update public.profiles set xp = xp + amount where id = uid;
+end; $$;
 
 -- ============================================================================
 --  REALTIME (live chat / notifications / presence)
