@@ -65,6 +65,14 @@ create index if not exists posts_author_idx on public.posts(author_id);
 -- gap as comments.parent_id below: src/lib/api.js's posts.create() has sent
 -- this for a while, never checked into this file.
 alter table public.posts add column if not exists tagged uuid[];
+-- public_status: none | pending | approved | rejected — the "submit for the
+-- public feed" moderation queue (src/lib/api.js's posts.create()/
+-- admin.pendingPublic()/reviewPublic()) has relied on this column for a
+-- while too, same undocumented-gap story.
+alter table public.posts add column if not exists public_status text not null default 'none';
+-- shared_post_id: onRepost() in useFeed.js creates a new post pointing back
+-- at the original via this column — same undocumented-gap story.
+alter table public.posts add column if not exists shared_post_id uuid references public.posts(id) on delete set null;
 create index if not exists posts_created_idx on public.posts(created_at desc);
 
 create table if not exists public.poll_options (
@@ -349,7 +357,7 @@ end; $$;
 create table if not exists public.notifications (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid not null references public.profiles(id) on delete cascade,  -- ვის ეგზავნება
-  type       text not null,  -- like | comment | reply | follow | mention | thread_reply | thread_activity | profile_view | reel_like | reel_comment | story_like | story_comment | post_tag | group_post | group_approved | group_join_request | event_rsvp | birthday | level_up | comment_like | market_review
+  type       text not null,  -- like | comment | reply | follow | mention | thread_reply | thread_activity | profile_view | reel_like | reel_comment | story_like | story_comment | post_tag | group_post | group_approved | group_join_request | event_rsvp | birthday | level_up | comment_like | market_review | repost | poll_vote
   from_id    uuid references public.profiles(id) on delete cascade,           -- ვინ გამოიწვია
   post_id    uuid references public.posts(id) on delete cascade,
   text       text,
@@ -407,11 +415,12 @@ $$;
 
 -- new post → scan for @mentions, notify anyone explicitly tagged via the
 -- compose "tag people" picker (post.tagged, separate from @handle mentions),
--- and — if this is a group post (posts with a group_id set) — fan out a
--- 'group_post' ping to every approved group member except the author.
+-- notify the original author on a repost (shared_post_id set), and — if
+-- this is a group post (posts with a group_id set) — fan out a 'group_post'
+-- ping to every approved group member except the author.
 create or replace function public.notify_on_post()
 returns trigger language plpgsql security definer set search_path = public as $$
-declare tagged_id uuid; member_id uuid;
+declare tagged_id uuid; member_id uuid; orig_author uuid;
 begin
   perform public.notify_mentions(new.text, new.author_id, new.id, null);
   if new.tagged is not null then
@@ -430,6 +439,13 @@ begin
       insert into public.notifications (user_id, type, from_id, post_id, group_id)
       values (member_id, 'group_post', new.author_id, new.id, new.group_id);
     end loop;
+  end if;
+  if new.shared_post_id is not null then
+    select author_id into orig_author from public.posts where id = new.shared_post_id;
+    if orig_author is not null and orig_author <> new.author_id then
+      insert into public.notifications (user_id, type, from_id, post_id)
+      values (orig_author, 'repost', new.author_id, new.shared_post_id);
+    end if;
   end if;
   return new;
 end; $$;
@@ -506,6 +522,22 @@ end; $$;
 drop trigger if exists trg_notify_reel_like on public.reel_likes;
 create trigger trg_notify_reel_like after insert on public.reel_likes
   for each row execute function public.notify_on_reel_like();
+
+-- poll vote → notification for the post owner
+create or replace function public.notify_on_poll_vote()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare owner uuid;
+begin
+  select author_id into owner from public.posts where id = new.post_id;
+  if owner is not null and owner <> new.user_id then
+    insert into public.notifications (user_id, type, from_id, post_id)
+    values (owner, 'poll_vote', new.user_id, new.post_id);
+  end if;
+  return new;
+end; $$;
+drop trigger if exists trg_notify_poll_vote on public.poll_votes;
+create trigger trg_notify_poll_vote after insert on public.poll_votes
+  for each row execute function public.notify_on_poll_vote();
 
 -- follow → notification
 create or replace function public.notify_on_follow()
@@ -796,6 +828,8 @@ drop policy if exists profiles_update on public.profiles;
 create policy profiles_update on public.profiles for update using (auth.uid() = id);
 
 -- POSTS: ყველა კითხულობს (არა დამალულს); საკუთარს ქმნი/შლი
+-- (public_status-aware version of this policy lives further below, once
+-- public.is_admin() exists — see the POSTS PUBLIC-STATUS PRIVACY section)
 drop policy if exists posts_read on public.posts;
 create policy posts_read on public.posts for select using (not hidden or author_id = auth.uid());
 drop policy if exists posts_insert on public.posts;
@@ -966,6 +1000,52 @@ drop policy if exists posts_update on public.posts;
 create policy posts_update on public.posts for update using (auth.uid() = author_id or public.is_admin());
 drop policy if exists posts_delete on public.posts;
 create policy posts_delete on public.posts for delete using (auth.uid() = author_id or public.is_admin());
+
+-- ============================================================================
+--  POSTS PUBLIC-STATUS PRIVACY — a post submitted to the public-feed
+--  moderation queue (public_status pending/rejected) was readable by
+--  literally anyone via a direct API call: the original posts_read policy
+--  above never checked public_status at all, so "not yet approved for the
+--  public feed" was never actually private at the database level, only
+--  hidden by client-side filtering in App.jsx's homeVisible (trivially
+--  bypassable). Restricted to the author, admins, and — matching
+--  homeVisible's own logic, which already always shows a followed author's
+--  posts regardless of public_status — the author's followers, until the
+--  post is approved (or rejected, at which point it's back to being an
+--  ordinary followers-only post). Placed here, after is_admin() exists.
+-- ============================================================================
+drop policy if exists posts_read on public.posts;
+create policy posts_read on public.posts for select using (
+  (not hidden or author_id = auth.uid())
+  and (
+    public_status not in ('pending', 'rejected')
+    or author_id = auth.uid()
+    or public.is_admin()
+    or exists (select 1 from public.follows f where f.follower_id = auth.uid() and f.following_id = author_id)
+  )
+);
+
+-- admin_review_public: the client (admin.reviewPublic() in src/lib/api.js,
+-- driving the "საჯარო" moderation queue) has been calling this RPC for a
+-- while, but it never existed server-side — approving/rejecting a public
+-- post only ever updated the admin's own optimistic client state, never the
+-- database, so public_status stayed 'pending' forever and the author never
+-- found out either way.
+create or replace function public.admin_review_public(post_id uuid, approve boolean)
+returns void language plpgsql security definer set search_path = public as $$
+declare pauthor uuid;
+begin
+  if not public.is_admin() then
+    raise exception 'not authorized';
+  end if;
+  select author_id into pauthor from public.posts where id = post_id;
+  if pauthor is null then return; end if;
+  update public.posts set public_status = case when approve then 'approved' else 'rejected' end where id = post_id;
+  insert into public.notifications (user_id, type, from_id, post_id)
+  values (pauthor, case when approve then 'public_approved' else 'public_rejected' end, pauthor, post_id);
+end;
+$$;
+grant execute on function public.admin_review_public(uuid, boolean) to authenticated;
 
 -- COMMENTS (update policy never existed — comment editing was always a no-op)
 drop policy if exists comments_update on public.comments;

@@ -185,7 +185,9 @@ export function PostCard({ post, onLike, onReact, onSave, onComment, onPollVote,
     // rounded corners) but flips to visible while a popover is open, since those are
     // absolutely-positioned inside this card and short cards (e.g. text-only reposts)
     // were clipping "დაარეპორტე"/"წაშლა (admin)" off the bottom of the "..." menu
-    <article className="overflow-hidden" style={{ ...card(), overflow: (menu || shareMenu || reactOpen) ? "visible" : "hidden" }}>
+    <article className="overflow-hidden" style={{ ...card(), overflow: (menu || shareMenu || reactOpen) ? "visible" : "hidden", opacity: (isMine && (post.publicStatus === "pending" || post.publicStatus === "rejected")) ? 0.55 : 1 }}>
+      {isMine && post.publicStatus === "pending" && <div className="flex items-center gap-1.5 px-4 pt-2.5 -mb-1 text-[12px] font-semibold" style={{ color: C.accent }}><span style={{ fontSize: 12 }}>🌏</span> {t("post.publicPending")}</div>}
+      {isMine && post.publicStatus === "rejected" && <div className="flex items-center gap-1.5 px-4 pt-2.5 -mb-1 text-[12px] font-semibold" style={{ color: C.like }}><span style={{ fontSize: 12 }}>🌏</span> {t("post.publicRejectedNote")}</div>}
       {(post.shared || post.sharedId) && <div className="flex items-center gap-1.5 px-4 pt-2.5 -mb-1 text-[12px] font-semibold" style={{ color: C.faint }}><span style={{ fontSize: 12 }}>🔁</span> {isMine ? t("post.youShared") : ((USERS[post.authorId] ? USERS[post.authorId].name.split(" ")[0] : "") + t("post.someoneShared"))}</div>}
       <div className="flex items-center gap-3 px-4 pt-4 pb-3">
         <button onClick={() => onOpenProfile(u.id)}><Avatar id={u.id} size={44} /></button>
