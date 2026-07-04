@@ -37,7 +37,19 @@ export const auth = {
     const { data } = await need().auth.getSession();
     return data.session;
   },
-  onChange: (cb) => need().auth.onAuthStateChange((_e, session) => cb(session)),
+  onChange: (cb) => need().auth.onAuthStateChange((e, session) => cb(session, e)),
+  resetPassword: async (email) => {
+    const sb = need();
+    const { error } = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
+    });
+    if (error) throw error;
+  },
+  updatePassword: async (newPassword) => {
+    const sb = need();
+    const { error } = await sb.auth.updateUser({ password: newPassword });
+    if (error) throw error;
+  },
 };
 
 /* ───────────── PROFILES ───────────── */

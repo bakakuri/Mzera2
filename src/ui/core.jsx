@@ -707,10 +707,12 @@ export const LoadingScreen = () => (
 );
 
 
-export function AuthScreen() {
+export function AuthScreen({ recoveryMode, onResetPassword, onUpdatePassword }) {
   const [mode, setMode] = useState("in"); const [email, setEmail] = useState(""); const [pass, setPass] = useState("");
   const [username, setUsername] = useState(""); const [name, setName] = useState(""); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
   const [refCode] = useState(() => { try { return new URLSearchParams(window.location.search).get("ref") || ""; } catch (e) { return ""; } });
+  const [resetSent, setResetSent] = useState(false);
+  const [newPass, setNewPass] = useState(""); const [newPass2, setNewPass2] = useState("");
   const submit = async () => {
     setErr(""); setBusy(true);
     try {
@@ -718,6 +720,64 @@ export function AuthScreen() {
       else await authApi.signIn(email.trim(), pass);
     } catch (e) { setErr(e.message || "შეცდომა"); setBusy(false); }
   };
+  const submitReset = async () => {
+    setErr(""); setBusy(true);
+    try { await onResetPassword(email.trim()); setResetSent(true); } catch (e) { setErr(e.message || "შეცდომა"); }
+    setBusy(false);
+  };
+  const submitNewPassword = async () => {
+    setErr("");
+    if (newPass.length < 6) { setErr(t("auth.passwordTooShort")); return; }
+    if (newPass !== newPass2) { setErr(t("auth.passwordsNoMatch")); return; }
+    setBusy(true);
+    try { await onUpdatePassword(newPass); } catch (e) { setErr(e.message || "შეცდომა"); setBusy(false); }
+  };
+
+  if (recoveryMode) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6" style={{ background: C.paper, fontFamily: BODY, backgroundImage: `radial-gradient(${C.grid} 1px, transparent 1px)`, backgroundSize: "22px 22px" }}>
+        <div className="w-full max-w-[380px]">
+          <div className="text-center mb-7"><Wordmark size={42} /></div>
+          <div className="p-5" style={card()}>
+            <div className="font-bold text-[17px] mb-1.5" style={{ color: C.ink, fontFamily: DISPLAY }}>{t("auth.newPasswordTitle")}</div>
+            <div className="text-[13.5px] mb-4" style={{ color: C.muted }}>{t("auth.newPasswordSub")}</div>
+            <input value={newPass} onChange={e => setNewPass(e.target.value)} type="password" placeholder={t("auth.newPassword")} className="w-full mb-2.5 px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
+            <input value={newPass2} onChange={e => setNewPass2(e.target.value)} type="password" placeholder={t("auth.confirmPassword")} onKeyDown={e => e.key === "Enter" && submitNewPassword()} className="w-full mb-3 px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
+            {err && <div className="text-[13px] mb-3 px-1" style={{ color: C.like }}>{err}</div>}
+            <button onClick={submitNewPassword} disabled={busy || !newPass || !newPass2} className="w-full py-3 rounded-2xl font-bold text-white transition active:scale-[.98]" style={{ backgroundImage: GBRAND, boxShadow: SH.glow, opacity: busy || !newPass || !newPass2 ? 0.55 : 1, fontFamily: DISPLAY }}>{busy ? "..." : t("auth.updatePassword")}</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === "reset") {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6" style={{ background: C.paper, fontFamily: BODY, backgroundImage: `radial-gradient(${C.grid} 1px, transparent 1px)`, backgroundSize: "22px 22px" }}>
+        <div className="w-full max-w-[380px]">
+          <div className="text-center mb-7"><Wordmark size={42} /></div>
+          <div className="p-5" style={card()}>
+            {resetSent ? (
+              <>
+                <div className="font-bold text-[17px] mb-1.5" style={{ color: C.ink, fontFamily: DISPLAY }}>{t("auth.resetSentTitle")}</div>
+                <div className="text-[13.5px] mb-4" style={{ color: C.muted }}>{t("auth.resetSentSub")}</div>
+              </>
+            ) : (
+              <>
+                <div className="font-bold text-[17px] mb-1.5" style={{ color: C.ink, fontFamily: DISPLAY }}>{t("auth.resetTitle")}</div>
+                <div className="text-[13.5px] mb-4" style={{ color: C.muted }}>{t("auth.resetSub")}</div>
+                <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder={t("auth.email")} onKeyDown={e => e.key === "Enter" && submitReset()} className="w-full mb-3 px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
+                {err && <div className="text-[13px] mb-3 px-1" style={{ color: C.like }}>{err}</div>}
+                <button onClick={submitReset} disabled={busy || !email} className="w-full py-3 rounded-2xl font-bold text-white transition active:scale-[.98]" style={{ backgroundImage: GBRAND, boxShadow: SH.glow, opacity: busy || !email ? 0.55 : 1, fontFamily: DISPLAY }}>{busy ? "..." : t("auth.resetSend")}</button>
+              </>
+            )}
+            <button onClick={() => { setMode("in"); setErr(""); setResetSent(false); }} className="w-full mt-3.5 text-[13.5px] font-semibold" style={{ color: C.muted }}>{t("auth.backToSignin")}</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center p-6" style={{ background: C.paper, fontFamily: BODY, backgroundImage: `radial-gradient(${C.grid} 1px, transparent 1px)`, backgroundSize: "22px 22px" }}>
       <div className="w-full max-w-[380px]">
@@ -730,7 +790,8 @@ export function AuthScreen() {
             {refCode && <div className="w-full mb-2.5 px-3.5 py-2.5 rounded-xl text-[13px] flex items-center gap-2" style={{ background: C.accentSoft, color: C.accentText }}><UserPlus size={15} /> {t("auth.invitedBy")} <Mono style={{ fontWeight: 700 }}>{refCode}</Mono></div>}
           </>}
           <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder={t("auth.email")} className="w-full mb-2.5 px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
-          <input value={pass} onChange={e => setPass(e.target.value)} type="password" placeholder={t("auth.password")} onKeyDown={e => e.key === "Enter" && submit()} className="w-full mb-3 px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
+          <input value={pass} onChange={e => setPass(e.target.value)} type="password" placeholder={t("auth.password")} onKeyDown={e => e.key === "Enter" && submit()} className="w-full mb-2.5 px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
+          {mode === "in" && <button onClick={() => { setMode("reset"); setErr(""); }} className="w-full text-right text-[12.5px] font-semibold mb-3" style={{ color: C.accent }}>{t("auth.forgotPassword")}</button>}
           {err && <div className="text-[13px] mb-3 px-1" style={{ color: C.like }}>{err}</div>}
           <button onClick={submit} disabled={busy || !email || !pass} className="w-full py-3 rounded-2xl font-bold text-white transition active:scale-[.98]" style={{ backgroundImage: GBRAND, boxShadow: SH.glow, opacity: busy || !email || !pass ? 0.55 : 1, fontFamily: DISPLAY }}>{busy ? "..." : mode === "up" ? t("auth.createAccount") : t("auth.signin")}</button>
         </div>

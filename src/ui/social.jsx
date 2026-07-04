@@ -10,7 +10,8 @@ export function Onboarding({ suggested, following, onToggleFollow, onUploadAvata
   const [bio, setBio] = useState(me.bio || "");
   const fileRef = useRef(null);
   const [avatarProgress, setAvatarProgress] = useState(null);
-  const pickAvatar = async (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; setAvatarProgress(0); try { await onUploadAvatar(f, setAvatarProgress); } catch (err) {} setAvatarProgress(null); e.target.value = ""; };
+  const [avatarErr, setAvatarErr] = useState("");
+  const pickAvatar = async (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; setAvatarProgress(0); setAvatarErr(""); try { await onUploadAvatar(f, setAvatarProgress); } catch (err) { setAvatarErr(t("onb.avatarUploadFailedPre") + (err && err.message ? err.message : t("error.unknown"))); } setAvatarProgress(null); e.target.value = ""; };
   const followedCount = suggested.filter(u => following.includes(u.id)).length;
   const next = () => { if (step === 0) { onSaveProfile(name.trim(), bio.trim()); setStep(1); } else onFinish(); };
   return (
@@ -24,7 +25,7 @@ export function Onboarding({ suggested, following, onToggleFollow, onUploadAvata
             <div className="flex flex-col items-center">
               <button onClick={() => fileRef.current && fileRef.current.click()} className="relative active:scale-95"><Avatar id={ME} size={104} /><UploadRing pct={avatarProgress} size={104} strokeWidth={3} /><div style={{ position: "absolute", right: 2, bottom: 2, width: 34, height: 34, borderRadius: "50%", backgroundImage: GBRAND, display: "flex", alignItems: "center", justifyContent: "center", border: `3px solid ${C.paper}` }}>{avatarProgress != null ? <Mono style={{ fontSize: 10, color: "#fff", fontWeight: 700 }}>{avatarProgress}%</Mono> : <Camera size={17} color="#fff" />}</div></button>
               <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickAvatar} />
-              <span className="text-[12.5px] mt-2" style={{ color: C.faint }}>{t("onb.addPhoto")}</span>
+              {avatarErr ? <span className="text-[12.5px] mt-2 text-center" style={{ color: C.like }}>{avatarErr}</span> : <span className="text-[12.5px] mt-2" style={{ color: C.faint }}>{t("onb.addPhoto")}</span>}
             </div>
             <div className="mt-6 space-y-3.5">
               <div><label className="text-[12.5px] font-semibold" style={{ color: C.ink2 }}>{t("field.name")}</label><input value={name} onChange={e => setName(e.target.value)} placeholder={t("onb.namePh")} className="w-full mt-1.5 px-4 py-3 rounded-xl text-[15px] outline-none" style={{ background: C.surfaceMuted, color: C.ink }} /></div>
@@ -67,8 +68,8 @@ export function Profile({ userId, posts, savedPosts, reels, xp, meProfile, follo
   const u = USERS[userId]; const isMe = userId === ME; const [tab, setTab] = useState("grid"); const [sel, setSel] = useState(null); const [editReel, setEditReel] = useState(null); const [editCap, setEditCap] = useState("");
   const [menuOpen, setMenuOpen] = useState(false); const [qrOpen, setQrOpen] = useState(false); const [selCol, setSelCol] = useState(null); const [assignFor, setAssignFor] = useState(null); const [avatarView, setAvatarView] = useState(false);
   const [avatarProgress, setAvatarProgress] = useState(null); const [coverProgress, setCoverProgress] = useState(null);
-  const pickAvatar = async (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; setAvatarProgress(0); try { await onUploadAvatar(f, setAvatarProgress); } catch (err) {} setAvatarProgress(null); e.target.value = ""; };
-  const pickCover = async (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; setCoverProgress(0); try { await onUploadCover(f, setCoverProgress); } catch (err) {} setCoverProgress(null); e.target.value = ""; };
+  const pickAvatar = async (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; setAvatarProgress(0); try { await onUploadAvatar(f, setAvatarProgress); } catch (err) { flash && flash(t("onb.avatarUploadFailedPre") + (err && err.message ? err.message : t("error.unknown"))); } setAvatarProgress(null); e.target.value = ""; };
+  const pickCover = async (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; setCoverProgress(0); try { await onUploadCover(f, setCoverProgress); } catch (err) { flash && flash(t("profile.coverUploadFailedPre") + (err && err.message ? err.message : t("error.unknown"))); } setCoverProgress(null); e.target.value = ""; };
   const [hls, setHls] = useState([]); const [creatingHl, setCreatingHl] = useState(false); const [viewHl, setViewHl] = useState(null);
   useEffect(() => { let on = true; highlightsApi.forUser(userId).then(d => { if (on) setHls(d); }).catch(() => {}); return () => { on = false; }; }, [userId]);
   const reloadHls = () => highlightsApi.forUser(userId).then(setHls).catch(() => {});
@@ -610,7 +611,7 @@ export function SettingsView({ settings, setSettings, meProfile, setMeProfile, m
   const set = (k, v) => setSettings(s => ({ ...s, [k]: v }));
   const [delMode, setDelMode] = useState(false); const [delTxt, setDelTxt] = useState("");
   const [avatarProgress, setAvatarProgress] = useState(null);
-  const pickAvatar = async (e) => { const f = e.target.files && e.target.files[0]; if (!f || !onUploadAvatar) return; setAvatarProgress(0); try { await onUploadAvatar(f, setAvatarProgress); } catch (err) {} setAvatarProgress(null); e.target.value = ""; };
+  const pickAvatar = async (e) => { const f = e.target.files && e.target.files[0]; if (!f || !onUploadAvatar) return; setAvatarProgress(0); try { await onUploadAvatar(f, setAvatarProgress); } catch (err) { flash && flash(t("onb.avatarUploadFailedPre") + (err && err.message ? err.message : t("error.unknown"))); } setAvatarProgress(null); e.target.value = ""; };
   const tog = (k) => setSettings(s => ({ ...s, [k]: !s[k] }));
   return (
     <div className="fixed inset-0 z-[59] flex justify-center" style={{ background: C.paper }}>

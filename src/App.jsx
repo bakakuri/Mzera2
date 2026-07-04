@@ -70,7 +70,7 @@ export default function App() {
 
   const feed = useFeed({ tab, flash, dbErr, setDbError, gainXp });
   const auth = useAuthSession({ flash, reloadFeed: feed.reloadFeed });
-  const { session, ready, setReady, showOnboarding, setShowOnboarding, settings, setSettings, meProfile, setMeProfile, pushState, onTogglePush, onSaveOnboardProfile, onFinishOnboarding } = auth;
+  const { session, ready, setReady, recoveryMode, onResetPassword, onUpdatePassword, showOnboarding, setShowOnboarding, settings, setSettings, meProfile, setMeProfile, pushState, onTogglePush, onSaveOnboardProfile, onFinishOnboarding } = auth;
   setLang(settings.lang || "ka");
   const live = hasSupabase && !!session;
 
@@ -170,8 +170,8 @@ export default function App() {
   const openReports = admin.reports.filter(r => r.status === "open").length;
 
   const uploadImage = async (file, folder = "posts", onProgress) => await storageApi.upload(await compressImage(file), folder, onProgress);
-  const onChangeCover = async (file, onProgress) => { if (!file) return; try { const url = await storageApi.upload(await compressImage(file, 1600, 0.78), "covers", onProgress); await profilesApi.update(ME, { cover_url: url }); USERS[ME] = { ...USERS[ME], cover: url }; setMeProfile(p => ({ ...p, cover: url })); flash("ქოვერი განახლდა ✅"); } catch (e) { setDbError("cover: " + (e.message || JSON.stringify(e)) + (e.hint ? " · hint: " + e.hint : "") + (e.code ? " · code: " + e.code : "")); } };
-  const onChangeAvatar = async (file, onProgress) => { if (!file) return; try { const url = await storageApi.upload(await compressImage(file, 640, 0.8), "avatars", onProgress); await profilesApi.update(ME, { avatar_url: url }); USERS[ME] = { ...USERS[ME], avatar: url }; setMeProfile(p => ({ ...p, avatar: url })); flash("პროფილის ფოტო განახლდა ✅"); } catch (e) { setDbError("avatar: " + (e.message || JSON.stringify(e)) + (e.hint ? " · hint: " + e.hint : "") + (e.code ? " · code: " + e.code : "")); } };
+  const onChangeCover = async (file, onProgress) => { if (!file) return; const url = await storageApi.upload(await compressImage(file, 1600, 0.78), "covers", onProgress); await profilesApi.update(ME, { cover_url: url }); USERS[ME] = { ...USERS[ME], cover: url }; setMeProfile(p => ({ ...p, cover: url })); flash("ქოვერი განახლდა ✅"); };
+  const onChangeAvatar = async (file, onProgress) => { if (!file) return; const url = await storageApi.upload(await compressImage(file, 640, 0.8), "avatars", onProgress); await profilesApi.update(ME, { avatar_url: url }); USERS[ME] = { ...USERS[ME], avatar: url }; setMeProfile(p => ({ ...p, avatar: url })); flash("პროფილის ფოტო განახლდა ✅"); };
 
   const onTag = (t) => feed.openTag(t, setProfileId);
   const openProfile = (id) => { setDrawerOpen(false); setProfileId(id); setTab("profile"); feed.loadUserPosts(id); };
@@ -336,8 +336,9 @@ export default function App() {
   const fullBleed = tab === "map" || tab === "reels";
 
   if (!hasSupabase) return <ConfigError />;
+  if (recoveryMode) return <AuthScreen recoveryMode onUpdatePassword={onUpdatePassword} />;
   if (session === undefined) return <LoadingScreen />;
-  if (session === null) return <AuthScreen />;
+  if (session === null) return <AuthScreen onResetPassword={onResetPassword} />;
   if (!ready) return <LoadingScreen />;
 
   return (

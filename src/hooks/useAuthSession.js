@@ -13,6 +13,7 @@ const lsSet = (k, v) => { try { if (typeof localStorage !== "undefined") localSt
 export function useAuthSession({ flash, reloadFeed }) {
   const [session, setSession] = useState(undefined);
   const [ready, setReady] = useState(false);
+  const [recoveryMode, setRecoveryMode] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [settings, setSettings] = useState(() => lsGet("mz_settings", { private: false, activity: true, showLocation: true, nLikes: true, nComments: true, nFollows: true, nMessages: true, nMentions: true, nProfileViews: true, lang: LANG }));
   const [meProfile, setMeProfile] = useState({ name: "", bio: "", avatar: null, cover: null });
@@ -29,9 +30,19 @@ export function useAuthSession({ flash, reloadFeed }) {
   useEffect(() => {
     if (!hasSupabase) return;
     authApi.getSession().then((s) => setSession(s || null)).catch(() => setSession(null));
-    const sub = authApi.onChange((s) => setSession(s || null));
+    const sub = authApi.onChange((s, event) => {
+      if (event === "PASSWORD_RECOVERY") setRecoveryMode(true);
+      setSession(s || null);
+    });
     return () => { try { sub.data.subscription.unsubscribe(); } catch (e) {} };
   }, []);
+
+  const onResetPassword = async (email) => { await authApi.resetPassword(email); };
+  const onUpdatePassword = async (newPassword) => {
+    await authApi.updatePassword(newPassword);
+    setRecoveryMode(false);
+    flash(t("auth.passwordUpdated"));
+  };
 
   useEffect(() => {
     if (!session || !hasSupabase) return;
@@ -63,6 +74,7 @@ export function useAuthSession({ flash, reloadFeed }) {
 
   return {
     session, setSession, ready, setReady,
+    recoveryMode, onResetPassword, onUpdatePassword,
     showOnboarding, setShowOnboarding,
     settings, setSettings, meProfile, setMeProfile,
     pushState, onTogglePush,
