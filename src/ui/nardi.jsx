@@ -171,8 +171,8 @@ export function NardiGame({ onExit }) {
       const raf2 = requestAnimationFrame(() => setFlying({ player: by, x: ex, y: ey, moving: true }));
       lastAnimatedRef.current.__raf2 = raf2;
     });
-    const t1 = setTimeout(() => setFlying(null), 340);
-    const t2 = hit ? setTimeout(() => { setHitIdx(to); setTimeout(() => setHitIdx(null), 360); }, 300) : null;
+    const t1 = setTimeout(() => setFlying(null), 420);
+    const t2 = hit ? setTimeout(() => { setHitIdx(to); setTimeout(() => setHitIdx(null), 360); }, 380) : null;
     return () => { cancelAnimationFrame(raf1); clearTimeout(t1); if (t2) clearTimeout(t2); };
   }, [g]);
 
@@ -301,7 +301,7 @@ export function NardiGame({ onExit }) {
         return cur;
       });
       setThinking(false);
-    }, g.phase === "move" ? 550 : 750);
+    }, g.phase === "move" ? 950 : 1100);
     return () => clearTimeout(t);
   }, [g, diff, online]);
 
@@ -590,7 +590,7 @@ export function NardiGame({ onExit }) {
         {renderRow(bottomIdx, false)}
 
         {flying && (
-          <div style={{ position: "absolute", left: 0, top: 0, width: 19, height: 19, marginLeft: -9.5, marginTop: -9.5, borderRadius: "50%", backgroundImage: CHECKER_BG[flying.player], backgroundBlendMode: CHECKER_BLEND, border: `1.5px solid ${CHECKER_RING[flying.player]}`, boxShadow: "0 5px 10px rgba(0,0,0,.55)", transform: `translate(${flying.x}px, ${flying.y}px) scale(${flying.moving ? 1.25 : 1})`, transition: flying.moving ? "transform 300ms cubic-bezier(.25,.7,.3,1)" : "none", zIndex: 30, pointerEvents: "none" }} />
+          <div style={{ position: "absolute", left: 0, top: 0, width: 19, height: 19, marginLeft: -9.5, marginTop: -9.5, borderRadius: "50%", backgroundImage: CHECKER_BG[flying.player], backgroundBlendMode: CHECKER_BLEND, border: `1.5px solid ${CHECKER_RING[flying.player]}`, boxShadow: "0 5px 10px rgba(0,0,0,.55)", transform: `translate(${flying.x}px, ${flying.y}px) scale(${flying.moving ? 1.25 : 1})`, transition: flying.moving ? "transform 380ms cubic-bezier(.25,.7,.3,1)" : "none", zIndex: 30, pointerEvents: "none" }} />
         )}
         {dragFrom != null && (
           <div style={{ position: "absolute", left: 0, top: 0, width: 22, height: 22, marginLeft: -11, marginTop: -11, borderRadius: "50%", backgroundImage: CHECKER_BG[meIdx], backgroundBlendMode: CHECKER_BLEND, border: `1.5px solid ${CHECKER_RING[meIdx]}`, boxShadow: "0 8px 18px rgba(0,0,0,.65)", transform: `translate(${dragPos.x}px, ${dragPos.y}px) scale(${dragMoved ? 1.3 : 1})`, transition: dragMoved ? "none" : "transform 120ms ease", opacity: dragMoved ? 1 : 0, zIndex: 36, pointerEvents: "none" }} />
