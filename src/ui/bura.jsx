@@ -9,10 +9,11 @@ const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const genCode = () => Array.from({ length: 4 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join("");
 
 // list screen for the "თამაშები" nav tab
-export function GamesList({ onOpenBura, onOpenNardi }) {
+export function GamesList({ onOpenBura, onOpenNardi, onOpenChess }) {
   const GAMES = [
     { emoji: "🃏", name: "ბურა", desc: "1-ზე-1 ქართული კარტების თამაში · 36 კარტი", act: onOpenBura },
     { emoji: "🎲", name: "ნარდი", desc: "1-ზე-1 · ბექგამონის სტანდარტული წესები", act: onOpenNardi },
+    { emoji: "♟️", name: "ჭადრაკი", desc: "1-ზე-1 · ერთ ეკრანზე, სრული წესებით", act: onOpenChess },
   ];
   return (
     <div className="pb-10">

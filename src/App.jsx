@@ -37,6 +37,7 @@ const CallLayer = lazy(() => import("./ui/call").then(m => ({ default: m.CallLay
 const BuraGame = lazy(() => import("./ui/bura").then(m => ({ default: m.BuraGame })));
 const GamesList = lazy(() => import("./ui/bura").then(m => ({ default: m.GamesList })));
 const NardiGame = lazy(() => import("./ui/nardi").then(m => ({ default: m.NardiGame })));
+const ChessGame = lazy(() => import("./ui/chess").then(m => ({ default: m.ChessGame })));
 const Movies = lazy(() => import("./ui/movies").then(m => ({ default: m.Movies })));
 const MusicPage = lazy(() => import("./ui/music").then(m => ({ default: m.MusicPage })));
 const LanguagesPage = lazy(() => import("./ui/languages").then(m => ({ default: m.LanguagesPage })));
@@ -289,6 +290,7 @@ export default function App() {
   const goBackOneLevel = () => {
     if (games.buraOpen) { games.setBuraOpen(false); return true; }
     if (games.nardiOpen) { games.setNardiOpen(false); return true; }
+    if (games.chessOpen) { games.setChessOpen(false); return true; }
     if (stories.storyId) { stories.setStoryId(null); return true; }
     if (reelsHook.reelComments) { reelsHook.setReelComments(null); return true; }
     if (reelsHook.reelCreateOpen) { reelsHook.setReelCreateOpen(false); return true; }
@@ -426,7 +428,7 @@ export default function App() {
             {tab === "explore" && <Explore posts={visible} onTag={onTag} activeTag={feed.activeTag} clearTag={() => feed.setActiveTag(null)} onOpenProfile={openProfile} onSearch={() => setSearchOpen(true)} tagPosts={feed.tagPosts} tagLoading={feed.tagLoading} />}
             {tab === "forum" && <Forum threads={forum.threads} onReply={forum.onThreadReply} onVote={forum.onThreadVote} onNew={forum.onNewThread} onOpenProfile={openProfile} onEdit={forum.onEditThread} onDelete={forum.onDeleteThread} pendingOpen={forum.pendingThread} pendingReplyId={forum.pendingThreadReplyId} clearPending={() => { forum.setPendingThread(null); forum.setPendingThreadReplyId(null); }} />}
             {tab === "market" && <Market listings={market.listings} onSave={market.onListingSave} onNew={market.onNewListing} onMessage={chat.onMessageUser} onOpenProfile={openProfile} flash={flash} live={live} onOrder={market.onOrder} getReviews={market.getReviews} onAddReview={market.addReviewApi} onUpload={(f, onProgress) => uploadImage(f, "market", onProgress)} onEdit={market.onEditListing} onDelete={market.onDeleteListing} sentinelRef={market.listSentinelRef} hasMore={market.listMore} loadingMore={market.listLoadingMore} pendingOpen={market.pendingListing} clearPending={() => market.setPendingListing(null)} />}
-            {tab === "games" && <GamesList onOpenBura={() => games.setBuraOpen(true)} onOpenNardi={() => games.setNardiOpen(true)} />}
+            {tab === "games" && <GamesList onOpenBura={() => games.setBuraOpen(true)} onOpenNardi={() => games.setNardiOpen(true)} onOpenChess={() => games.setChessOpen(true)} />}
             {tab === "movies" && <Movies films={movies.films} watch={movies.filmWatch} onNew={movies.onNewFilm} onEdit={movies.onEditFilm} onDelete={movies.onDeleteFilm} onOpenProfile={openProfile} flash={flash} onUpload={(f, onProgress) => uploadImage(f, "films", onProgress)} onUploadVideo={(f, onProgress) => storageApi.upload(f, "films", onProgress)} getReviews={movies.getFilmReviews} onAddReview={movies.addFilmReviewApi} onSetWatch={movies.onSetFilmWatch} onClearWatch={movies.onClearFilmWatch} sentinelRef={movies.filmSentinelRef} hasMore={movies.filmMore} loadingMore={movies.filmLoadingMore} pendingOpen={movies.pendingFilm} clearPending={() => movies.setPendingFilm(null)} />}
             {tab === "music" && <MusicPage songs={music.songs} nowPlaying={music.nowPlaying} isPlaying={music.isPlaying} onPlay={music.playSong} onNew={music.onNewSong} onEdit={music.onEditSong} onDelete={music.onDeleteSong} onUpload={(f, onProgress) => uploadImage(f, "music", onProgress)} onUploadAudio={(f, onProgress) => storageApi.upload(f, "music", onProgress)} />}
             {tab === "map" && <MapView onMessage={chat.onMessageUser} onMenu={() => setDrawerOpen(true)} onOpenProfile={openProfile} />}
@@ -479,6 +481,7 @@ export default function App() {
       {showOnboarding && <Onboarding suggested={suggested} following={following} onToggleFollow={toggleFollow} onUploadAvatar={onChangeAvatar} onSaveProfile={onSaveOnboardProfile} onFinish={onFinishOnboarding} />}
       {games.buraOpen && <Suspense fallback={null}><BuraGame onExit={() => games.setBuraOpen(false)} /></Suspense>}
       {games.nardiOpen && <Suspense fallback={null}><NardiGame onExit={() => games.setNardiOpen(false)} /></Suspense>}
+      {games.chessOpen && <Suspense fallback={null}><ChessGame onExit={() => games.setChessOpen(false)} /></Suspense>}
       <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)} nav={NAV} onNav={goTab} onCreate={() => { setDrawerOpen(false); setCreateOpen(true); }} flash={(t) => { setDrawerOpen(false); flash(t); }} tab={tab} mode={mode} setMode={setMode} xp={xp} followers={followerCounts[ME] != null ? followerCounts[ME] : (USERS[ME] ? USERS[ME].followers : 0)} following={following.length} onSettings={() => { setDrawerOpen(false); setSettingsOpen(true); }} onSignOut={() => { setDrawerOpen(false); authApi.signOut().catch(dbErr("გასვლა")); }} />
       {createOpen && <CreateSheet onClose={() => setCreateOpen(false)} onPost={onPost} live={live} taggable={following} myGroups={groups.groups.filter(g => g.joined)} onGroupPost={groups.onGroupPost} onUpload={(f, onProgress) => uploadImage(f, "posts", onProgress)} onUploadVideo={(f, onProgress) => storageApi.upload(f, "posts", onProgress)} />}
       {stories.story && <StoryViewer story={stories.story} onClose={() => stories.setStoryId(null)} onDone={stories.markSeen} flash={flash} />}
