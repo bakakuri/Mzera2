@@ -2,24 +2,38 @@ import { useState, useEffect, useRef } from "react";
 import { C, DISPLAY, MONO, GBRAND, ArrowLeft, X, USERS, ME } from "./core";
 import { calls as callsApi } from "../lib/api";
 import { newGame, legalMoves, makeMove, PIECE_GLYPH } from "../lib/chess";
-import { botMove } from "../lib/chessBot";
+import { botMove, botAcceptsDraw } from "../lib/chessBot";
 import { Board3D } from "./chess3d";
 
 const DIFFS = [{ k: "easy", t: "მარტივი" }, { k: "normal", t: "საშუალო" }, { k: "hard", t: "რთული" }];
+const TIME_CONTROLS = [
+  { k: "none", t: "დროის გარეშე", secs: null },
+  { k: "b3", t: "3 წთ", secs: 180 },
+  { k: "r5", t: "5 წთ", secs: 300 },
+  { k: "r10", t: "10 წთ", secs: 600 },
+];
 const PROMO_PIECES = ["Q", "R", "B", "N"];
 const PROMO_NAME = { Q: "ვეზირი", R: "ცული", B: "ფილი", N: "ცხენი" };
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const genCode = () => Array.from({ length: 4 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join("");
+const enemySide = (s) => (s === "w" ? "b" : "w");
+const fmtClock = (secs) => { const s = Math.max(0, Math.round(secs)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
 
 export function ChessGame({ onExit }) {
   const [screen, setScreen] = useState("menu"); // menu | online-menu | online-wait | play
   const [mode, setMode] = useState("local");    // local | bot | online
   const [diff, setDiff] = useState("normal");
+  const [tc, setTc] = useState(TIME_CONTROLS[0]);
   const [g, setG] = useState(null);
   const [sel, setSel] = useState(null);
   const [legal, setLegal] = useState([]);
   const [flipped, setFlipped] = useState(false);
   const [promo, setPromo] = useState(null);
+
+  const [clock, setClock] = useState(null); // { w, b } seconds, or null (no clock)
+  const [outcome, setOutcome] = useState(null); // { type: "timeout"|"resign"|"draw", winner: "w"|"b"|null }
+  const [resignAsk, setResignAsk] = useState(false);
+  const [drawState, setDrawState] = useState(null); // null | "offered-by-me" | "offered-by-opp" | "declined"
 
   // online
   const [role, setRole] = useState(null); // null | "host" | "guest"
@@ -30,12 +44,13 @@ export function ChessGame({ onExit }) {
   const [oppLeft, setOppLeft] = useState(false);
 
   const chRef = useRef(null), readyRef = useRef(false), queueRef = useRef([]);
-  const gRef = useRef(null), playersRef = useRef(null), roleRef = useRef(null), onMsgRef = useRef(null);
-  gRef.current = g; playersRef.current = players; roleRef.current = role;
+  const gRef = useRef(null), playersRef = useRef(null), roleRef = useRef(null), onMsgRef = useRef(null), clockRef = useRef(null);
+  gRef.current = g; playersRef.current = players; roleRef.current = role; clockRef.current = clock;
 
   const online = mode === "online";
   const meIdx = online ? (role === "guest" ? 1 : 0) : 0;
   const mySide = mode === "bot" ? "w" : online ? (meIdx === 0 ? "w" : "b") : null; // null = hot-seat, either side selectable
+  const ended = !!g && (g.status === "checkmate" || g.status === "stalemate" || !!outcome);
 
   const sendRaw = (ch, payload) => { try { ch.send({ type: "broadcast", event: "c", payload }); } catch (e) {} };
   const send = (payload) => {
@@ -43,22 +58,36 @@ export function ChessGame({ onExit }) {
     else queueRef.current.push(payload);
   };
 
+  const startClock = () => (tc.secs != null ? { w: tc.secs, b: tc.secs } : null);
+
   const onMsg = (m) => {
     const r = roleRef.current;
     if (r === "host") {
       if (m.t === "hello") {
         if (!gRef.current) {
           const pl = [ME, m.from]; setPlayers(pl);
-          const ns = newGame(); setG(ns); setOppLeft(false); setScreen("play");
-          send({ t: "state", state: ns, players: pl });
-        } else send({ t: "state", state: gRef.current, players: playersRef.current });
+          const ns = newGame(); const cl = startClock();
+          setG(ns); setClock(cl); setOutcome(null); setDrawState(null); setOppLeft(false); setScreen("play");
+          send({ t: "state", state: ns, players: pl, clock: cl });
+        } else send({ t: "state", state: gRef.current, players: playersRef.current, clock: clockRef.current });
       } else if (m.t === "move") {
         const cur = gRef.current; if (!cur) return;
         const ns = makeMove(cur, m.from, m.to, m.promoteTo);
-        if (ns !== cur) { setG(ns); send({ t: "state", state: ns, players: playersRef.current }); }
-      } else if (m.t === "bye") setOppLeft(true);
+        if (ns !== cur) { setG(ns); send({ t: "state", state: ns, players: playersRef.current, clock: clockRef.current }); }
+      } else if (m.t === "resign") {
+        const out = { type: "resign", winner: "w" }; // only the guest (black) ever sends this to the host
+        setOutcome(out); send({ t: "outcome", outcome: out });
+      } else if (m.t === "drawOffer") setDrawState("offered-by-opp");
+      else if (m.t === "drawResponse") {
+        if (m.accept) { const out = { type: "draw", winner: null }; setOutcome(out); send({ t: "outcome", outcome: out }); }
+        else setDrawState(null);
+      } else if (m.t === "drawDeclined") setDrawState("declined");
+      else if (m.t === "bye") setOppLeft(true);
     } else if (r === "guest") {
-      if (m.t === "state") { setG(m.state); setPlayers(m.players); setOppLeft(false); setJoinErr(""); setScreen("play"); }
+      if (m.t === "state") { setG(m.state); setPlayers(m.players); setClock(m.clock); setOutcome(null); setOppLeft(false); setJoinErr(""); setScreen("play"); }
+      else if (m.t === "outcome") setOutcome(m.outcome);
+      else if (m.t === "drawOffer") setDrawState("offered-by-opp");
+      else if (m.t === "drawDeclined") setDrawState("declined");
       else if (m.t === "bye") setOppLeft(true);
     }
   };
@@ -93,7 +122,7 @@ export function ChessGame({ onExit }) {
 
   // bot plays black after a short "thinking" delay
   useEffect(() => {
-    if (mode !== "bot" || !g || g.turn !== "b" || (g.status !== "playing" && g.status !== "check")) return;
+    if (mode !== "bot" || !g || g.turn !== "b" || outcome || (g.status !== "playing" && g.status !== "check")) return;
     const t = setTimeout(() => {
       setG((cur) => {
         if (!cur || cur.turn !== "b") return cur;
@@ -103,25 +132,64 @@ export function ChessGame({ onExit }) {
       });
     }, 550);
     return () => clearTimeout(t);
-  }, [g, mode, diff]);
+  }, [g, mode, diff, outcome]);
 
-  const startLocal = () => { setMode("local"); setRole(null); setPlayers(null); setG(newGame()); setSel(null); setLegal([]); setFlipped(false); setScreen("play"); };
-  const startBot = () => { setMode("bot"); setRole(null); setPlayers(null); setG(newGame()); setSel(null); setLegal([]); setFlipped(false); setScreen("play"); };
-  const createRoom = () => { setMode("online"); setJoinErr(""); setPlayers(null); setG(null); setCode(genCode()); setRole("host"); setFlipped(false); setScreen("online-wait"); };
+  // bot judges an incoming draw offer
+  useEffect(() => {
+    if (mode !== "bot" || drawState !== "offered-by-opp") return;
+    const t = setTimeout(() => {
+      if (g && botAcceptsDraw(g, "b")) setOutcome({ type: "draw", winner: null });
+      else setDrawState("declined");
+    }, 700);
+    return () => clearTimeout(t);
+  }, [mode, drawState, g]);
+
+  // visual clock countdown (every client ticks its own displayed clock)
+  useEffect(() => {
+    if (!clock || ended || !g) return;
+    const iv = setInterval(() => {
+      setClock((c) => {
+        if (!c) return c;
+        const side = gRef.current.turn;
+        return { ...c, [side]: Math.max(0, c[side] - 1) };
+      });
+    }, 1000);
+    return () => clearInterval(iv);
+  }, [clock != null, ended, g && g.status]);
+
+  // timeout detection (authoritative party only: local/bot always, online only the host)
+  useEffect(() => {
+    if (!clock || ended || !g) return;
+    if (online && role !== "host") return;
+    if (clock[g.turn] <= 0) {
+      const out = { type: "timeout", winner: enemySide(g.turn) };
+      setOutcome(out);
+      if (online) send({ t: "outcome", outcome: out });
+    }
+  }, [clock, g && g.turn]);
+
+  useEffect(() => {
+    if (drawState !== "declined") return;
+    const t = setTimeout(() => setDrawState(null), 3000);
+    return () => clearTimeout(t);
+  }, [drawState]);
+
+  const startLocal = () => { setMode("local"); setRole(null); setPlayers(null); setG(newGame()); setClock(startClock()); setOutcome(null); setDrawState(null); setSel(null); setLegal([]); setFlipped(false); setScreen("play"); };
+  const startBot = () => { setMode("bot"); setRole(null); setPlayers(null); setG(newGame()); setClock(startClock()); setOutcome(null); setDrawState(null); setSel(null); setLegal([]); setFlipped(false); setScreen("play"); };
+  const createRoom = () => { setMode("online"); setJoinErr(""); setPlayers(null); setG(null); setClock(null); setOutcome(null); setDrawState(null); setCode(genCode()); setRole("host"); setFlipped(false); setScreen("online-wait"); };
   const joinRoom = () => {
     const c = joinCode.trim().toUpperCase();
     if (c.length < 3) { setJoinErr("შეიყვანე კოდი"); return; }
-    setMode("online"); setJoinErr(""); setPlayers(null); setG(null); setCode(c); setRole("guest"); setFlipped(true); setScreen("online-wait");
+    setMode("online"); setJoinErr(""); setPlayers(null); setG(null); setClock(null); setOutcome(null); setDrawState(null); setCode(c); setRole("guest"); setFlipped(true); setScreen("online-wait");
   };
   const leave = () => { if (online) send({ t: "bye", from: ME }); onExit(); };
   const backToMenu = () => {
     if (online) send({ t: "bye", from: ME });
-    setRole(null); setCode(""); setPlayers(null); setG(null); setSel(null); setLegal([]); setJoinErr(""); setOppLeft(false); setScreen("menu");
+    setRole(null); setCode(""); setPlayers(null); setG(null); setClock(null); setOutcome(null); setDrawState(null); setSel(null); setLegal([]); setJoinErr(""); setOppLeft(false); setScreen("menu");
   };
 
   const select = (r, c) => {
-    if (!g || promo) return;
-    if (g.status === "checkmate" || g.status === "stalemate") return;
+    if (!g || promo || ended) return;
     if (mySide && g.turn !== mySide) return; // not your side to move
     const p = g.board[r][c];
     if (sel && sel.r === r && sel.c === c) { setSel(null); setLegal([]); return; }
@@ -141,7 +209,7 @@ export function ChessGame({ onExit }) {
     if (!online) { setG((cur) => makeMove(cur, from, to, promoteTo)); setSel(null); setLegal([]); return; }
     if (role === "host") {
       const ns = makeMove(g, from, to, promoteTo);
-      if (ns !== g) { setG(ns); send({ t: "state", state: ns, players }); }
+      if (ns !== g) { setG(ns); send({ t: "state", state: ns, players, clock }); }
     } else send({ t: "move", from, to, promoteTo });
     setSel(null); setLegal([]);
   };
@@ -149,8 +217,32 @@ export function ChessGame({ onExit }) {
   const choosePromo = (piece) => { if (!promo) return; applyMove(promo.from, promo.to, piece); setPromo(null); };
   const resetGame = () => {
     if (online && role !== "host") return;
-    const ns = newGame(); setG(ns); setSel(null); setLegal([]); setPromo(null);
-    if (online) send({ t: "state", state: ns, players });
+    const ns = newGame(); const cl = startClock();
+    setG(ns); setClock(cl); setOutcome(null); setDrawState(null); setSel(null); setLegal([]); setPromo(null);
+    if (online) send({ t: "state", state: ns, players, clock: cl });
+  };
+
+  const confirmResign = (side) => {
+    setResignAsk(false);
+    if (!online) { setOutcome({ type: "resign", winner: enemySide(side) }); return; }
+    if (role === "host") { const out = { type: "resign", winner: enemySide(side) }; setOutcome(out); send({ t: "outcome", outcome: out }); }
+    else send({ t: "resign", from: ME });
+  };
+
+  const offerDraw = () => {
+    if (!online) { setDrawState("offered-by-opp"); return; } // local/bot: resolved on this same device right away
+    setDrawState("offered-by-me");
+    send({ t: "drawOffer", from: ME });
+  };
+  const respondDraw = (accept) => {
+    if (accept) {
+      if (!online) { setOutcome({ type: "draw", winner: null }); setDrawState(null); return; }
+      if (role === "host") { const out = { type: "draw", winner: null }; setOutcome(out); send({ t: "outcome", outcome: out }); }
+      else send({ t: "drawResponse", accept: true });
+    } else {
+      setDrawState(null);
+      if (online) send({ t: "drawDeclined" });
+    }
   };
 
   // ══════════════ MENU ══════════════
@@ -165,6 +257,8 @@ export function ChessGame({ onExit }) {
           <div className="w-full max-w-[320px]">
             <div className="text-[12.5px] font-semibold mb-2" style={{ color: C.ink2 }}>სირთულე (ბოტთან)</div>
             <div className="flex gap-2 mb-5">{DIFFS.map((d) => <button key={d.k} onClick={() => setDiff(d.k)} className="flex-1 py-2.5 rounded-xl text-[13.5px] font-bold transition active:scale-95" style={diff === d.k ? { backgroundImage: GBRAND, color: "#fff" } : { background: C.surfaceMuted, color: C.ink2 }}>{d.t}</button>)}</div>
+            <div className="text-[12.5px] font-semibold mb-2" style={{ color: C.ink2 }}>დროის კონტროლი</div>
+            <div className="flex gap-2 mb-5 flex-wrap">{TIME_CONTROLS.map((d) => <button key={d.k} onClick={() => setTc(d)} className="flex-1 py-2.5 rounded-xl text-[13px] font-bold transition active:scale-95" style={{ minWidth: 70, ...(tc.k === d.k ? { backgroundImage: GBRAND, color: "#fff" } : { background: C.surfaceMuted, color: C.ink2 }) }}>{d.t}</button>)}</div>
             <button onClick={startBot} className="w-full py-3.5 rounded-2xl text-[16px] font-bold text-white active:scale-[.98]" style={{ backgroundImage: GBRAND, boxShadow: "0 2px 0 rgba(64,44,150,.32), 0 10px 24px -6px rgba(103,80,242,.55)" }}>თამაში ბოტთან</button>
             <button onClick={() => { setJoinErr(""); setScreen("online-menu"); }} className="w-full py-3.5 rounded-2xl text-[16px] font-bold mt-2.5 active:scale-[.98]" style={{ background: C.surface, color: C.ink, border: `1.5px solid ${C.line}` }}>ონლაინ ხალხთან 🌐</button>
             <button onClick={startLocal} className="w-full py-3.5 rounded-2xl text-[16px] font-bold mt-2.5 active:scale-[.98]" style={{ background: C.surfaceMuted, color: C.ink2 }}>ორ მოთამაშე, ერთ ეკრანზე</button>
@@ -224,17 +318,26 @@ export function ChessGame({ onExit }) {
   if (!g) return null;
 
   // ══════════════ PLAY ══════════════
-  const gameOver = g.status === "checkmate" || g.status === "stalemate";
   const oppId = online && players ? players[1 - meIdx] : null;
   const oppName = online ? (oppId && USERS[oppId] ? USERS[oppId].name : "მოწინააღმდეგე") : mode === "bot" ? "ბოტი" : null;
 
-  const statusText = g.status === "checkmate"
+  const statusText = outcome
+    ? outcome.type === "timeout"
+      ? (outcome.winner === "w" ? "შავს ამოეწურა დრო — თეთრი გაიმარჯვა 🏆" : "თეთრს ამოეწურა დრო — შავი გაიმარჯვა 🏆")
+      : outcome.type === "resign"
+      ? (outcome.winner === "w" ? "შავმა თქვა დანება — თეთრი გაიმარჯვა 🏆" : "თეთრმა თქვა დანება — შავი გაიმარჯვა 🏆")
+      : "ფრედზე შეთანხმდნენ — ფრე 🤝"
+    : g.status === "checkmate"
     ? (g.turn === "w" ? "მატი! შავი გაიმარჯვა 🏆" : "მატი! თეთრი გაიმარჯვა 🏆")
     : g.status === "stalemate" ? "პატი — ფრე 🤝"
     : g.status === "check" ? (g.turn === "w" ? "თეთრს ეშმაკია — შემოწმებაშია!" : "შავს ეშმაკია — შემოწმებაშია!")
     : online ? (g.turn === (meIdx === 0 ? "w" : "b") ? "შენი სვლაა" : `${oppName}-ის სვლაა`)
     : mode === "bot" ? (g.turn === "w" ? "შენი სვლაა" : "ბოტი ფიქრობს…")
     : (g.turn === "w" ? "თეთრის სვლაა" : "შავის სვლაა");
+
+  const clockPill = (side) => clock && (
+    <span className="px-2.5 py-1 rounded-lg text-[13px] font-bold" style={{ fontFamily: MONO, background: !ended && g.turn === side ? C.accentSoft : C.surfaceMuted, color: !ended && g.turn === side ? C.accentText : C.ink2 }}>{fmtClock(clock[side])}</span>
+  );
 
   return (
     <div className="fixed inset-0 z-[95] flex flex-col" style={{ background: C.paper }}>
@@ -245,21 +348,36 @@ export function ChessGame({ onExit }) {
       </div>
 
       {oppLeft && <div className="mx-4 mb-1 px-3 py-2 rounded-xl text-[12.5px] font-semibold text-center" style={{ background: C.like + "1a", color: C.like }}>მოწინააღმდეგემ დატოვა თამაში</div>}
+      {!ended && drawState === "declined" && <div className="mx-4 mb-1 px-3 py-2 rounded-xl text-[12.5px] font-semibold text-center" style={{ background: C.surfaceMuted, color: C.ink2 }}>ფრედს არ დათანხმდნენ</div>}
+      {!ended && drawState === "offered-by-opp" && mode === "bot" && (
+        <div className="mx-4 mb-1 px-3 py-2.5 rounded-xl text-center" style={{ background: C.accentSoft }}>
+          <span className="text-[12.5px] font-bold" style={{ color: C.accentText }}>ბოტი ფიქრობს ფრედზე…</span>
+        </div>
+      )}
+      {!ended && drawState === "offered-by-opp" && online && (
+        <div className="mx-4 mb-1 px-3 py-2.5 rounded-xl flex items-center gap-2.5 justify-between" style={{ background: C.accentSoft }}>
+          <span className="text-[12.5px] font-bold" style={{ color: C.accentText }}>შემოგთავაზეს ფრედი</span>
+          <div className="flex gap-1.5 shrink-0"><button onClick={() => respondDraw(true)} className="px-3 py-1.5 rounded-full text-[12px] font-bold text-white" style={{ backgroundImage: GBRAND }}>თანხმობა</button><button onClick={() => respondDraw(false)} className="px-3 py-1.5 rounded-full text-[12px] font-bold" style={{ background: C.surface, color: C.ink2 }}>უარი</button></div>
+        </div>
+      )}
+      {!ended && drawState === "offered-by-me" && <div className="mx-4 mb-1 px-3 py-2 rounded-xl text-[12.5px] font-semibold text-center" style={{ background: C.surfaceMuted, color: C.ink2 }}>ფრედის შეთავაზება გაიგზავნა…</div>}
 
       <div className="flex-1 min-h-0 flex flex-col items-center px-4 pb-6 overflow-y-auto">
-        <div className="w-full flex items-center gap-1 flex-wrap mt-1 mb-2" style={{ maxWidth: 480, minHeight: 22 }}>
-          {g.captured.b.map((p, i) => <span key={i} style={{ fontSize: 18 }}>{PIECE_GLYPH[p]}</span>)}
+        <div className="w-full flex items-center justify-between mt-1 mb-2" style={{ maxWidth: 480, minHeight: 26 }}>
+          <div className="flex items-center gap-1 flex-wrap">{g.captured.b.map((p, i) => <span key={i} style={{ fontSize: 18 }}>{PIECE_GLYPH[p]}</span>)}</div>
+          {clockPill("b")}
         </div>
 
         <div className="w-full rounded-3xl overflow-hidden shrink-0" style={{ maxWidth: 480, aspectRatio: "1", boxShadow: "0 14px 34px -10px rgba(0,0,0,.4)" }}>
-          <Board3D game={g} selected={sel} legalTargets={legal} onSquareTap={select} flipped={flipped} disabled={gameOver || !!promo || (mySide != null && g.turn !== mySide)} />
+          <Board3D game={g} selected={sel} legalTargets={legal} onSquareTap={select} flipped={flipped} disabled={ended || !!promo || (mySide != null && g.turn !== mySide)} />
         </div>
 
-        <div className="w-full flex items-center gap-1 flex-wrap mt-2 mb-1" style={{ maxWidth: 480, minHeight: 22 }}>
-          {g.captured.w.map((p, i) => <span key={i} style={{ fontSize: 18 }}>{PIECE_GLYPH[p]}</span>)}
+        <div className="w-full flex items-center justify-between mt-2 mb-1" style={{ maxWidth: 480, minHeight: 26 }}>
+          <div className="flex items-center gap-1 flex-wrap">{g.captured.w.map((p, i) => <span key={i} style={{ fontSize: 18 }}>{PIECE_GLYPH[p]}</span>)}</div>
+          {clockPill("w")}
         </div>
 
-        <div className="w-full mt-2 py-3 rounded-2xl text-center font-bold text-[15px] shrink-0" style={{ maxWidth: 480, background: gameOver ? C.accentSoft : C.surface, color: gameOver ? C.accentText : C.ink, border: `1px solid ${C.line}`, fontFamily: DISPLAY }}>
+        <div className="w-full mt-2 py-3 rounded-2xl text-center font-bold text-[15px] shrink-0" style={{ maxWidth: 480, background: ended ? C.accentSoft : C.surface, color: ended ? C.accentText : C.ink, border: `1px solid ${C.line}`, fontFamily: DISPLAY }}>
           {statusText}
         </div>
 
@@ -273,8 +391,15 @@ export function ChessGame({ onExit }) {
           </div>
         )}
 
-        {(!online || role === "host") && (
-          <button onClick={resetGame} className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white active:scale-[.98] mt-5 shrink-0" style={{ maxWidth: 480, backgroundImage: GBRAND }}>ახალი თამაში</button>
+        {!ended && (
+          <div className="w-full flex gap-2.5 mt-4 shrink-0" style={{ maxWidth: 480 }}>
+            <button onClick={() => setResignAsk(true)} className="flex-1 py-3 rounded-2xl text-[14px] font-bold active:scale-[.98]" style={{ background: C.surfaceMuted, color: "#e5484d" }}>დანებება</button>
+            <button onClick={offerDraw} disabled={drawState === "offered-by-me"} className="flex-1 py-3 rounded-2xl text-[14px] font-bold active:scale-[.98]" style={{ background: C.surfaceMuted, color: C.ink2, opacity: drawState === "offered-by-me" ? 0.5 : 1 }}>ფრედის შეთავაზება</button>
+          </div>
+        )}
+
+        {(ended && (!online || role === "host")) && (
+          <button onClick={resetGame} className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white active:scale-[.98] mt-3 shrink-0" style={{ maxWidth: 480, backgroundImage: GBRAND }}>ახალი თამაში</button>
         )}
       </div>
 
@@ -292,6 +417,42 @@ export function ChessGame({ onExit }) {
                   <span className="text-[11px] font-semibold" style={{ color: C.muted }}>{PROMO_NAME[pc]}</span>
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {resignAsk && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6" style={{ background: "rgba(6,7,12,.6)", backdropFilter: "blur(4px)" }} onClick={() => setResignAsk(false)}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-[320px] rounded-3xl p-6 text-center" style={{ background: C.surface }}>
+            <div className="font-bold text-[16px] mb-4" style={{ color: C.ink, fontFamily: DISPLAY }}>დანებება</div>
+            {mode === "local" ? (
+              <div className="flex flex-col gap-2.5">
+                <button onClick={() => confirmResign("w")} className="w-full py-3 rounded-2xl text-[14px] font-bold active:scale-[.98]" style={{ background: C.surfaceMuted, color: C.ink }}>თეთრი ნებდება</button>
+                <button onClick={() => confirmResign("b")} className="w-full py-3 rounded-2xl text-[14px] font-bold active:scale-[.98]" style={{ background: C.surfaceMuted, color: C.ink }}>შავი ნებდება</button>
+                <button onClick={() => setResignAsk(false)} className="w-full py-2.5 text-[13.5px] font-semibold" style={{ color: C.faint }}>გაუქმება</button>
+              </div>
+            ) : (
+              <>
+                <p className="text-[14px] mb-4" style={{ color: C.muted }}>დარწმუნებული ხარ, რომ გინდა დანებება?</p>
+                <div className="flex gap-2.5">
+                  <button onClick={() => setResignAsk(false)} className="flex-1 py-3 rounded-2xl text-[14px] font-bold active:scale-[.98]" style={{ background: C.surfaceMuted, color: C.ink2 }}>გაუქმება</button>
+                  <button onClick={() => confirmResign(mySide)} className="flex-1 py-3 rounded-2xl text-[14px] font-bold text-white active:scale-[.98]" style={{ background: "#e5484d" }}>დანებება</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {drawState === "offered-by-opp" && mode === "local" && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6" style={{ background: "rgba(6,7,12,.6)", backdropFilter: "blur(4px)" }}>
+          <div className="w-full max-w-[320px] rounded-3xl p-6 text-center" style={{ background: C.surface }}>
+            <div className="font-bold text-[16px] mb-4" style={{ color: C.ink, fontFamily: DISPLAY }}>ფრედის შეთავაზება</div>
+            <p className="text-[14px] mb-4" style={{ color: C.muted }}>ეთანხმება მეორე მხარე ფრედს?</p>
+            <div className="flex gap-2.5">
+              <button onClick={() => respondDraw(false)} className="flex-1 py-3 rounded-2xl text-[14px] font-bold active:scale-[.98]" style={{ background: C.surfaceMuted, color: C.ink2 }}>უარი</button>
+              <button onClick={() => respondDraw(true)} className="flex-1 py-3 rounded-2xl text-[14px] font-bold text-white active:scale-[.98]" style={{ backgroundImage: GBRAND }}>თანხმობა</button>
             </div>
           </div>
         </div>

@@ -36,7 +36,7 @@ function pstValue(piece, r, c) {
   return table[rr][c];
 }
 
-function evaluate(state) {
+export function evaluate(state) {
   let score = 0;
   for (let r = 0; r < 8; r++) {
     for (let c = 0; c < 8; c++) {
@@ -73,6 +73,12 @@ function negamax(state, depth, alpha, beta, side) {
     if (alpha >= beta) break;
   }
   return best;
+}
+
+// bot accepts a draw offer only when it's clearly losing (down a piece or more).
+export function botAcceptsDraw(state, side) {
+  const score = (side === "w" ? 1 : -1) * evaluate(state);
+  return score < -280;
 }
 
 const DEPTH = { easy: 1, normal: 2, hard: 3 };
