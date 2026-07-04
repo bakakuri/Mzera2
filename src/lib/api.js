@@ -1138,7 +1138,12 @@ export const storage = {
         xhr.setRequestHeader("x-upsert", "false");
         xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
         xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100)); };
-        xhr.onload = () => { if (xhr.status >= 200 && xhr.status < 300) resolve(); else reject(new Error("ატვირთვა ვერ მოხერხდა (" + xhr.status + ")")); };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) { resolve(); return; }
+          let detail = "";
+          try { const body = JSON.parse(xhr.responseText); detail = body && (body.message || body.error) ? body.message || body.error : ""; } catch (e) {}
+          reject(new Error("ატვირთვა ვერ მოხერხდა (" + xhr.status + ")" + (detail ? ": " + detail : "")));
+        };
         xhr.onerror = () => reject(new Error("ატვირთვის ქსელური შეცდომა"));
         xhr.send(file);
       });
