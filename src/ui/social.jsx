@@ -67,6 +67,8 @@ export function Profile({ userId, posts, savedPosts, reels, xp, meProfile, follo
   const [hls, setHls] = useState([]); const [creatingHl, setCreatingHl] = useState(false); const [viewHl, setViewHl] = useState(null);
   useEffect(() => { let on = true; highlightsApi.forUser(userId).then(d => { if (on) setHls(d); }).catch(() => {}); return () => { on = false; }; }, [userId]);
   const reloadHls = () => highlightsApi.forUser(userId).then(setHls).catch(() => {});
+  const [viewerCount, setViewerCount] = useState(0);
+  useEffect(() => { if (userId !== ME) return; let on = true; profilesApi.viewersCount().then(c => { if (on) setViewerCount(c); }).catch(() => {}); return () => { on = false; }; }, [userId]);
   const dispName = isMe && meProfile ? meProfile.name : u.name; const dispBio = isMe && meProfile ? meProfile.bio : u.bio;
   const mine = posts.filter(p => p.authorId === userId && !p.hidden && !p.groupId); const photos = mine.filter(p => p.image);
   const savedMap = {}; (savedPosts || []).concat(posts.filter(p => p.savedByMe)).forEach(p => { if (p.savedByMe && !p.hidden) savedMap[p.id] = p; }); const saved = Object.values(savedMap);
@@ -106,10 +108,11 @@ export function Profile({ userId, posts, savedPosts, reels, xp, meProfile, follo
         <Mono style={{ fontSize: 13, color: C.faint }}>@{u.handle}</Mono>
         <div className="text-[14px] mt-2" style={{ color: C.ink2, lineHeight: 1.5 }}>{dispBio}</div>
         {(u.location || u.website) && <div className="flex items-center gap-3 mt-2 text-[13px]" style={{ color: C.faint }}>{u.location && <span className="flex items-center gap-1"><MapPin size={13} /> {u.location}</span>}{u.website && <a href={u.website.startsWith("http") ? u.website : "https://" + u.website} target="_blank" rel="noreferrer" className="flex items-center gap-1" style={{ color: C.accent }}><Link2 size={13} /> <Mono style={{ fontSize: 12 }}>{u.website.replace(/^https?:\/\//, "")}</Mono></a>}</div>}
-        <div className="grid grid-cols-3 mt-4 py-3.5" style={card()}>
+        <div className={"grid mt-4 py-3.5 " + (isMe ? "grid-cols-4" : "grid-cols-3")} style={card()}>
           <div className="text-center"><Mono className="text-lg font-bold block" style={{ color: C.ink }}>{mine.length}</Mono><div className="text-[12px]" style={{ color: C.muted }}>პოსტი</div></div>
           <button onClick={() => onOpenList("followers", userId)} className="text-center active:opacity-60" style={{ borderLeft: `1px solid ${C.lineSoft}` }}><Mono className="text-lg font-bold block" style={{ color: C.ink }}>{fmt(followers)}</Mono><div className="text-[12px]" style={{ color: C.muted }}>მოგყვება</div></button>
           <button onClick={() => onOpenList("following", userId)} className="text-center active:opacity-60" style={{ borderLeft: `1px solid ${C.lineSoft}` }}><Mono className="text-lg font-bold block" style={{ color: C.ink }}>{fmt(followingCount)}</Mono><div className="text-[12px]" style={{ color: C.muted }}>მიყვები</div></button>
+          {isMe && <button onClick={() => onOpenList("viewers", userId)} className="text-center active:opacity-60" style={{ borderLeft: `1px solid ${C.lineSoft}` }}><Mono className="text-lg font-bold block" style={{ color: C.ink }}>{fmt(viewerCount)}</Mono><div className="text-[12px]" style={{ color: C.muted }}>{t("profile.viewers")}</div></button>}
         </div>
         <div className="flex gap-2 mt-3">{isMe
           ? <button onClick={onSettings} className="flex-1 py-2.5 rounded-xl text-sm font-bold" style={{ background: C.surface, color: C.ink, border: `1px solid ${C.line}`, boxShadow: SH.card }}>პროფილის რედაქტირება</button>
@@ -563,7 +566,7 @@ export function Progress({ xp, posts, myFollowers, questData, onClaim }) {
 
 /* ─────────────────────────  SETTINGS  ───────────────────────── */
 
-export function SettingsView({ settings, setSettings, meProfile, setMeProfile, mode, setMode, onClose, flash, onSignOut, onUploadAvatar, pushState, onTogglePush, blockedIds, mutedIds, onUnblock, onUnmute, onOpenProfile, following, closeFriends, onToggleCloseFriend, onExportData, onDeleteAccount, birthday, onSetBirthday, referralCode, invitedCount, invitedUsers, inviteLink, onCopyInviteLink }) {
+export function SettingsView({ settings, setSettings, meProfile, setMeProfile, mode, setMode, onClose, flash, onSignOut, onUploadAvatar, pushState, onTogglePush, blockedIds, mutedIds, onUnblock, onUnmute, onOpenProfile, following, closeFriends, onToggleCloseFriend, onExportData, onDeleteAccount, birthday, onSetBirthday, showProfileVisits, onToggleShowProfileVisits, referralCode, invitedCount, invitedUsers, inviteLink, onCopyInviteLink }) {
   const set = (k, v) => setSettings(s => ({ ...s, [k]: v }));
   const [delMode, setDelMode] = useState(false); const [delTxt, setDelTxt] = useState("");
   const tog = (k) => setSettings(s => ({ ...s, [k]: !s[k] }));
@@ -596,6 +599,7 @@ export function SettingsView({ settings, setSettings, meProfile, setMeProfile, m
             <SettingsRow first label="დახურული ანგარიში" sub="მხოლოდ მიმდევრები ხედავენ შენს პოსტებს" on={settings.private} onToggle={() => tog("private")} />
             <SettingsRow label="აქტივობის სტატუსი" sub="აჩვენე როდის ხარ ონლაინ" on={settings.activity} onToggle={() => tog("activity")} />
             <SettingsRow label="ლოკაციის გაზიარება" sub="რუკაზე მეგობრებისთვის ჩვენება" on={settings.showLocation} onToggle={() => tog("showLocation")} />
+            <SettingsRow label={t("settings.showProfileVisits")} sub={t("settings.showProfileVisitsSub")} on={showProfileVisits} onToggle={() => onToggleShowProfileVisits && onToggleShowProfileVisits(!showProfileVisits)} />
           </SettingsSection>
           <SettingsSection title="შეტყობინებები">
             <div className="px-4 py-3.5 flex items-center gap-3" style={{ borderBottom: `1px solid ${C.lineSoft}` }}>

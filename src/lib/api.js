@@ -137,6 +137,22 @@ export const profiles = {
     const { data } = await sb.from("close_friends").select("friend_id").eq("user_id", uid);
     return (data || []).map(r => r.friend_id);
   },
+  recordView: async (profileId) => {
+    const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;
+    if (uid === profileId) return;
+    await sb.from("profile_views").upsert({ viewer_id: uid, profile_id: profileId, viewed_at: new Date().toISOString() }, { onConflict: "viewer_id,profile_id" });
+  },
+  viewers: async (limit = 50) => {
+    const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;
+    const { data, error } = await sb.from("profile_views").select("viewed_at, viewer:profiles!profile_views_viewer_id_fkey(*)").eq("profile_id", uid).order("viewed_at", { ascending: false }).limit(limit);
+    if (error) throw error;
+    return (data || []).map(r => ({ ...r.viewer, viewedAt: r.viewed_at }));
+  },
+  viewersCount: async () => {
+    const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;
+    const { count } = await sb.from("profile_views").select("viewer_id", { count: "exact", head: true }).eq("profile_id", uid);
+    return count || 0;
+  },
   deleteAccount: async () => { const sb = need(); const { error } = await sb.rpc("delete_my_account"); if (error) throw error; await sb.auth.signOut().catch(() => {}); },
   exportData: async () => {
     const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;

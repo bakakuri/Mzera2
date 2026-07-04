@@ -1229,6 +1229,35 @@ $$;
 grant execute on function public.admin_lang_progress() to authenticated;
 
 -- ============================================================================
+--  PROFILE VIEWS — "who viewed your profile". Opening someone else's profile
+--  upserts one row per (viewer, profile) pair (a repeat visit just bumps
+--  viewed_at, it doesn't grow a log). Select is restricted to the profile
+--  owner reading their own visitor list. show_profile_visits belongs to the
+--  *viewer*, not the profile owner — it lets a user opt out of being
+--  recorded as a visitor when THEY browse other people's profiles; enforced
+--  client-side before the insert (src/App.jsx), same trust model this app
+--  already uses for other non-critical privacy prefs.
+-- ============================================================================
+alter table public.profiles add column if not exists show_profile_visits boolean not null default true;
+
+create table if not exists public.profile_views (
+  viewer_id  uuid not null references public.profiles(id) on delete cascade,
+  profile_id uuid not null references public.profiles(id) on delete cascade,
+  viewed_at  timestamptz not null default now(),
+  primary key (viewer_id, profile_id),
+  check (viewer_id <> profile_id)
+);
+create index if not exists profile_views_profile_idx on public.profile_views(profile_id, viewed_at desc);
+
+alter table public.profile_views enable row level security;
+drop policy if exists profile_views_read on public.profile_views;
+create policy profile_views_read on public.profile_views for select using (auth.uid() = profile_id);
+drop policy if exists profile_views_insert on public.profile_views;
+create policy profile_views_insert on public.profile_views for insert with check (auth.uid() = viewer_id);
+drop policy if exists profile_views_update on public.profile_views;
+create policy profile_views_update on public.profile_views for update using (auth.uid() = viewer_id);
+
+-- ============================================================================
 --  REALTIME (live chat / notifications / presence)
 -- ============================================================================
 do $$ begin

@@ -64,6 +64,8 @@ const DICT = {
   "settings.title": { ka: "პარამეტრები", en: "Settings", ru: "Настройки" },
   "settings.appearance": { ka: "ვიზუალი", en: "Appearance", ru: "Внешний вид" },
   "settings.language": { ka: "ენა", en: "Language", ru: "Язык" },
+  "settings.showProfileVisits": { ka: "პროფილის ვიზიტების აღრიცხვა", en: "Track profile visits", ru: "Учитывать посещения профиля" },
+  "settings.showProfileVisitsSub": { ka: "როცა სხვის პროფილს ათვალიერებ, გამოჩნდები მის „ვინ ნახა“ სიაში", en: "When you view someone's profile, you'll show up in their \"who viewed\" list", ru: "Когда вы просматриваете чужой профиль, вы появитесь в его списке «кто смотрел»" },
 
   "theme.light": { ka: "ღია", en: "Light", ru: "Светлая" },
   "theme.dark": { ka: "მუქი", en: "Dark", ru: "Тёмная" },
@@ -197,6 +199,8 @@ const DICT = {
   "profile.reportSent": { ka: "რეპორტი გაიგზავნა 🚩", en: "Report sent 🚩", ru: "Жалоба отправлена 🚩" },
   "profile.unblock": { ka: "განბლოკვა", en: "Unblock", ru: "Разблокировать" },
   "profile.block": { ka: "დაბლოკვა", en: "Block", ru: "Заблокировать" },
+  "profile.viewers": { ka: "ვიზიტორები", en: "Visitors", ru: "Посетители" },
+  "profile.noViewersYet": { ka: "ჯერ არავის უნახავს შენი პროფილი.", en: "No one has viewed your profile yet.", ru: "Пока никто не смотрел ваш профиль." },
 
   "profile.tabPhotos": { ka: "ფოტოები", en: "Photos", ru: "Фото" },
   "profile.tabPosts": { ka: "პოსტები", en: "Posts", ru: "Посты" },

@@ -449,6 +449,37 @@ export function FollowList({ view, following, onToggleFollow, onOpenProfile, onC
   );
 }
 
+export function ProfileViewers({ onOpenProfile, onClose }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let cancel = false; setLoading(true);
+    profilesApi.viewers().then(rs => { rs.forEach(mergeProfile); if (!cancel) setRows(rs); }).catch(() => { if (!cancel) setRows([]); }).then(() => { if (!cancel) setLoading(false); });
+    return () => { cancel = true; };
+  }, []);
+  return (
+    <div className="fixed inset-0 z-[58] flex justify-center" style={{ background: C.paper }}>
+      <div className="w-full max-w-[600px] flex flex-col" style={{ height: "100dvh", borderLeft: `1px solid ${C.line}`, borderRight: `1px solid ${C.line}` }}>
+        <div className="flex items-center gap-3 px-3 py-3 shrink-0" style={{ background: C.surface, borderBottom: `1px solid ${C.line}` }}>
+          <button onClick={onClose} className="active:scale-90" style={{ color: C.ink2 }}><ArrowLeft size={22} /></button>
+          <span className="font-bold text-[15px]" style={{ color: C.ink }}>{t("profile.viewers")}</span>
+        </div>
+        <div className="flex-1 overflow-y-auto p-2">
+          {loading ? <div className="flex justify-center py-16"><div className="rounded-full" style={{ width: 30, height: 30, border: `3px solid ${C.accentSoft}`, borderTopColor: C.accent, animation: "spin 0.8s linear infinite" }} /></div>
+          : rows.length === 0 ? <Empty icon={Eye} t={t("empty.title")} s={t("profile.noViewersYet")} />
+          : rows.map(u => (
+            <button key={u.id} onClick={() => { onOpenProfile(u.id); onClose(); }} className="w-full flex items-center gap-3 px-2 py-2.5 rounded-xl transition hover:opacity-80">
+              <Avatar id={u.id} size={46} />
+              <div className="flex-1 text-left min-w-0"><Name id={u.id} className="text-[15px]" /><Mono className="block truncate" style={{ fontSize: 12, color: C.faint }}>@{USERS[u.id].handle}</Mono></div>
+              <span className="text-[11.5px] shrink-0" style={{ color: C.faint }}>{timeAgo(u.viewedAt)}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─────────────────────────  NOTIFICATIONS  ───────────────────────── */
 
 export function timeAgo(ts) {
@@ -478,6 +509,7 @@ export function mergeProfile(p) {
     avatar: p.avatar_url !== undefined ? (p.avatar_url || null) : (prev ? prev.avatar : null),
     cover: p.cover_url !== undefined ? (p.cover_url || null) : (prev ? prev.cover : null),
     birthday: p.birthday !== undefined ? (p.birthday || null) : (prev ? prev.birthday : null),
+    showProfileVisits: p.show_profile_visits != null ? !!p.show_profile_visits : (prev ? prev.showProfileVisits : true),
   };
 }
 

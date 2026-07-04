@@ -29,6 +29,7 @@ export function useSocialGraph({ flash, dbErr, gainXp, reloadFeed, setMeProfile,
   const onToggleCloseFriend = (id) => { const now = closeFriends.includes(id); setCloseFriends(c => now ? c.filter(x => x !== id) : [...c, id]); flash(now ? t("toast.closeFriendRemoved") : t("toast.closeFriendAdded")); if (hasSupabase) (now ? profilesApi.removeCloseFriend(id) : profilesApi.addCloseFriend(id)).catch(dbErr("ახლო მეგობრები")); };
   const onExportData = async () => { try { flash(t("toast.dataPreparing")); const d = await profilesApi.exportData(); const blob = new Blob([JSON.stringify(d, null, 2)], { type: "application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = "mzera-data.json"; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 3000); flash(t("toast.dataDownloaded")); } catch (e) { dbErr("ექსპორტი")(e); } };
   const onSetBirthday = (date) => { mergeProfile({ id: ME, birthday: date || null }); setMeProfile(p => ({ ...p, birthday: date || null })); profilesApi.update(ME, { birthday: date || null }).then(() => flash(t("toast.birthdaySaved"))).catch(dbErr("დაბადების დღე")); };
+  const onToggleShowProfileVisits = (on) => { mergeProfile({ id: ME, show_profile_visits: on }); setMeProfile(p => ({ ...p, showProfileVisits: on })); profilesApi.update(ME, { show_profile_visits: on }).catch(dbErr("კონფიდენციალურობა")); };
   const onDeleteAccount = async () => { try { await profilesApi.deleteAccount(); if (typeof location !== "undefined") location.reload(); } catch (e) { dbErr("ანგარიშის წაშლა")(e); } };
   const onCreateCollection = async (name) => { if (!name || !name.trim()) return null; try { const c = await profilesApi.createCollection(name.trim()); setCollections(cs => [...cs, c]); flash(t("toast.folderCreated")); return c; } catch (e) { dbErr("ფოლდერი")(e); return null; } };
   const onAssignCollection = (postId, collectionId) => { setSavedPosts(sp => sp.map(p => p.id === postId ? { ...p, collectionId } : p)); if (hasSupabase) profilesApi.setSaveCollection(postId, collectionId).catch(dbErr("ფოლდერი")); flash(collectionId ? t("toast.movedToFolder") : t("toast.removedFromFolder")); };
@@ -39,7 +40,7 @@ export function useSocialGraph({ flash, dbErr, gainXp, reloadFeed, setMeProfile,
     closeFriends, setCloseFriends, collections, setCollections,
     followerCounts, setFollowerCounts,
     isFollowing, toggleFollow, onBlock, onUnblock, onMute, onUnmute,
-    onToggleCloseFriend, onExportData, onSetBirthday, onDeleteAccount,
+    onToggleCloseFriend, onExportData, onSetBirthday, onToggleShowProfileVisits, onDeleteAccount,
     onCreateCollection, onAssignCollection,
   };
 }
