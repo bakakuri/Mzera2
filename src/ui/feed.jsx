@@ -110,7 +110,12 @@ export function FeedPromoCard({ kind, data, onOpen }) {
     <article className="overflow-hidden" style={card()}>
       <div className="flex items-center gap-1.5 px-4 pt-3.5 pb-2 text-[12px] font-bold uppercase tracking-wide" style={{ color: C.accent, fontFamily: MONO }}><meta.icon size={14} /> {meta.label}</div>
       <button onClick={onOpen} className="block w-full text-left active:opacity-90">
-        {data.image !== null && <div className="relative w-full" style={{ aspectRatio: kind === "film" ? "2/1" : "2.2/1" }}><Pic src={data.image} grad={GRADS[hashIdx(String(data.id), GRADS.length)]} className="w-full h-full" /></div>}
+        {(data.image || data.video) && <div className="relative w-full" style={{ aspectRatio: kind === "film" ? "2/1" : "2.2/1" }}>
+          {data.image
+            ? <Pic src={data.image} grad={GRADS[hashIdx(String(data.id), GRADS.length)]} className="w-full h-full" />
+            : <video src={data.video + "#t=0.1"} preload="metadata" muted playsInline className="w-full h-full" style={{ objectFit: "cover", background: "#000" }} />}
+          {data.video && !data.image && <Play size={20} fill="#fff" className="absolute top-2 left-2" style={{ color: "#fff", filter: "drop-shadow(0 1px 3px rgba(0,0,0,.5))" }} />}
+        </div>}
         <div className="px-4 pt-3"><div className="text-[16px] font-bold truncate" style={{ color: C.ink, fontFamily: DISPLAY }}>{data.title}</div>{data.subtitle && <div className="text-[13px] mt-0.5 truncate" style={{ color: C.muted }}>{data.subtitle}</div>}</div>
       </button>
       <div className="px-4 pb-4 pt-2.5"><button onClick={onOpen} className="w-full py-2.5 rounded-xl text-[14px] font-bold text-white active:scale-[.98]" style={{ backgroundImage: GBRAND }}>{data.cta}</button></div>

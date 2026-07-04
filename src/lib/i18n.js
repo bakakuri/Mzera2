@@ -265,6 +265,7 @@ const DICT = {
   "promo.reel": { ka: "Reel", en: "Reel", ru: "Reel" },
   "promo.map": { ka: "რუკა", en: "Map", ru: "Карта" },
   "promo.languages": { ka: "ენების სწავლა", en: "Learn languages", ru: "Изучение языков" },
+  "promo.trendingPost": { ka: "პოპულარული პოსტი", en: "Trending post", ru: "Популярный пост" },
 
   "post.youShared": { ka: "შენ გააზიარე", en: "You shared", ru: "Ты поделился(-ась)" },
   "post.someoneShared": { ka: "-მ გააზიარა", en: " shared", ru: " поделился(-ась)" },
