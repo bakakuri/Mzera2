@@ -116,7 +116,15 @@ export function NardiGame({ onExit }) {
   const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
   const [dragMoved, setDragMoved] = useState(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
-  const dragSuppressFlipRef = useRef(false);
+  const suppressFlipRef = useRef(false);
+  // undo: every real single-checker move made so far *this turn* pushes the
+  // state as it was right before that move; a fresh roll clears the stack,
+  // so you can only step back through the turn currently in progress
+  const [moveHistory, setMoveHistory] = useState([]);
+  const moveHistoryRef = useRef([]);
+  const prevGRef = useRef(null);
+  const historyLastRef = useRef(null);
+  moveHistoryRef.current = moveHistory;
   // online
   const [role, setRole] = useState(null);
   const [code, setCode] = useState("");
@@ -149,7 +157,7 @@ export function NardiGame({ onExit }) {
     lastAnimatedRef.current = g.last;
     // moves completed via drag already show the checker traveling live under the
     // finger — skip the FLIP re-slide so it doesn't look like it rewinds and replays
-    if (dragSuppressFlipRef.current) { dragSuppressFlipRef.current = false; return; }
+    if (suppressFlipRef.current) { suppressFlipRef.current = false; return; }
     const { from, to, by, hit } = g.last;
     const originEl = from === "bar" ? barRefs.current[by] : pointRefs.current[from];
     const destEl = to === "off" ? offRefs.current[by] : pointRefs.current[to];
@@ -192,6 +200,18 @@ export function NardiGame({ onExit }) {
     setDisplayDice(g.dice);
   }, [g]);
 
+  // ── track undo history: every new single-checker move pushes the state as
+  // it was right before it; a fresh roll (new turn) clears the stack ──
+  useEffect(() => {
+    if (!g) return;
+    const prevG = prevGRef.current;
+    prevGRef.current = g;
+    if (!g.last || historyLastRef.current === g.last) return;
+    historyLastRef.current = g.last;
+    if (g.last.type === "roll" || g.last.type === "opening") { setMoveHistory([]); return; }
+    if (prevG) setMoveHistory(h => [...h, prevG]);
+  }, [g]);
+
   const sendRaw = (ch, payload) => { try { ch.send({ type: "broadcast", event: "b", payload }); } catch (e) {} };
   const send = (payload) => {
     if (chRef.current && readyRef.current) sendRaw(chRef.current, payload);
@@ -214,6 +234,17 @@ export function NardiGame({ onExit }) {
         } else send({ t: "state", state: gRef.current, players: playersRef.current });
       } else if (m.t === "move") {
         const cur = gRef.current; if (!cur) return;
+        if (cur.turn === 1 && m.kind === "undo") {
+          const hist = moveHistoryRef.current;
+          if (hist.length) {
+            const prev = hist[hist.length - 1];
+            setMoveHistory(h => h.slice(0, -1));
+            prevGRef.current = prev; historyLastRef.current = prev.last; suppressFlipRef.current = true;
+            setG(prev);
+            send({ t: "state", state: prev, players: playersRef.current });
+          }
+          return;
+        }
         let ns = cur;
         if (cur.turn === 1) {
           if (m.kind === "roll") ns = rollDice(cur, Math.random);
@@ -275,13 +306,14 @@ export function NardiGame({ onExit }) {
   }, [g, diff, online]);
 
   const resetDrag = () => { setDragFrom(null); setDragDests([]); setDragMoved(false); };
-  const startBot = () => { setRole(null); setPlayers(null); setG(newGame()); resetDrag(); setScreen("play"); };
+  const resetHistory = () => { setMoveHistory([]); prevGRef.current = null; historyLastRef.current = null; };
+  const startBot = () => { setRole(null); setPlayers(null); setG(newGame()); resetDrag(); resetHistory(); setScreen("play"); };
   const resetChat = () => { setChatMsgs([]); setChatOpen(false); setChatUnread(0); setChatInput(""); };
   const createRoom = () => { setJoinErr(""); setPlayers(null); setG(null); setCode(genCode()); setRole("host"); resetChat(); setScreen("online-wait"); };
   const joinRoom = () => { const c = joinCode.trim().toUpperCase(); if (c.length < 3) { setJoinErr("შეიყვანე კოდი"); return; } setJoinErr(""); setPlayers(null); setG(null); setCode(c); setRole("guest"); resetChat(); setScreen("online-wait"); };
-  const rematch = () => { const ns = newGame(); resetDrag(); setG(ns); setOppLeft(false); if (online && role === "host") send({ t: "state", state: ns, players }); };
+  const rematch = () => { const ns = newGame(); resetDrag(); resetHistory(); setG(ns); setOppLeft(false); if (online && role === "host") send({ t: "state", state: ns, players }); };
   const leave = () => { if (online) send({ t: "bye", from: ME }); onExit(); };
-  const backToMenu = () => { if (online) send({ t: "bye", from: ME }); setRole(null); setCode(""); setPlayers(null); setG(null); resetDrag(); setJoinErr(""); setOppLeft(false); resetChat(); setScreen("menu"); };
+  const backToMenu = () => { if (online) send({ t: "bye", from: ME }); setRole(null); setCode(""); setPlayers(null); setG(null); resetDrag(); resetHistory(); setJoinErr(""); setOppLeft(false); resetChat(); setScreen("menu"); };
 
   const meIdx = role === "guest" ? 1 : 0;
   const oppIdx = 1 - meIdx;
@@ -306,6 +338,17 @@ export function NardiGame({ onExit }) {
     if (!online) { setG(move(g, from, die)); return; }
     if (role === "host") { const ns = move(g, from, die); if (ns !== g) { setG(ns); send({ t: "state", state: ns, players }); } }
     else send({ t: "move", kind: "move", from, die });
+  };
+  // step back one move within the turn currently in progress (cleared on the next roll)
+  const doUndo = () => {
+    if (!moveHistory.length) return;
+    resetDrag();
+    const prev = moveHistory[moveHistory.length - 1];
+    if (!online) { setMoveHistory(h => h.slice(0, -1)); prevGRef.current = prev; historyLastRef.current = prev.last; suppressFlipRef.current = true; setG(prev); return; }
+    if (role === "host") {
+      setMoveHistory(h => h.slice(0, -1)); prevGRef.current = prev; historyLastRef.current = prev.last; suppressFlipRef.current = true;
+      setG(prev); send({ t: "state", state: prev, players });
+    } else send({ t: "move", kind: "undo" });
   };
 
   // destination a given (from, die) lands on, for the currently-moving player
@@ -346,7 +389,7 @@ export function NardiGame({ onExit }) {
     if (!iAmTurn || g.phase !== "move") return;
     if (dragFrom != null) {
       const hit = dragDests.find(d => d.idx === from);
-      if (hit) { dragSuppressFlipRef.current = true; doMove(dragFrom, hit.die); resetDrag(); return; }
+      if (hit) { suppressFlipRef.current = true; doMove(dragFrom, hit.die); resetDrag(); return; }
       if (from === dragFrom) { resetDrag(); return; }
     }
     if (!fromsSet.has(from)) return;
@@ -364,7 +407,7 @@ export function NardiGame({ onExit }) {
       const moved = Math.hypot(e.clientX - dragStartRef.current.x, e.clientY - dragStartRef.current.y) > 6;
       if (moved) {
         const hit = hitTestDest(e.clientX, e.clientY, dragDests);
-        if (hit) { dragSuppressFlipRef.current = true; doMove(dragFrom, hit.die); }
+        if (hit) { suppressFlipRef.current = true; doMove(dragFrom, hit.die); }
         resetDrag(); // dropped off-target: snap back / cancel rather than staying armed
         return;
       }
@@ -373,7 +416,7 @@ export function NardiGame({ onExit }) {
       if (distinct.length === 1 && dragDests.length) {
         const offPick = dragDests.filter(d => d.idx === "off").sort((a, b) => a.die - b.die)[0];
         const chosen = offPick || dragDests[0];
-        dragSuppressFlipRef.current = true; doMove(dragFrom, chosen.die); resetDrag();
+        suppressFlipRef.current = true; doMove(dragFrom, chosen.die); resetDrag();
       }
     };
     window.addEventListener("pointermove", onMove);
@@ -559,6 +602,7 @@ export function NardiGame({ onExit }) {
           {statusText && <span className="text-[12.5px] font-semibold text-center px-3 py-1 rounded-full" style={{ color: "#fff", background: "rgba(0,0,0,.5)" }}>{statusText}</span>}
           {g.phase === "opening" && iCanStart && <button onClick={doOpening} className="pointer-events-auto px-8 py-3 rounded-2xl text-[15px] font-bold text-white active:scale-95" style={{ backgroundImage: GBRAND, boxShadow: "0 6px 18px -4px rgba(0,0,0,.6)" }}>დაიწყე 🎲</button>}
           {g.phase === "roll" && iAmTurn && <button onClick={doRoll} className="pointer-events-auto px-8 py-3 rounded-2xl text-[15px] font-bold text-white active:scale-95" style={{ backgroundImage: GBRAND, boxShadow: "0 6px 18px -4px rgba(0,0,0,.6)" }}>ააგდე კამათელი 🎲</button>}
+          {g.phase === "move" && iAmTurn && moveHistory.length > 0 && <button onClick={doUndo} className="pointer-events-auto flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-bold active:scale-95" style={{ background: "rgba(0,0,0,.55)", color: "#fff", border: "1px solid rgba(255,255,255,.25)" }}>↩︎ სვლის დაბრუნება</button>}
         </div>
       </div>
 
