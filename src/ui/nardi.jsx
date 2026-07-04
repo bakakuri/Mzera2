@@ -553,8 +553,9 @@ export function NardiGame({ onExit }) {
           <div style={{ position: "absolute", left: 0, top: 0, width: 22, height: 22, marginLeft: -11, marginTop: -11, borderRadius: "50%", backgroundImage: CHECKER_BG[meIdx], backgroundBlendMode: CHECKER_BLEND, border: `1.5px solid ${CHECKER_RING[meIdx]}`, boxShadow: "0 8px 18px rgba(0,0,0,.65)", transform: `translate(${dragPos.x}px, ${dragPos.y}px) scale(${dragMoved ? 1.3 : 1})`, transition: dragMoved ? "none" : "transform 120ms ease", opacity: dragMoved ? 1 : 0, zIndex: 36, pointerEvents: "none" }} />
         )}
 
-        {/* status text / roll button float on the board itself instead of taking their own screen row */}
-        <div className="absolute inset-x-0 bottom-2.5 flex flex-col items-center gap-1.5 pointer-events-none" style={{ zIndex: 25 }}>
+        {/* status text / roll button float just below the bar (board's vertical center)
+            instead of at the bottom, where they used to sit on top of the lower points */}
+        <div className="absolute inset-x-0 flex flex-col items-center gap-1.5 pointer-events-none" style={{ top: "calc(50% + 49px)", zIndex: 25 }}>
           {statusText && <span className="text-[12.5px] font-semibold text-center px-3 py-1 rounded-full" style={{ color: "#fff", background: "rgba(0,0,0,.5)" }}>{statusText}</span>}
           {g.phase === "opening" && iCanStart && <button onClick={doOpening} className="pointer-events-auto px-8 py-3 rounded-2xl text-[15px] font-bold text-white active:scale-95" style={{ backgroundImage: GBRAND, boxShadow: "0 6px 18px -4px rgba(0,0,0,.6)" }}>დაიწყე 🎲</button>}
           {g.phase === "roll" && iAmTurn && <button onClick={doRoll} className="pointer-events-auto px-8 py-3 rounded-2xl text-[15px] font-bold text-white active:scale-95" style={{ backgroundImage: GBRAND, boxShadow: "0 6px 18px -4px rgba(0,0,0,.6)" }}>ააგდე კამათელი 🎲</button>}
