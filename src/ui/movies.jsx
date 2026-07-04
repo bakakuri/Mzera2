@@ -32,18 +32,19 @@ function NewFilm({ onClose, onCreate, onUpload, onUploadVideo, initial }) {
   const [progress, setProgress] = useState(null);
   const [videoProgress, setVideoProgress] = useState(null);
   const uploading = progress != null; const uploadingVideo = videoProgress != null;
+  const [uploadErr, setUploadErr] = useState("");
   const [vph, setVph] = useState(null);
   useEffect(() => { const vv = window.visualViewport; if (!vv) return; const onR = () => setVph(vv.height); onR(); vv.addEventListener("resize", onR); vv.addEventListener("scroll", onR); return () => { vv.removeEventListener("resize", onR); vv.removeEventListener("scroll", onR); }; }, []);
   const pickFile = async (e) => {
     const f = e.target.files && e.target.files[0]; if (!f) return;
-    setProgress(0);
-    try { setPicked(await onUpload(f, setProgress)); } catch (err) {}
+    setProgress(0); setUploadErr("");
+    try { setPicked(await onUpload(f, setProgress)); } catch (err) { setUploadErr(t("film.posterUploadFailedPre") + (err && err.message ? err.message : t("error.unknown"))); }
     setProgress(null); e.target.value = "";
   };
   const pickVideo = async (e) => {
     const f = e.target.files && e.target.files[0]; if (!f) return;
-    setVideoProgress(0);
-    try { setVideo(await onUploadVideo(f, setVideoProgress)); } catch (err) {}
+    setVideoProgress(0); setUploadErr("");
+    try { setVideo(await onUploadVideo(f, setVideoProgress)); } catch (err) { setUploadErr(t("film.videoUploadFailedPre") + (err && err.message ? err.message : t("error.unknown"))); }
     setVideoProgress(null); e.target.value = "";
   };
   const ok = title.trim().length > 0;
@@ -56,6 +57,7 @@ function NewFilm({ onClose, onCreate, onUpload, onUploadVideo, initial }) {
           <button disabled={!ok} onClick={() => onCreate({ title: title.trim(), year: year ? Number(year) : null, genre, desc: desc.trim(), poster: picked, video: video || null })} className="px-4 py-1.5 rounded-full text-sm font-bold" style={{ backgroundImage: GBRAND, color: "#fff", opacity: ok ? 1 : 0.4 }}>{initial ? t("action.save") : t("action.add")}</button>
         </div>
         <div className="p-4 space-y-3.5" style={{ paddingBottom: "calc(var(--mz-nav, 64px) + 1.25rem)" }}>
+          {uploadErr && <div className="px-3 py-2 rounded-xl text-[12.5px] font-semibold" style={{ background: C.like + "1a", color: C.like }}>{uploadErr}</div>}
           <div className="flex gap-2 items-center flex-wrap">
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickFile} />
             <button onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading} className="rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95" style={{ width: 72, height: 96, background: C.accentSoft, color: C.accentText }}>{uploading ? <span className="text-[13px] font-bold">{progress}%</span> : <><Upload size={20} /><span className="text-[10px] font-bold mt-0.5 text-center">{t("film.posterWord")}</span></>}</button>

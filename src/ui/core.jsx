@@ -310,15 +310,17 @@ export function NewListing({ onClose, onCreate, live, onUpload, initial }) {
   const [picked, setPicked] = useState(initial && initial.image ? initial.image : ""); const [pickedVideo, setPickedVideo] = useState(initial && initial.video ? initial.video : null);
   const fileRef = useRef(null); const [progress, setProgress] = useState(null);
   const uploading = progress != null;
+  const [uploadErr, setUploadErr] = useState("");
   const [vph, setVph] = useState(null);
   useEffect(() => { const vv = window.visualViewport; if (!vv) return; const onR = () => setVph(vv.height); onR(); vv.addEventListener("resize", onR); vv.addEventListener("scroll", onR); return () => { vv.removeEventListener("resize", onR); vv.removeEventListener("scroll", onR); }; }, []);
-  const pickFile = async (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; const isVid = f.type.startsWith("video"); setProgress(0); try { const url = await onUpload(f, setProgress); if (isVid) setPickedVideo(url); else setPicked(url); } catch (err) {} setProgress(null); e.target.value = ""; };
+  const pickFile = async (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; const isVid = f.type.startsWith("video"); setProgress(0); setUploadErr(""); try { const url = await onUpload(f, setProgress); if (isVid) setPickedVideo(url); else setPicked(url); } catch (err) { setUploadErr(t("listing.uploadFailedPre") + (err && err.message ? err.message : t("error.unknown"))); } setProgress(null); e.target.value = ""; };
   const ok = title.trim() && price;
   return (
     <div className="fixed inset-0 z-[60] flex sm:items-center justify-center items-end" style={{ background: "rgba(6,7,12,.55)", backdropFilter: "blur(4px)", height: vph ? vph + "px" : "100dvh" }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} className="w-full sm:max-w-[520px] sm:rounded-3xl rounded-t-3xl overflow-y-auto" style={{ background: C.surface, boxShadow: SH.pop, maxHeight: vph ? vph + "px" : "88vh" }}>
         <div className="flex items-center justify-between px-4 py-3.5 sticky top-0" style={{ background: C.surface, borderBottom: `1px solid ${C.lineSoft}` }}><button onClick={onClose} style={{ color: C.muted }}><X size={22} /></button><span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{initial ? t("listing.edit") : t("listing.sell")}</span><button disabled={!ok} onClick={() => onCreate({ title: title.trim(), price: Number(price), desc: desc.trim(), cat, image: picked && picked.startsWith("http") ? picked : "", video: pickedVideo })} className="px-4 py-1.5 rounded-full text-sm font-bold" style={{ backgroundImage: GBRAND, color: "#fff", opacity: ok ? 1 : 0.4 }}>{initial ? t("action.save") : t("action.publish")}</button></div>
         <div className="p-4 space-y-3.5" style={{ paddingBottom: "calc(var(--mz-nav, 64px) + 1.25rem)" }}>
+          {uploadErr && <div className="px-3 py-2 rounded-xl text-[12.5px] font-semibold" style={{ background: C.like + "1a", color: C.like }}>{uploadErr}</div>}
           <div className="flex gap-2 items-center flex-wrap">
             <input ref={fileRef} type="file" accept="image/*,video/*" hidden onChange={pickFile} />
             <button onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading} className="rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95" style={{ width: 72, height: 72, background: C.accentSoft, color: C.accentText }}>{uploading ? <span className="text-[13px] font-bold">{progress}%</span> : <><Upload size={20} /><span className="text-[10px] font-bold mt-0.5">{t("listing.addMedia")}</span></>}</button>

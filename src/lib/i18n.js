@@ -103,6 +103,7 @@ const DICT = {
   "listing.whatSelling": { ka: "რას ყიდი?", en: "What are you selling?", ru: "Что продаёшь?" },
   "listing.price": { ka: "ფასი", en: "Price", ru: "Цена" },
   "listing.descPh": { ka: "აღწერა (მდგომარეობა, დეტალები…)", en: "Description (condition, details…)", ru: "Описание (состояние, детали…)" },
+  "listing.uploadFailedPre": { ka: "ატვირთვა ვერ მოხერხდა: ", en: "Upload failed: ", ru: "Не удалось загрузить: " },
 
   "picker.searchPeoplePh": { ka: "მოძებნე ხალხი…", en: "Search people…", ru: "Поиск людей…" },
   "picker.notFound": { ka: "ვერ მოიძებნა", en: "Not found", ru: "Не найдено" },
@@ -452,6 +453,7 @@ const DICT = {
   "group.lockedTitle": { ka: "დახურული ჯგუფი", en: "Private group", ru: "Закрытая группа" },
   "group.lockedSub": { ka: "პოსტების სანახავად გახდი წევრი", en: "Join to see posts", ru: "Вступи, чтобы видеть посты" },
   "group.postPh": { ka: "დაწერე ჯგუფში…", en: "Write in the group…", ru: "Написать в группе…" },
+  "group.uploadFailedPre": { ka: "ატვირთვა ვერ მოხერხდა: ", en: "Upload failed: ", ru: "Не удалось загрузить: " },
   "group.noPostsYet": { ka: "ჯერ პოსტი არ არის", en: "No posts yet", ru: "Пока нет постов" },
   "group.writeFirstPost": { ka: "დაწერე პირველი 👆", en: "Write the first one 👆", ru: "Напиши первый 👆" },
   "word.event": { ka: "ივენთი", en: "Event", ru: "Событие" },
@@ -505,6 +507,8 @@ const DICT = {
   "films.addFirstOrFilter": { ka: "დაამატე პირველი ფილმი ან შეცვალე ფილტრი.", en: "Add the first film or change the filter.", ru: "Добавь первый фильм или измени фильтр." },
   "review.countSuffix": { ka: "შეფასება", en: "reviews", ru: "отзывов" },
   "word.addedByPre": { ka: "დაამატა ", en: "Added ", ru: "Добавил(а) " },
+  "film.posterUploadFailedPre": { ka: "პოსტერი ვერ აიტვირთა: ", en: "Poster upload failed: ", ru: "Не удалось загрузить постер: " },
+  "film.videoUploadFailedPre": { ka: "ფილმი ვერ აიტვირთა: ", en: "Video upload failed: ", ru: "Не удалось загрузить видео: " },
 
   "song.editTitle": { ka: "სიმღერის რედაქტირება", en: "Edit song", ru: "Редактировать песню" },
   "song.addTitle": { ka: "სიმღერის დამატება", en: "Add song", ru: "Добавить песню" },
