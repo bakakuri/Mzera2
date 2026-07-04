@@ -1131,12 +1131,21 @@ function safeStorageName(name) {
   return (base || "file") + (ext ? "." + ext : "");
 }
 
+// Supabase's "media" bucket has no explicit file_size_limit set, so it
+// inherits the project-wide cap — 50MB on the Free tier. Reject oversized
+// files immediately (before spending any time/bandwidth on the upload)
+// rather than letting them run to 100% and fail with a storage error.
+const MAX_UPLOAD_MB = 50;
+
 export const storage = {
   // onProgress(pct 0-100), when given, routes the upload through a raw XHR
   // PUT against the Storage REST endpoint instead of supabase-js's own
   // storage.upload() (which wraps fetch — fetch has no upload-progress
   // event, so there's no way to get real byte-level progress through it).
   upload: async (file, folder = "uploads", onProgress) => {
+    if (file.size > MAX_UPLOAD_MB * 1024 * 1024) {
+      throw new Error(`ფაილი ძალიან დიდია (${(file.size / (1024 * 1024)).toFixed(1)}MB) — მაქსიმუმ დაშვებულია ${MAX_UPLOAD_MB}MB`);
+    }
     const sb = need();
     const { data: { session } } = await sb.auth.getSession();
     if (!session) throw new Error("არ ხარ შესული");

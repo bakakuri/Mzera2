@@ -1737,6 +1737,84 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 
 -- ============================================================================
+--  PERFORMANCE INDEXES — covers foreign-key / lookup columns that aren't
+--  already the leading column of a composite primary key (e.g. reactions'
+--  PK is (post_id, user_id), so post_id lookups are already indexed but
+--  user_id-only lookups — "all my reactions" — are not, until now).
+-- ============================================================================
+create index if not exists reactions_user_idx on public.reactions(user_id);
+create index if not exists follows_following_idx on public.follows(following_id);
+create index if not exists reel_likes_user_idx on public.reel_likes(user_id);
+create index if not exists group_members_user_idx on public.group_members(user_id);
+create index if not exists group_posts_group_idx on public.group_posts(group_id);
+create index if not exists event_rsvps_user_idx on public.event_rsvps(user_id);
+create index if not exists listings_seller_idx on public.listings(seller_id);
+create index if not exists reviews_seller_idx on public.reviews(seller_id);
+create index if not exists orders_listing_idx on public.orders(listing_id);
+create index if not exists orders_buyer_idx on public.orders(buyer_id);
+create index if not exists films_author_idx on public.films(author_id);
+create index if not exists film_reviews_film_idx on public.film_reviews(film_id);
+create index if not exists film_watch_user_idx on public.film_watch(user_id);
+create index if not exists songs_author_idx on public.songs(author_id);
+create index if not exists thread_replies_thread_idx on public.thread_replies(thread_id);
+create index if not exists thread_votes_user_idx on public.thread_votes(user_id);
+create index if not exists user_blocks_blocked_idx on public.user_blocks(blocked_id);
+create index if not exists user_mutes_muted_idx on public.user_mutes(muted_id);
+create index if not exists close_friends_friend_idx on public.close_friends(friend_id);
+create index if not exists post_saves_user_idx on public.post_saves(user_id);
+create index if not exists comment_likes_user_idx on public.comment_likes(user_id);
+create index if not exists story_likes_user_idx on public.story_likes(user_id);
+create index if not exists story_comments_story_idx on public.story_comments(story_id);
+create index if not exists reel_comments_reel_idx on public.reel_comments(reel_id);
+create index if not exists reel_saves_user_idx on public.reel_saves(user_id);
+create index if not exists highlights_owner_idx on public.highlights(owner_id);
+create index if not exists push_subscriptions_user_idx on public.push_subscriptions(user_id);
+
+-- ============================================================================
+--  RATE LIMITING — blocks bursts of posts/comments/messages from a single
+--  user. The client already recognises an error message containing
+--  "rate_limit" and shows a friendly "slow down" toast instead of the raw
+--  DB-error banner (see src/hooks/useToast.js), so no client changes are
+--  needed — this trigger is the only piece that was missing.
+-- ============================================================================
+create or replace function public.rl_enforce()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  col         text := TG_ARGV[0];
+  max_count   int  := TG_ARGV[1]::int;
+  window_secs int  := TG_ARGV[2]::int;
+  uid         uuid;
+  cnt         int;
+begin
+  uid := (to_jsonb(NEW) ->> col)::uuid;
+  execute format(
+    'select count(*) from %I.%I where %I = $1 and created_at > now() - make_interval(secs => $2)',
+    TG_TABLE_SCHEMA, TG_TABLE_NAME, col
+  ) into cnt using uid, window_secs;
+  if cnt >= max_count then
+    raise exception 'rate_limit: too many recent inserts on %', TG_TABLE_NAME;
+  end if;
+  return NEW;
+end;
+$$;
+
+drop trigger if exists posts_rate_limit on public.posts;
+create trigger posts_rate_limit before insert on public.posts
+  for each row execute function public.rl_enforce('author_id', 8, 30);
+
+drop trigger if exists comments_rate_limit on public.comments;
+create trigger comments_rate_limit before insert on public.comments
+  for each row execute function public.rl_enforce('author_id', 15, 30);
+
+drop trigger if exists messages_rate_limit on public.messages;
+create trigger messages_rate_limit before insert on public.messages
+  for each row execute function public.rl_enforce('sender_id', 20, 15);
+
+-- ============================================================================
 --  STORAGE (media bucket: avatars, post images, story media, voice notes)
 -- ============================================================================
 insert into storage.buckets (id, name, public)

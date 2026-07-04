@@ -142,7 +142,7 @@ export function Pic({ src, grad, style, className = "", round = 0, w, fit = "cov
   const finalSrc = (w && !fb && src) ? tx(src, w) : src;
   return (
     <div className={"overflow-hidden " + className} style={{ borderRadius: round, background: grad ? `linear-gradient(135deg, ${grad[0]}, ${grad[1]})` : C.surfaceMuted, ...style }}>
-      <img src={finalSrc} alt="" onLoad={() => setOn(true)} onError={() => { if (w && !fb) setFb(true); else setErr(true); }} className="w-full h-full" style={{ objectFit: fit, opacity: err ? 0 : on ? 1 : 0, transition: "opacity .55s ease" }} />
+      <img src={finalSrc} alt="" loading="lazy" onLoad={() => setOn(true)} onError={() => { if (w && !fb) setFb(true); else setErr(true); }} className="w-full h-full" style={{ objectFit: fit, opacity: err ? 0 : on ? 1 : 0, transition: "opacity .55s ease" }} />
     </div>
   );
 }
@@ -152,7 +152,7 @@ export function Avatar({ id, size = 40, ring = false, story = false, seen = fals
   const [fb, setFb] = useState(false);
   const src = (!fb && (thumb || u.avatar)) || null;
   const inner = src
-    ? <img src={src} onError={() => setFb(true)} alt="" style={{ width: size, height: size, objectFit: fit, background: fit === "contain" ? `linear-gradient(140deg, ${a}, ${b})` : undefined }} className="rounded-full select-none shrink-0" draggable={false} />
+    ? <img src={src} onError={() => setFb(true)} alt="" loading="lazy" style={{ width: size, height: size, objectFit: fit, background: fit === "contain" ? `linear-gradient(140deg, ${a}, ${b})` : undefined }} className="rounded-full select-none shrink-0" draggable={false} />
     : <div style={{ width: size, height: size, background: `linear-gradient(140deg, ${a}, ${b})`, color: "#fff", fontWeight: 700, fontSize: size * 0.4, fontFamily: DISPLAY }} className="rounded-full flex items-center justify-center select-none shrink-0">{(u.name || "?").trim()[0] || "?"}</div>;
   if (!ring) return inner;
   return <div className="rounded-full p-[2.5px] shrink-0" style={{ background: story ? (seen ? C.line : (closeFriends ? "linear-gradient(135deg,#1f8f4e,#3ddc7f)" : "conic-gradient(from 210deg, #6750F2, #00B4FF, #E85FB0, #6750F2)")) : "transparent" }}><div className="rounded-full p-[2px]" style={{ background: C.surface }}>{inner}</div></div>;
@@ -714,7 +714,9 @@ export function AuthScreen({ recoveryMode, onResetPassword, onUpdatePassword }) 
   const [resetSent, setResetSent] = useState(false);
   const [newPass, setNewPass] = useState(""); const [newPass2, setNewPass2] = useState("");
   const submit = async () => {
-    setErr(""); setBusy(true);
+    setErr("");
+    if (mode === "up" && pass.length < 6) { setErr(t("auth.passwordTooShort")); return; }
+    setBusy(true);
     try {
       if (mode === "up") await authApi.signUp(email.trim(), pass, username.trim() || email.split("@")[0], name.trim(), refCode);
       else await authApi.signIn(email.trim(), pass);
