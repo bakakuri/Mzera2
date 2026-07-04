@@ -228,12 +228,18 @@ export function MapView({ onMessage, onMenu, onOpenProfile }) {
   );
 }
 
-export function Reels({ reels, onLike, onSave, onView, onOpenProfile, onMenu, flash, onCreate, onComments, sentinelRef, hasMore, loadingMore }) {
+export function Reels({ reels, onLike, onSave, onView, onOpenProfile, onMenu, flash, onCreate, onComments, sentinelRef, hasMore, loadingMore, pendingOpen, clearPending }) {
   const [muted, setMuted] = useState(true); const [activeIdx, setActiveIdx] = useState(0); const scrollRef = useRef(null);
   const [mode, setMode] = useState("foryou"); const [soundView, setSoundView] = useState(null);
   const onScroll = (e) => { const el = e.currentTarget; const i = Math.round(el.scrollTop / el.clientHeight); if (i !== activeIdx) setActiveIdx(i); };
   const score = (r) => { const ageH = (Date.now() - new Date(r.createdAt || Date.now()).getTime()) / 3.6e6; return ((r.likes || 0) * 3 + (r.comments || 0) * 4 + (r.views || 0) * 0.6 + 1) / Math.pow(ageH + 2, 1.3); };
   const displayReels = mode === "foryou" ? [...reels].sort((a, b) => score(b) - score(a)) : reels;
+  useEffect(() => {
+    if (!pendingOpen) return;
+    const idx = displayReels.findIndex(r => r.id === pendingOpen);
+    if (idx >= 0 && scrollRef.current) { scrollRef.current.scrollTo({ top: idx * scrollRef.current.clientHeight }); setActiveIdx(idx); }
+    clearPending && clearPending();
+  }, [pendingOpen, reels]);
   const soundReels = soundView ? reels.filter(r => (r.audio || "original audio") === soundView) : [];
   const tabBtn = (key, label) => <button onClick={() => { setMode(key); if (scrollRef.current) scrollRef.current.scrollTo({ top: 0 }); }} className="text-[15px] font-bold pointer-events-auto" style={{ color: "#fff", opacity: mode === key ? 1 : 0.5, textShadow: "0 1px 6px rgba(0,0,0,.6)", borderBottom: mode === key ? "2px solid #fff" : "2px solid transparent", paddingBottom: 3 }}>{label}</button>;
   return (

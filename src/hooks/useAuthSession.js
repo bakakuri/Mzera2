@@ -14,7 +14,7 @@ export function useAuthSession({ flash, reloadFeed }) {
   const [session, setSession] = useState(undefined);
   const [ready, setReady] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [settings, setSettings] = useState(() => lsGet("mz_settings", { private: false, activity: true, showLocation: true, nLikes: true, nComments: true, nFollows: true, nMessages: true, lang: LANG }));
+  const [settings, setSettings] = useState(() => lsGet("mz_settings", { private: false, activity: true, showLocation: true, nLikes: true, nComments: true, nFollows: true, nMessages: true, nMentions: true, nProfileViews: true, lang: LANG }));
   const [meProfile, setMeProfile] = useState({ name: "", bio: "", avatar: null, cover: null });
   const [pushState, setPushState] = useState("off");
 

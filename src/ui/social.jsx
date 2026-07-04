@@ -263,7 +263,7 @@ export function Notifications({ notifs, onOpenProfile, onOpenPost, onOpenForum, 
       {notifs.length === 0 && <div className="flex flex-col items-center justify-center text-center px-10" style={{ paddingTop: 90, color: C.faint }}><div className="rounded-3xl flex items-center justify-center mb-4" style={{ width: 76, height: 76, background: C.accentSoft }}><Bell size={34} style={{ color: C.accent }} /></div><div className="text-[15px] font-bold mb-1.5" style={{ color: C.ink2 }}>{t("notif.emptyTitle")}</div><div className="text-[13px]" style={{ lineHeight: 1.5 }}>{t("notif.emptyDesc")}</div></div>}
       {grouped.map(n => { const I = Icon[n.type] || Bell; return (
         <button key={n.id} onClick={() => {
-          if (n.type === "reel_like" || n.type === "reel_comment") { onOpenReels && onOpenReels(); return; }
+          if (n.type === "reel_like" || n.type === "reel_comment") { onOpenReels && onOpenReels(n.reelId); return; }
           if (n.type === "story_like" || n.type === "story_comment") { onOpenOwnStory && onOpenOwnStory(); return; }
           if (n.threadId && onOpenForum) { onOpenForum(n.threadId, n.replyId); return; }
           if (n.postId && onOpenPost && postTypes.includes(n.type)) { onOpenPost(n.postId, n.commentId); return; }
@@ -636,10 +636,12 @@ export function SettingsView({ settings, setSettings, meProfile, setMeProfile, m
               <div className="flex-1 min-w-0"><div className="text-[14px] font-bold" style={{ color: C.ink }}>Push შეტყობინებები</div><div className="text-[12px]" style={{ color: C.faint }}>{pushState === "on" ? "ჩართულია — დახურულ აპშიც მიიღებ" : pushState === "denied" ? "ბრაუზერმა დაბლოკა — ჩართე ბრაუზერის პარამეტრებში" : pushState === "unsupported" ? "ამ ბრაუზერს არ აქვს მხარდაჭერა" : "მიიღე შეტყობინება აპის დახურვის შემდეგაც"}</div></div>
               {pushState === "unsupported" || pushState === "denied" ? <span className="text-[11px] font-bold shrink-0" style={{ color: C.faint }}>—</span> : <button onClick={onTogglePush} className="px-3.5 py-2 rounded-xl text-[13px] font-bold shrink-0 active:scale-95" style={pushState === "on" ? { background: C.surfaceMuted, color: C.ink2 } : { backgroundImage: GBRAND, color: "#fff" }}>{pushState === "on" ? "გამორთვა" : "ჩართვა"}</button>}
             </div>
-            <SettingsRow label="მოწონებები" on={settings.nLikes} onToggle={() => tog("nLikes")} />
-            <SettingsRow label="კომენტარები" on={settings.nComments} onToggle={() => tog("nComments")} />
-            <SettingsRow label="ახალი მიმდევრები" on={settings.nFollows} onToggle={() => tog("nFollows")} />
-            <SettingsRow label="პირადი შეტყობინებები" on={settings.nMessages} onToggle={() => tog("nMessages")} />
+            <SettingsRow label="მოწონებები" on={settings.nLikes !== false} onToggle={() => tog("nLikes")} />
+            <SettingsRow label="კომენტარები" on={settings.nComments !== false} onToggle={() => tog("nComments")} />
+            <SettingsRow label="ახალი მიმდევრები" on={settings.nFollows !== false} onToggle={() => tog("nFollows")} />
+            <SettingsRow label="მოხსენიებები" sub="როცა ვინმე @handle-ით მოგიხსენიებს" on={settings.nMentions !== false} onToggle={() => tog("nMentions")} />
+            <SettingsRow label="პროფილის ვიზიტები" sub="ვინც პირველად ნახავს შენს პროფილს" on={settings.nProfileViews !== false} onToggle={() => tog("nProfileViews")} />
+            <SettingsRow label="პირადი შეტყობინებები" on={settings.nMessages !== false} onToggle={() => tog("nMessages")} />
           </SettingsSection>
           <SettingsSection title="ახლო მეგობრები 👥">
             <div className="px-4 py-2 text-[12px]" style={{ color: C.faint }}>მონიშნე ვინც ნახავს შენს „ახლო მეგობრების" story-ებს</div>
