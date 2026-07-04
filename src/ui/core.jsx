@@ -147,11 +147,12 @@ export function Pic({ src, grad, style, className = "", round = 0, w, fit = "cov
   );
 }
 
-export function Avatar({ id, size = 40, ring = false, story = false, seen = false, closeFriends = false, fit = "cover" }) {
+export function Avatar({ id, size = 40, ring = false, story = false, seen = false, closeFriends = false, fit = "cover", thumb = null }) {
   const u = USERS[id]; const [a, b] = GRADS[hashIdx(id, GRADS.length)];
   const [fb, setFb] = useState(false);
-  const inner = (u.avatar && !fb)
-    ? <img src={u.avatar} onError={() => setFb(true)} alt="" style={{ width: size, height: size, objectFit: fit, background: fit === "contain" ? `linear-gradient(140deg, ${a}, ${b})` : undefined }} className="rounded-full select-none shrink-0" draggable={false} />
+  const src = (!fb && (thumb || u.avatar)) || null;
+  const inner = src
+    ? <img src={src} onError={() => setFb(true)} alt="" style={{ width: size, height: size, objectFit: fit, background: fit === "contain" ? `linear-gradient(140deg, ${a}, ${b})` : undefined }} className="rounded-full select-none shrink-0" draggable={false} />
     : <div style={{ width: size, height: size, background: `linear-gradient(140deg, ${a}, ${b})`, color: "#fff", fontWeight: 700, fontSize: size * 0.4, fontFamily: DISPLAY }} className="rounded-full flex items-center justify-center select-none shrink-0">{(u.name || "?").trim()[0] || "?"}</div>;
   if (!ring) return inner;
   return <div className="rounded-full p-[2.5px] shrink-0" style={{ background: story ? (seen ? C.line : (closeFriends ? "linear-gradient(135deg,#1f8f4e,#3ddc7f)" : "conic-gradient(from 210deg, #6750F2, #00B4FF, #E85FB0, #6750F2)")) : "transparent" }}><div className="rounded-full p-[2px]" style={{ background: C.surface }}>{inner}</div></div>;
@@ -202,8 +203,8 @@ export const REACTIONS = ["❤️", "👍", "😂", "😮", "😢", "😡"];
 export function StoryRow({ stories, onOpen, onAdd }) {
   return (
     <div className="flex gap-4 overflow-x-auto px-4 py-4 no-scrollbar">
-      <button onClick={onAdd} className="flex flex-col items-center gap-1.5 shrink-0"><div className="relative"><Avatar id={ME} size={62} /><span className="absolute -bottom-0.5 -right-0.5 rounded-full flex items-center justify-center" style={{ width: 22, height: 22, backgroundImage: GBRAND, border: `2.5px solid ${C.surface}` }}><Plus size={13} color="#fff" /></span></div><span className="text-[12px]" style={{ color: C.muted }}>შენი story</span></button>
-      {stories.map(s => <button key={s.id} onClick={() => onOpen(s.id)} className="flex flex-col items-center gap-1.5 shrink-0"><Avatar id={s.authorId} size={62} ring story seen={s.seen} closeFriends={s.closeFriends} /><span className="text-[12px] max-w-[68px] truncate" style={{ color: s.seen ? C.faint : C.ink2 }}>{USERS[s.authorId].name.split(" ")[0]}</span></button>)}
+      <button onClick={onAdd} className="flex flex-col items-center gap-1.5 shrink-0"><div className="relative"><Avatar id={ME} size={68} /><span className="absolute -bottom-0.5 -right-0.5 rounded-full flex items-center justify-center" style={{ width: 22, height: 22, backgroundImage: GBRAND, border: `2.5px solid ${C.surface}` }}><Plus size={13} color="#fff" /></span></div><span className="text-[12px]" style={{ color: C.muted }}>შენი story</span></button>
+      {stories.map(s => <button key={s.id} onClick={() => onOpen(s.id)} className="flex flex-col items-center gap-1.5 shrink-0"><Avatar id={s.authorId} size={62} thumb={s.items && s.items[0] && s.items[0].image} ring story seen={s.seen} closeFriends={s.closeFriends} /><span className="text-[12px] max-w-[68px] truncate" style={{ color: s.seen ? C.faint : C.ink2 }}>{USERS[s.authorId].name.split(" ")[0]}</span></button>)}
     </div>
   );
 }

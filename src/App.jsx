@@ -131,7 +131,7 @@ export default function App() {
       profilesApi.closeFriendsList().then(cf => { if (!cancelled) social.setCloseFriends(cf); }).catch(() => {});
       profilesApi.listCollections().then(cols => { if (!cancelled) social.setCollections(cols); }).catch(() => {});
       postsApi.memories().then(mem => { if (!cancelled && mem.length) feed.setMemories(mem.map(mapDbPost)); }).catch(() => {});
-      profilesApi.suggested().then(sug => { sug.forEach(mergeProfile); if (!cancelled) setSuggested(sug); }).catch(() => {});
+      profilesApi.suggested(40).then(sug => { sug.forEach(mergeProfile); if (!cancelled) setSuggested(sug); }).catch(() => {});
       notifications.loadNotifs().catch(() => {}); chat.loadConvos().catch(() => {}); stories.loadStories().catch(() => {}); reelsHook.loadReels().catch(() => {}); market.loadListings().catch(() => {}); movies.loadFilms().catch(() => {}); movies.loadFilmWatch().catch(() => {}); music.loadMusic().catch(() => {}); groups.loadGroups().catch(() => {}); groups.loadEvents().catch(() => {}); forum.loadThreads().catch(() => {}); feed.loadShareCounts().catch(() => {});
     })();
     return () => { cancelled = true; };
@@ -174,6 +174,15 @@ export default function App() {
     const tier = (p) => feed.favorites.includes(p.authorId) ? 0 : feed.seeLess.includes(p.authorId) ? 2 : 1;
     const score = (p) => { const ageH = (Date.now() - new Date(p.createdAt || Date.now()).getTime()) / 3.6e6; return ((p.likes || 0) * 3 + ((p.comments && p.comments.length) || 0) * 4 + 1) / Math.pow(ageH + 2, 1.2); };
     return base.slice().sort((a, b) => tier(a) - tier(b) || (feed.feedSort === "top" ? score(b) - score(a) : new Date(b.createdAt || 0) - new Date(a.createdAt || 0)));
+  })();
+  // up to 20 suggested people, picked once per session (stable while scrolling,
+  // reshuffled on the next reload) rather than always the same first N
+  const suggestedShown = (() => {
+    const pool = suggested.filter(u => !dismissedSug.includes(u.id) && u.id !== ME);
+    if (pool.length <= 20) return pool;
+    let seed = promoSeedRef.current * 31337;
+    const rand = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+    return pool.map(u => [rand(), u]).sort((a, b) => a[0] - b[0]).map(([, u]) => u).slice(0, 20);
   })();
   const todayBdays = (() => { const now = new Date(); const mm = now.getMonth() + 1, dd = now.getDate(); const ids = Array.from(new Set([ME, ...following])); return ids.filter(id => { const b = USERS[id] && USERS[id].birthday; if (!b || typeof b !== "string") return false; const parts = b.split("-"); return Number(parts[1]) === mm && Number(parts[2]) === dd; }); })();
 
@@ -245,11 +254,21 @@ export default function App() {
       let pos = rand(2, 4);
       while (pos <= homeVisible.length + 8) { promoPositions.add(pos); pos += rand(5, 8); }
     }
+    // Suggested-people row: same as the reels row, but resurfaced further down
+    // among posts too (not just once at the very top) — randomized spacing
+    const suggestedPositions = new Set();
+    if (suggestedShown.length) {
+      let seed = promoSeedRef.current * 68111;
+      const rand = (min, max) => { seed = (seed * 9301 + 49297) % 233280; return Math.floor(min + (seed / 233280) * (max - min + 1)); };
+      let pos = rand(10, 16);
+      while (pos <= homeVisible.length + 35) { suggestedPositions.add(pos); pos += rand(30, 40); }
+    }
     const out = []; let pi = 0;
     homeVisible.forEach((p, i) => {
       out.push({ type: "post", post: p });
       if (promoPositions.has(i + 1) && shuffledPromos.length) { out.push({ type: "promo", promo: shuffledPromos[pi % shuffledPromos.length] }); pi++; }
       if (reelPositions.has(i + 1)) out.push({ type: "reels" });
+      if (suggestedPositions.has(i + 1)) out.push({ type: "suggested" });
     });
     return out;
   })();
@@ -374,7 +393,7 @@ export default function App() {
               <>
                 {feed.newPosts > 0 && <button onClick={() => { feed.setNewPosts(0); feed.reloadFeed(); if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" }); }} className="fixed left-1/2 z-40 px-4 py-2 rounded-full text-[13px] font-bold text-white active:scale-95 flex items-center gap-1.5" style={{ top: 70, transform: "translateX(-50%)", backgroundImage: GBRAND, boxShadow: SH.glow }}>↑ {feed.newPosts} ახალი პოსტი</button>}
                 <div style={{ borderBottom: `1px solid ${C.lineSoft}`, background: C.surface }}><StoryRow stories={stories.stories} onOpen={stories.openStory} onAdd={() => stories.setStoryEditorOpen(true)} /></div>
-                <SuggestedPeople people={suggested.filter(u => !dismissedSug.includes(u.id) && u.id !== ME)} isFollowing={(id) => following.includes(id)} onToggle={toggleFollow} onDismiss={(id) => setDismissedSug(d => [...d, id])} onOpenProfile={openProfile} />
+                <SuggestedPeople people={suggestedShown} isFollowing={(id) => following.includes(id)} onToggle={toggleFollow} onDismiss={(id) => setDismissedSug(d => [...d, id])} onOpenProfile={openProfile} />
                 {todayBdays.length > 0 && <div className="mx-4 mt-3 rounded-2xl p-3.5 flex items-center gap-3" style={{ background: C.accentSoft }}><span style={{ fontSize: 26 }}>🎂</span><div className="min-w-0 flex-1"><div className="text-[14px] font-bold" style={{ color: C.accentText }}>დღეს დაბადების დღეა!</div><div className="text-[13px] truncate" style={{ color: C.ink2 }}>{todayBdays.map(id => id === ME ? "შენ 🎉" : (USERS[id] ? USERS[id].name : "")).filter(Boolean).join(", ")}</div></div>{todayBdays.filter(id => id !== ME).length > 0 && <button onClick={() => openProfile(todayBdays.find(id => id !== ME))} className="shrink-0 px-3 py-1.5 rounded-full text-[12.5px] font-bold text-white active:scale-95" style={{ backgroundImage: GBRAND }}>მიულოცე</button>}</div>}
                 {feed.memories.length > 0 && <div className="mx-4 mt-3 rounded-2xl p-3" style={{ background: C.surface, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 mb-2"><span style={{ fontSize: 18 }}>🗓</span><span className="text-[14px] font-bold" style={{ color: C.ink }}>ამ დღეს</span></div><div className="flex gap-2 overflow-x-auto no-scrollbar">{feed.memories.map(m => <div key={m.id} className="shrink-0 rounded-xl overflow-hidden" style={{ width: 130 }}>{m.image ? <Pic src={m.image} grad={GRADS[hashIdx(m.id, GRADS.length)]} style={{ width: 130, height: 130 }} /> : <div className="flex items-center justify-center p-2.5 text-center" style={{ width: 130, height: 130, background: (m.bg && POST_BGS[m.bg]) ? undefined : C.surfaceMuted, backgroundImage: (m.bg && POST_BGS[m.bg]) ? `linear-gradient(140deg, ${POST_BGS[m.bg][0]}, ${POST_BGS[m.bg][1]})` : undefined }}><span className="text-[12px] font-semibold line-clamp-4" style={{ color: m.bg ? "#fff" : C.ink2 }}>{(m.text || "პოსტი").slice(0, 90)}</span></div>}<div className="text-[11px] px-1 pt-1" style={{ color: C.faint }}>{m.time}</div></div>)}</div></div>}
                 {homeVisible.length > 0 && <div className="flex items-center px-4 pt-3"><div className="flex gap-1 p-0.5 rounded-full" style={{ background: C.surfaceMuted }}>{[["top", "ტოპ"], ["recent", "ბოლო"]].map(([k, l]) => <button key={k} onClick={() => feed.setFeedSort(k)} className="px-4 py-1.5 rounded-full text-[12.5px] font-bold transition" style={feed.feedSort === k ? { background: C.surface, color: C.accent, boxShadow: SH.card } : { color: C.muted }}>{l}</button>)}</div></div>}
@@ -383,6 +402,8 @@ export default function App() {
                   : it.type === "promo" && it.promo.kind === "post"
                   ? <div key={"promo" + i}><div className="flex items-center gap-1.5 px-1 pb-2 text-[12px] font-bold uppercase tracking-wide" style={{ color: C.accent, fontFamily: MONO }}><TrendingUp size={14} /> {t("promo.trendingPost")}</div><PostCard post={it.promo.post} {...feedProps} isFavorite={feed.favorites.includes(it.promo.post.authorId)} /></div>
                   : it.type === "promo" ? <FeedPromoCard key={"promo" + i} kind={it.promo.kind} data={it.promo} onOpen={() => openPromo(it.promo)} />
+                  : it.type === "suggested"
+                  ? <SuggestedPeople key={"sug" + i} people={suggestedShown} isFollowing={(id) => following.includes(id)} onToggle={toggleFollow} onDismiss={(id) => setDismissedSug(d => [...d, id])} onOpenProfile={openProfile} />
                   : <FeedReelsRow key={"reels" + i} reels={reelsHook.reels} onOpen={() => goTab("reels")} />
                 )}</div> : <div className="px-6 py-16 text-center"><div className="text-[16px] font-bold" style={{ color: C.ink2 }}>ფიდი ცარიელია 🌱</div><div className="text-[13.5px] mt-1.5" style={{ color: C.muted, lineHeight: 1.6 }}>აქ მხოლოდ შენი და დაფოლოვებულების პოსტები ჩანს. აღმოაჩინე ხალხი და დააფოლოვე.</div><button onClick={() => setTab("explore")} className="mt-4 px-5 py-2.5 rounded-full text-[14px] font-bold text-white active:scale-95" style={{ backgroundImage: GBRAND }}>აღმოჩენა</button></div>}
                 {feed.feedMore ? (
