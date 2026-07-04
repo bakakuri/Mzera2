@@ -89,6 +89,12 @@ create table if not exists public.comments (
   created_at timestamptz not null default now()
 );
 create index if not exists comments_post_idx on public.comments(post_id);
+-- reply-to-a-comment threading: src/lib/api.js's comments.add()/forPosts() have
+-- sent and read parent_id for a while (see PostCard's replyTo state in
+-- feed.jsx), but it was never checked into this file — same class of gap as
+-- banned/referral_code below.
+alter table public.comments add column if not exists parent_id uuid references public.comments(id) on delete cascade;
+create index if not exists comments_parent_idx on public.comments(parent_id);
 
 create table if not exists public.reactions (
   post_id    uuid not null references public.posts(id) on delete cascade,
@@ -327,7 +333,7 @@ end; $$;
 create table if not exists public.notifications (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid not null references public.profiles(id) on delete cascade,  -- ვის ეგზავნება
-  type       text not null,  -- like | comment | follow | mention
+  type       text not null,  -- like | comment | reply | follow | mention | thread_reply | thread_activity | profile_view
   from_id    uuid references public.profiles(id) on delete cascade,           -- ვინ გამოიწვია
   post_id    uuid references public.posts(id) on delete cascade,
   text       text,
@@ -335,6 +341,9 @@ create table if not exists public.notifications (
   created_at timestamptz not null default now()
 );
 create index if not exists notif_user_idx on public.notifications(user_id, created_at desc);
+-- thread_id (added further below, once public.threads exists — see FORUM
+-- section) lets forum activity (thread_reply/thread_activity/mention-in-a-
+-- thread) carry a reference with no post_id to hang off of.
 
 -- like → notification
 create or replace function public.notify_on_reaction()
@@ -352,16 +361,82 @@ drop trigger if exists trg_notify_reaction on public.reactions;
 create trigger trg_notify_reaction after insert on public.reactions
   for each row execute function public.notify_on_reaction();
 
--- comment → notification
+-- shared by every insert trigger below that can carry free text (posts,
+-- comments, thread titles/bodies, thread replies): finds every @handle in
+-- the text and notifies the matching profile, skipping self-mentions.
+create or replace function public.notify_mentions(p_text text, p_from_id uuid, p_post_id uuid, p_thread_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+declare h text; target uuid;
+begin
+  if p_text is null then return; end if;
+  for h in select distinct lower(m[1]) from regexp_matches(p_text, '@([A-Za-z0-9_]+)', 'g') as m loop
+    select id into target from public.profiles where lower(username) = h limit 1;
+    if target is not null and target <> p_from_id then
+      insert into public.notifications (user_id, type, from_id, post_id, thread_id, text)
+      values (target, 'mention', p_from_id, p_post_id, p_thread_id, p_text);
+    end if;
+  end loop;
+end;
+$$;
+
+-- new post → scan for @mentions (also covers group posts, which are just
+-- posts with a group_id)
+create or replace function public.notify_on_post()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  perform public.notify_mentions(new.text, new.author_id, new.id, null);
+  return new;
+end; $$;
+drop trigger if exists trg_notify_post on public.posts;
+create trigger trg_notify_post after insert on public.posts
+  for each row execute function public.notify_on_post();
+
+-- comment → notification. Three things can happen on one new comment:
+--  1) the post owner gets pinged (unchanged, existing behavior)
+--  2) if it's a reply (parent_id set), the parent comment's author gets a
+--     more specific 'reply' ping instead of a second redundant 'comment' one
+--  3) everyone else who has already commented on this post ("also in the
+--     discussion", Facebook-style) gets a single 'thread_activity' ping —
+--     capped at one unread notification per (user, post) so a fast back-
+--     and-forth doesn't spam everyone on every single reply
 create or replace function public.notify_on_comment()
 returns trigger language plpgsql security definer set search_path = public as $$
-declare owner uuid;
+declare owner uuid; parent_author uuid; participant uuid;
 begin
   select author_id into owner from public.posts where id = new.post_id;
+
+  if new.parent_id is not null then
+    select author_id into parent_author from public.comments where id = new.parent_id;
+  end if;
+
   if owner is not null and owner <> new.author_id then
     insert into public.notifications (user_id, type, from_id, post_id, text)
     values (owner, 'comment', new.author_id, new.post_id, new.text);
   end if;
+
+  if parent_author is not null and parent_author <> new.author_id and parent_author is distinct from owner then
+    insert into public.notifications (user_id, type, from_id, post_id, text)
+    values (parent_author, 'reply', new.author_id, new.post_id, new.text);
+  end if;
+
+  for participant in
+    select distinct author_id from public.comments
+    where post_id = new.post_id
+      and author_id <> new.author_id
+      and author_id is distinct from owner
+      and author_id is distinct from parent_author
+  loop
+    if not exists (
+      select 1 from public.notifications
+      where user_id = participant and type = 'thread_activity' and post_id = new.post_id and read = false
+    ) then
+      insert into public.notifications (user_id, type, from_id, post_id, text)
+      values (participant, 'thread_activity', new.author_id, new.post_id, new.text);
+    end if;
+  end loop;
+
+  perform public.notify_mentions(new.text, new.author_id, new.post_id, null);
+
   return new;
 end; $$;
 drop trigger if exists trg_notify_comment on public.comments;
@@ -405,6 +480,11 @@ create table if not exists public.threads (
   created_at timestamptz not null default now()
 );
 create index if not exists threads_created_idx on public.threads(created_at desc);
+-- forum activity (thread_reply/thread_activity/mention-in-a-thread) has no
+-- post_id to hang off of; there's no per-thread deep view in the app yet, so
+-- the client just routes any notification carrying a thread_id to the forum
+-- tab rather than a specific thread.
+alter table public.notifications add column if not exists thread_id uuid references public.threads(id) on delete cascade;
 
 create table if not exists public.thread_replies (
   id         uuid primary key default gen_random_uuid(),
@@ -433,6 +513,56 @@ create policy treplies_insert on public.thread_replies for insert with check (au
 create policy tvotes_read on public.thread_votes for select using (true);
 create policy tvotes_insert on public.thread_votes for insert with check (auth.uid() = user_id);
 create policy tvotes_delete on public.thread_votes for delete using (auth.uid() = user_id);
+
+-- new forum thread → scan title+body for @mentions
+create or replace function public.notify_on_thread()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  perform public.notify_mentions(coalesce(new.title, '') || ' ' || coalesce(new.body, ''), new.author_id, null, new.id);
+  return new;
+end; $$;
+drop trigger if exists trg_notify_thread on public.threads;
+create trigger trg_notify_thread after insert on public.threads
+  for each row execute function public.notify_on_thread();
+
+-- forum reply → notifies the thread author, fans out a capped
+-- 'thread_activity' ping to everyone else who already replied (same
+-- "also in the discussion" idea as notify_on_comment), and scans for
+-- @mentions. thread_replies has no parent_id (flat, no nested replies), so
+-- there's no per-reply 'reply' notification here, only thread-level.
+create or replace function public.notify_on_thread_reply()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare owner uuid; participant uuid;
+begin
+  select author_id into owner from public.threads where id = new.thread_id;
+
+  if owner is not null and owner <> new.author_id then
+    insert into public.notifications (user_id, type, from_id, thread_id, text)
+    values (owner, 'thread_reply', new.author_id, new.thread_id, new.text);
+  end if;
+
+  for participant in
+    select distinct author_id from public.thread_replies
+    where thread_id = new.thread_id
+      and author_id <> new.author_id
+      and author_id is distinct from owner
+  loop
+    if not exists (
+      select 1 from public.notifications
+      where user_id = participant and type = 'thread_activity' and thread_id = new.thread_id and read = false
+    ) then
+      insert into public.notifications (user_id, type, from_id, thread_id, text)
+      values (participant, 'thread_activity', new.author_id, new.thread_id, new.text);
+    end if;
+  end loop;
+
+  perform public.notify_mentions(new.text, new.author_id, null, new.thread_id);
+
+  return new;
+end; $$;
+drop trigger if exists trg_notify_thread_reply on public.thread_replies;
+create trigger trg_notify_thread_reply after insert on public.thread_replies
+  for each row execute function public.notify_on_thread_reply();
 
 -- ============================================================================
 --  VIEW: profile_stats (followers / following / posts)
@@ -1256,6 +1386,20 @@ drop policy if exists profile_views_insert on public.profile_views;
 create policy profile_views_insert on public.profile_views for insert with check (auth.uid() = viewer_id);
 drop policy if exists profile_views_update on public.profile_views;
 create policy profile_views_update on public.profile_views for update using (auth.uid() = viewer_id);
+
+-- profile view → notify the profile owner, but only on a genuine first-time
+-- view: recordView() upserts, so a repeat visit hits the ON CONFLICT UPDATE
+-- path and this AFTER INSERT trigger simply never fires for it again.
+create or replace function public.notify_on_profile_view()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.notifications (user_id, type, from_id)
+  values (new.profile_id, 'profile_view', new.viewer_id);
+  return new;
+end; $$;
+drop trigger if exists trg_notify_profile_view on public.profile_views;
+create trigger trg_notify_profile_view after insert on public.profile_views
+  for each row execute function public.notify_on_profile_view();
 
 -- ============================================================================
 --  REALTIME (live chat / notifications / presence)
