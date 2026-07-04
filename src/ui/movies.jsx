@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft, X, Star, Plus, Pencil, Trash2, Bookmark, Check, Upload, ChevronRight, Clapperboard, Play,
-  C, SH, card, Tilt, DISPLAY, MONO, GBRAND, Mono, GRADS, hashIdx, Pic, Avatar, Name, Title, Chips, Empty, Stars, FILM_GENRES, USERS, ME, t,
+  C, SH, card, Tilt, DISPLAY, MONO, GBRAND, Mono, GRADS, hashIdx, Pic, Avatar, Name, Title, Chips, Empty, Stars, FILM_GENRES, USERS, ME, UploadProgress, t,
 } from "./core";
 
 function ConfirmDialog({ title, msg, confirmText = t("action.delete"), onCancel, onConfirm }) {
@@ -29,21 +29,22 @@ function NewFilm({ onClose, onCreate, onUpload, onUploadVideo, initial }) {
   const [video, setVideo] = useState(initial && initial.video ? initial.video : "");
   const fileRef = useRef(null);
   const videoRef = useRef(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [progress, setProgress] = useState(null);
+  const [videoProgress, setVideoProgress] = useState(null);
+  const uploading = progress != null; const uploadingVideo = videoProgress != null;
   const [vph, setVph] = useState(null);
   useEffect(() => { const vv = window.visualViewport; if (!vv) return; const onR = () => setVph(vv.height); onR(); vv.addEventListener("resize", onR); vv.addEventListener("scroll", onR); return () => { vv.removeEventListener("resize", onR); vv.removeEventListener("scroll", onR); }; }, []);
   const pickFile = async (e) => {
     const f = e.target.files && e.target.files[0]; if (!f) return;
-    setUploading(true);
-    try { setPicked(await onUpload(f)); } catch (err) {}
-    setUploading(false); e.target.value = "";
+    setProgress(0);
+    try { setPicked(await onUpload(f, setProgress)); } catch (err) {}
+    setProgress(null); e.target.value = "";
   };
   const pickVideo = async (e) => {
     const f = e.target.files && e.target.files[0]; if (!f) return;
-    setUploadingVideo(true);
-    try { setVideo(await onUploadVideo(f)); } catch (err) {}
-    setUploadingVideo(false); e.target.value = "";
+    setVideoProgress(0);
+    try { setVideo(await onUploadVideo(f, setVideoProgress)); } catch (err) {}
+    setVideoProgress(null); e.target.value = "";
   };
   const ok = title.trim().length > 0;
   return (
@@ -57,16 +58,18 @@ function NewFilm({ onClose, onCreate, onUpload, onUploadVideo, initial }) {
         <div className="p-4 space-y-3.5" style={{ paddingBottom: "calc(var(--mz-nav, 64px) + 1.25rem)" }}>
           <div className="flex gap-2 items-center flex-wrap">
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickFile} />
-            <button onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading} className="rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95" style={{ width: 72, height: 96, background: C.accentSoft, color: C.accentText }}>{uploading ? <span className="text-[10px] font-bold">…</span> : <><Upload size={20} /><span className="text-[10px] font-bold mt-0.5 text-center">{t("film.posterWord")}</span></>}</button>
+            <button onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading} className="rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95" style={{ width: 72, height: 96, background: C.accentSoft, color: C.accentText }}>{uploading ? <span className="text-[13px] font-bold">{progress}%</span> : <><Upload size={20} /><span className="text-[10px] font-bold mt-0.5 text-center">{t("film.posterWord")}</span></>}</button>
             {picked && <div className="rounded-xl overflow-hidden shrink-0 relative" style={{ width: 72, height: 96, outline: `2.5px solid ${C.accent}`, outlineOffset: 2 }}><Pic src={picked} className="w-full h-full" /><button onClick={() => setPicked("")} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div>}
-            {!picked && <span className="text-[12px]" style={{ color: C.faint }}>{t("film.addPosterHint")}</span>}
+            {!picked && !uploading && <span className="text-[12px]" style={{ color: C.faint }}>{t("film.addPosterHint")}</span>}
           </div>
+          {uploading && <UploadProgress pct={progress} label={t("film.posterWord")} />}
           <div className="flex gap-2 items-center flex-wrap">
             <input ref={videoRef} type="file" accept="video/*" hidden onChange={pickVideo} />
-            <button onClick={() => videoRef.current && videoRef.current.click()} disabled={uploadingVideo} className="rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95" style={{ width: 72, height: 72, background: C.accentSoft, color: C.accentText }}>{uploadingVideo ? <span className="text-[10px] font-bold">…</span> : <><Play size={20} /><span className="text-[10px] font-bold mt-0.5 text-center">{t("word.film")}</span></>}</button>
+            <button onClick={() => videoRef.current && videoRef.current.click()} disabled={uploadingVideo} className="rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95" style={{ width: 72, height: 72, background: C.accentSoft, color: C.accentText }}>{uploadingVideo ? <span className="text-[13px] font-bold">{videoProgress}%</span> : <><Play size={20} /><span className="text-[10px] font-bold mt-0.5 text-center">{t("word.film")}</span></>}</button>
             {video && <div className="rounded-xl overflow-hidden shrink-0 relative flex items-center justify-center" style={{ width: 72, height: 72, background: "#000", outline: `2.5px solid ${C.accent}`, outlineOffset: 2 }}><Play size={22} color="#fff" fill="#fff" /><button onClick={() => setVideo("")} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div>}
-            {!video && <span className="text-[12px]" style={{ color: C.faint }}>{t("film.uploadVideoHint")}</span>}
+            {!video && !uploadingVideo && <span className="text-[12px]" style={{ color: C.faint }}>{t("film.uploadVideoHint")}</span>}
           </div>
+          {uploadingVideo && <UploadProgress pct={videoProgress} label={t("word.film")} />}
           <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("film.namePh")} className="w-full px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
           <input value={year} onChange={(e) => setYear(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" placeholder={t("film.yearPh")} className="w-full px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, fontFamily: MONO, border: `1px solid ${C.line}` }} />
           <div className="flex gap-1.5 flex-wrap">{FILM_GENRES.slice(1).map((g) => <button key={g} onClick={() => setGenre(g)} className="px-3 py-1.5 rounded-full text-sm font-semibold transition" style={genre === g ? { background: C.accentSoft, color: C.accentText } : { background: C.surfaceMuted, color: C.muted }}>{g}</button>)}</div>

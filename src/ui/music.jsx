@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
   X, Plus, Pencil, Trash2, Play, Pause, Upload, Music,
-  C, SH, card, DISPLAY, GBRAND, Mono, GRADS, hashIdx, Pic, Title, Chips, Empty, MUSIC_GENRES, ME, t,
+  C, SH, card, DISPLAY, GBRAND, Mono, GRADS, hashIdx, Pic, Title, Chips, Empty, MUSIC_GENRES, ME, t, UploadProgress,
 } from "./core";
 
 function ConfirmDialog({ title, msg, confirmText = t("action.delete"), onCancel, onConfirm }) {
@@ -28,22 +28,23 @@ function NewSong({ onClose, onCreate, onUpload, onUploadAudio, initial }) {
   const [audio, setAudio] = useState(initial && initial.audio ? initial.audio : "");
   const coverRef = useRef(null);
   const audioRef = useRef(null);
-  const [uploadingCover, setUploadingCover] = useState(false);
-  const [uploadingAudio, setUploadingAudio] = useState(false);
+  const [coverProgress, setCoverProgress] = useState(null);
+  const [audioProgress, setAudioProgress] = useState(null);
+  const uploadingCover = coverProgress != null; const uploadingAudio = audioProgress != null;
   const [uploadErr, setUploadErr] = useState("");
   const [vph, setVph] = useState(null);
   useEffect(() => { const vv = window.visualViewport; if (!vv) return; const onR = () => setVph(vv.height); onR(); vv.addEventListener("resize", onR); vv.addEventListener("scroll", onR); return () => { vv.removeEventListener("resize", onR); vv.removeEventListener("scroll", onR); }; }, []);
   const pickCover = async (e) => {
     const f = e.target.files && e.target.files[0]; if (!f) return;
-    setUploadingCover(true); setUploadErr("");
-    try { setCover(await onUpload(f)); } catch (err) { setUploadErr(t("song.coverUploadFailedPre") + (err && err.message ? err.message : t("error.unknown"))); }
-    setUploadingCover(false); e.target.value = "";
+    setCoverProgress(0); setUploadErr("");
+    try { setCover(await onUpload(f, setCoverProgress)); } catch (err) { setUploadErr(t("song.coverUploadFailedPre") + (err && err.message ? err.message : t("error.unknown"))); }
+    setCoverProgress(null); e.target.value = "";
   };
   const pickAudio = async (e) => {
     const f = e.target.files && e.target.files[0]; if (!f) return;
-    setUploadingAudio(true); setUploadErr("");
-    try { setAudio(await onUploadAudio(f)); } catch (err) { setUploadErr(t("song.audioUploadFailedPre") + (err && err.message ? err.message : t("error.unknown"))); }
-    setUploadingAudio(false); e.target.value = "";
+    setAudioProgress(0); setUploadErr("");
+    try { setAudio(await onUploadAudio(f, setAudioProgress)); } catch (err) { setUploadErr(t("song.audioUploadFailedPre") + (err && err.message ? err.message : t("error.unknown"))); }
+    setAudioProgress(null); e.target.value = "";
   };
   const ok = title.trim().length > 0 && !!audio;
   return (
@@ -58,16 +59,18 @@ function NewSong({ onClose, onCreate, onUpload, onUploadAudio, initial }) {
           {uploadErr && <div className="px-3 py-2 rounded-xl text-[12.5px] font-semibold" style={{ background: C.like + "1a", color: C.like }}>{uploadErr}</div>}
           <div className="flex gap-2 items-center flex-wrap">
             <input ref={coverRef} type="file" accept="image/*" hidden onChange={pickCover} />
-            <button onClick={() => coverRef.current && coverRef.current.click()} disabled={uploadingCover} className="rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95" style={{ width: 72, height: 72, background: C.accentSoft, color: C.accentText }}>{uploadingCover ? <span className="text-[10px] font-bold">…</span> : <><Upload size={20} /><span className="text-[10px] font-bold mt-0.5 text-center">{t("song.coverWord")}</span></>}</button>
+            <button onClick={() => coverRef.current && coverRef.current.click()} disabled={uploadingCover} className="rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95" style={{ width: 72, height: 72, background: C.accentSoft, color: C.accentText }}>{uploadingCover ? <span className="text-[11px] font-bold">{coverProgress}%</span> : <><Upload size={20} /><span className="text-[10px] font-bold mt-0.5 text-center">{t("song.coverWord")}</span></>}</button>
             {cover && <div className="rounded-xl overflow-hidden shrink-0 relative" style={{ width: 72, height: 72, outline: `2.5px solid ${C.accent}`, outlineOffset: 2 }}><Pic src={cover} className="w-full h-full" /><button onClick={() => setCover("")} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div>}
-            {!cover && <span className="text-[12px]" style={{ color: C.faint }}>{t("song.addCoverHint")}</span>}
+            {!cover && !uploadingCover && <span className="text-[12px]" style={{ color: C.faint }}>{t("song.addCoverHint")}</span>}
           </div>
+          {uploadingCover && <UploadProgress pct={coverProgress} label={t("song.coverWord")} />}
           <div className="flex gap-2 items-center flex-wrap">
             <input ref={audioRef} type="file" accept="audio/*" hidden onChange={pickAudio} />
-            <button onClick={() => audioRef.current && audioRef.current.click()} disabled={uploadingAudio} className="rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95" style={{ width: 72, height: 72, background: C.accentSoft, color: C.accentText }}>{uploadingAudio ? <span className="text-[10px] font-bold">…</span> : <><Upload size={20} /><span className="text-[10px] font-bold mt-0.5 text-center">{t("song.audioWord")}</span></>}</button>
+            <button onClick={() => audioRef.current && audioRef.current.click()} disabled={uploadingAudio} className="rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95" style={{ width: 72, height: 72, background: C.accentSoft, color: C.accentText }}>{uploadingAudio ? <span className="text-[11px] font-bold">{audioProgress}%</span> : <><Upload size={20} /><span className="text-[10px] font-bold mt-0.5 text-center">{t("song.audioWord")}</span></>}</button>
             {audio && <div className="rounded-xl overflow-hidden shrink-0 relative flex items-center justify-center" style={{ width: 72, height: 72, background: "#000", outline: `2.5px solid ${C.accent}`, outlineOffset: 2 }}><Play size={22} color="#fff" fill="#fff" /><button onClick={() => setAudio("")} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div>}
-            {!audio && <span className="text-[12px]" style={{ color: C.faint }}>{t("song.uploadAudioHint")}</span>}
+            {!audio && !uploadingAudio && <span className="text-[12px]" style={{ color: C.faint }}>{t("song.uploadAudioHint")}</span>}
           </div>
+          {uploadingAudio && <UploadProgress pct={audioProgress} label={t("song.audioWord")} />}
           <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("song.namePh")} className="w-full px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
           <input value={artist} onChange={(e) => setArtist(e.target.value)} placeholder={t("song.artistPh")} className="w-full px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
           <div className="flex gap-1.5 flex-wrap">{MUSIC_GENRES.slice(1).map((g) => <button key={g} onClick={() => setGenre(g)} className="px-3 py-1.5 rounded-full text-sm font-semibold transition" style={genre === g ? { background: C.accentSoft, color: C.accentText } : { background: C.surfaceMuted, color: C.muted }}>{g}</button>)}</div>

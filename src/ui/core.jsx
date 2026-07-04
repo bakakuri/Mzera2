@@ -190,6 +190,39 @@ export function renderText(text, onTag, onMention) {
 
 export const Empty = ({ icon: I, t, s }) => <div className="flex flex-col items-center justify-center text-center py-16 px-6"><div className="rounded-2xl flex items-center justify-center mb-3.5" style={{ width: 62, height: 62, background: C.accentSoft }}><I size={26} style={{ color: C.accent }} /></div><div className="text-[16px]" style={{ color: C.ink, fontFamily: DISPLAY, fontWeight: 700 }}>{t}</div>{s && <div className="text-[14px] mt-1 max-w-[240px]" style={{ color: C.muted }}>{s}</div>}</div>;
 
+// shared upload-progress bar — pct is 0-100 or null/undefined (not shown).
+// Every upload flow in the app (compose, stories, reels, market, movies,
+// music, groups, chat) renders this the same way, driven by
+// storageApi.upload()'s onProgress callback.
+export function UploadProgress({ pct, label }) {
+  if (pct == null) return null;
+  const p = Math.max(0, Math.min(100, Math.round(pct)));
+  return (
+    <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl" style={{ background: C.surfaceMuted }}>
+      {label && <span className="text-[12.5px] font-semibold shrink-0" style={{ color: C.ink2 }}>{label}</span>}
+      <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: C.line }}>
+        <div className="h-full rounded-full" style={{ width: p + "%", backgroundImage: GBRAND, transition: "width 150ms linear" }} />
+      </div>
+      <Mono className="text-[12px] font-bold shrink-0" style={{ color: C.accent, minWidth: 34, textAlign: "right" }}>{p}%</Mono>
+    </div>
+  );
+}
+
+// circular variant for small fixed-size targets (avatar/cover upload
+// buttons) where an inline bar doesn't fit.
+export function UploadRing({ pct, size = 84, strokeWidth = 3 }) {
+  if (pct == null) return null;
+  const p = Math.max(0, Math.min(100, pct));
+  const r = (size - strokeWidth * 2) / 2;
+  const c = 2 * Math.PI * r;
+  return (
+    <svg width={size} height={size} style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)", pointerEvents: "none" }}>
+      <circle cx={size / 2} cy={size / 2} r={r} stroke={"rgba(255,255,255,.35)"} strokeWidth={strokeWidth} fill="none" />
+      <circle cx={size / 2} cy={size / 2} r={r} stroke={C.accent} strokeWidth={strokeWidth} fill="none" strokeDasharray={c} strokeDashoffset={c * (1 - p / 100)} strokeLinecap="round" style={{ transition: "stroke-dashoffset 150ms linear" }} />
+    </svg>
+  );
+}
+
 export const ThemeToggle = ({ mode, setMode, full }) => full ? (
   <div className="flex gap-1 p-1 rounded-2xl" style={{ background: C.surfaceMuted }}>
     {[["light", t("theme.light"), Sun], ["dark", t("theme.dark"), Moon]].map(([m, l, Ic]) => <button key={m} onClick={() => setMode(m)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-bold transition" style={mode === m ? { background: C.surface, color: C.accent, boxShadow: SH.card } : { color: C.muted }}><Ic size={16} />{l}</button>)}
@@ -275,10 +308,11 @@ export function Checkout({ item, onClose, onDone, onPlace }) {
 export function NewListing({ onClose, onCreate, live, onUpload, initial }) {
   const [title, setTitle] = useState(initial ? initial.title : ""); const [price, setPrice] = useState(initial ? String(initial.price) : ""); const [desc, setDesc] = useState(initial ? (initial.desc || "") : ""); const [cat, setCat] = useState(initial ? initial.cat : "ელექტრონიკა");
   const [picked, setPicked] = useState(initial && initial.image ? initial.image : ""); const [pickedVideo, setPickedVideo] = useState(initial && initial.video ? initial.video : null);
-  const fileRef = useRef(null); const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null); const [progress, setProgress] = useState(null);
+  const uploading = progress != null;
   const [vph, setVph] = useState(null);
   useEffect(() => { const vv = window.visualViewport; if (!vv) return; const onR = () => setVph(vv.height); onR(); vv.addEventListener("resize", onR); vv.addEventListener("scroll", onR); return () => { vv.removeEventListener("resize", onR); vv.removeEventListener("scroll", onR); }; }, []);
-  const pickFile = async (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; const isVid = f.type.startsWith("video"); setUploading(true); try { const url = await onUpload(f); if (isVid) setPickedVideo(url); else setPicked(url); } catch (err) {} setUploading(false); e.target.value = ""; };
+  const pickFile = async (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; const isVid = f.type.startsWith("video"); setProgress(0); try { const url = await onUpload(f, setProgress); if (isVid) setPickedVideo(url); else setPicked(url); } catch (err) {} setProgress(null); e.target.value = ""; };
   const ok = title.trim() && price;
   return (
     <div className="fixed inset-0 z-[60] flex sm:items-center justify-center items-end" style={{ background: "rgba(6,7,12,.55)", backdropFilter: "blur(4px)", height: vph ? vph + "px" : "100dvh" }} onClick={onClose}>
@@ -287,11 +321,12 @@ export function NewListing({ onClose, onCreate, live, onUpload, initial }) {
         <div className="p-4 space-y-3.5" style={{ paddingBottom: "calc(var(--mz-nav, 64px) + 1.25rem)" }}>
           <div className="flex gap-2 items-center flex-wrap">
             <input ref={fileRef} type="file" accept="image/*,video/*" hidden onChange={pickFile} />
-            <button onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading} className="rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95" style={{ width: 72, height: 72, background: C.accentSoft, color: C.accentText }}>{uploading ? <span className="text-[10px] font-bold">…</span> : <><Upload size={20} /><span className="text-[10px] font-bold mt-0.5">{t("listing.addMedia")}</span></>}</button>
+            <button onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading} className="rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95" style={{ width: 72, height: 72, background: C.accentSoft, color: C.accentText }}>{uploading ? <span className="text-[13px] font-bold">{progress}%</span> : <><Upload size={20} /><span className="text-[10px] font-bold mt-0.5">{t("listing.addMedia")}</span></>}</button>
             {picked && picked.startsWith("http") && <div className="rounded-xl overflow-hidden shrink-0 relative" style={{ width: 72, height: 72, outline: `2.5px solid ${C.accent}`, outlineOffset: 2 }}><Pic src={picked} className="w-full h-full" /><button onClick={() => setPicked("")} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div>}
             {pickedVideo && <div className="rounded-xl overflow-hidden shrink-0 relative" style={{ width: 72, height: 72, outline: `2.5px solid ${C.accent}`, outlineOffset: 2 }}><video src={pickedVideo} muted playsInline className="w-full h-full" style={{ objectFit: "cover" }} /><div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,.25)" }}><Play size={18} color="#fff" fill="#fff" /></div><button onClick={() => setPickedVideo(null)} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div>}
-            {!picked && !pickedVideo && <span className="text-[12px]" style={{ color: C.faint }}>{t("listing.addMediaHint")}</span>}
+            {!picked && !pickedVideo && !uploading && <span className="text-[12px]" style={{ color: C.faint }}>{t("listing.addMediaHint")}</span>}
           </div>
+          {uploading && <UploadProgress pct={progress} />}
           <input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder={t("listing.whatSelling")} className="w-full px-3.5 py-3 rounded-xl outline-none text-[15px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
           <div className="flex items-center gap-2 px-3.5 py-3 rounded-xl" style={{ background: C.surfaceMuted, border: `1px solid ${C.line}` }}><input value={price} onChange={e => setPrice(e.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder={t("listing.price")} className="flex-1 bg-transparent outline-none text-[15px]" style={{ color: C.ink, fontFamily: MONO }} /><span style={{ color: C.accent, fontWeight: 700 }}>₾</span></div>
           <div className="flex gap-1.5 flex-wrap">{MARKET_CATS.slice(1).map(c => <button key={c} onClick={() => setCat(c)} className="px-3 py-1.5 rounded-full text-sm font-semibold transition" style={cat === c ? { background: C.accentSoft, color: C.accentText } : { background: C.surfaceMuted, color: C.muted }}>{c}</button>)}</div>
@@ -890,23 +925,25 @@ export function ReelCard({ r, onLike, onSave, onOpenProfile, flash, onComments, 
 
 export function ReelCreate({ onClose, onPublish, onUpload, onUploadThumb, flash }) {
   const [vid, setVid] = useState(null); const [thumb, setThumb] = useState(null); const [dur, setDur] = useState(null); const [sound, setSound] = useState(SOUNDS[0]);
-  const [caption, setCaption] = useState(""); const [up, setUp] = useState(false); const [upSize, setUpSize] = useState(""); const fileRef = useRef(null);
+  const [caption, setCaption] = useState(""); const [progress, setProgress] = useState(null); const [upSize, setUpSize] = useState(""); const [thumbBusy, setThumbBusy] = useState(false); const fileRef = useRef(null);
+  const up = progress != null || thumbBusy;
   const probe = (file) => new Promise((resolve) => { const v = document.createElement("video"); v.preload = "metadata"; v.muted = true; v.playsInline = true; v.onloadedmetadata = () => resolve({ v, duration: v.duration || 0 }); v.onerror = () => resolve({ v: null, duration: 0 }); v.src = URL.createObjectURL(file); });
   const grabThumb = (v) => new Promise((resolve) => { const done = () => { try { const scale = Math.min(1, 720 / Math.max(v.videoWidth || 720, v.videoHeight || 1280)); const c = document.createElement("canvas"); c.width = Math.round((v.videoWidth || 720) * scale); c.height = Math.round((v.videoHeight || 1280) * scale); c.getContext("2d").drawImage(v, 0, 0, c.width, c.height); c.toBlob(b => resolve(b ? new File([b], "thumb-" + Date.now() + ".jpg", { type: "image/jpeg" }) : null), "image/jpeg", 0.72); } catch (e) { resolve(null); } }; v.onseeked = done; try { v.currentTime = Math.min(1, (v.duration || 2) / 2); } catch (e) { done(); } });
   const pick = async (e) => {
     const f = e.target.files && e.target.files[0]; if (!f) { return; }
     const mb = f.size / (1024 * 1024);
-    setUp(true); setUpSize(mb < 1 ? Math.round(f.size / 1024) + "KB" : mb.toFixed(1) + "MB");
+    setProgress(0); setUpSize(mb < 1 ? Math.round(f.size / 1024) + "KB" : mb.toFixed(1) + "MB");
     try {
       const { v, duration } = await probe(f);
-      if (duration && duration > 180) { flash && flash(t("video.tooLongPre") + Math.round(duration) + t("video.tooLongPost")); setUp(false); e.target.value = ""; return; }
+      if (duration && duration > 180) { flash && flash(t("video.tooLongPre") + Math.round(duration) + t("video.tooLongPost")); setProgress(null); e.target.value = ""; return; }
       setDur(duration ? Math.round(duration) : null);
       let thumbFile = null; if (v) { try { thumbFile = await grabThumb(v); } catch (er) {} }
-      const url = await onUpload(f);
-      let turl = null; if (thumbFile && onUploadThumb) { try { turl = await onUploadThumb(thumbFile); } catch (er) {} }
+      const url = await onUpload(f, setProgress);
+      setProgress(null);
+      let turl = null; if (thumbFile && onUploadThumb) { setThumbBusy(true); try { turl = await onUploadThumb(thumbFile); } catch (er) {} setThumbBusy(false); }
       setVid(url); setThumb(turl);
     } catch (err) { flash && flash(t("video.uploadFailedPre") + (err && err.message ? err.message : t("video.tryAgain"))); }
-    setUp(false); e.target.value = "";
+    setProgress(null); setThumbBusy(false); e.target.value = "";
   };
   return (
     <div className="fixed inset-0 z-[60] flex sm:items-center justify-center items-end" style={{ background: "rgba(6,7,12,.6)", backdropFilter: "blur(4px)" }} onClick={onClose}>
@@ -917,7 +954,7 @@ export function ReelCreate({ onClose, onPublish, onUpload, onUploadThumb, flash 
           {vid ? (
             <div className="relative rounded-2xl overflow-hidden mx-auto" style={{ background: "#000", aspectRatio: "9/16", maxHeight: 340 }}><video src={vid} poster={thumb || undefined} className="w-full h-full" style={{ objectFit: "contain" }} autoPlay loop muted playsInline /><button onClick={() => { setVid(null); setThumb(null); setDur(null); }} className="absolute top-2 right-2 rounded-full p-1.5" style={{ background: "rgba(0,0,0,.55)", color: "#fff" }}><X size={16} /></button>{dur != null && <span className="absolute bottom-2 left-2 rounded-md px-2 py-0.5 text-[11px] font-bold" style={{ background: "rgba(0,0,0,.6)", color: "#fff" }}>{dur}წმ{thumb ? " · thumbnail ✓" : ""}</span>}</div>
           ) : (
-            <button onClick={() => fileRef.current && fileRef.current.click()} disabled={up} className="w-full flex flex-col items-center justify-center gap-2 rounded-2xl mx-auto" style={{ aspectRatio: "9/16", maxHeight: 300, background: C.surfaceMuted, border: `2px dashed ${C.line}`, color: C.muted }}>{up ? <div className="flex flex-col items-center gap-2 px-4 text-center"><div className="rounded-full" style={{ width: 30, height: 30, border: `3px solid ${C.accentSoft}`, borderTopColor: C.accent, animation: "spin 0.8s linear infinite" }} /><span className="text-sm font-bold" style={{ color: C.ink2 }}>იტვირთება… {upSize}</span><span className="text-[11px]" style={{ color: C.faint }}>thumbnail მზადდება, დაელოდე</span></div> : <><div className="rounded-full flex items-center justify-center" style={{ width: 56, height: 56, background: C.accentSoft }}><Film size={26} style={{ color: C.accent }} /></div><span className="text-sm font-bold" style={{ color: C.ink2 }}>აირჩიე ვიდეო</span><span className="text-[12px]">MP4 / MOV · მაქს. 3 წუთი</span></>}</button>
+            <button onClick={() => fileRef.current && fileRef.current.click()} disabled={up} className="w-full flex flex-col items-center justify-center gap-2 rounded-2xl mx-auto" style={{ aspectRatio: "9/16", maxHeight: 300, background: C.surfaceMuted, border: `2px dashed ${C.line}`, color: C.muted }}>{up ? <div className="flex flex-col items-center gap-2 px-6 text-center w-full">{progress != null ? <><div style={{ width: "100%", maxWidth: 180 }}><UploadProgress pct={progress} /></div><span className="text-[11px]" style={{ color: C.faint }}>{upSize}</span></> : <><div className="rounded-full" style={{ width: 30, height: 30, border: `3px solid ${C.accentSoft}`, borderTopColor: C.accent, animation: "spin 0.8s linear infinite" }} /><span className="text-sm font-bold" style={{ color: C.ink2 }}>thumbnail მზადდება, დაელოდე</span></>}</div> : <><div className="rounded-full flex items-center justify-center" style={{ width: 56, height: 56, background: C.accentSoft }}><Film size={26} style={{ color: C.accent }} /></div><span className="text-sm font-bold" style={{ color: C.ink2 }}>აირჩიე ვიდეო</span><span className="text-[12px]">MP4 / MOV · მაქს. 3 წუთი</span></>}</button>
           )}
           <div>
             <div className="flex items-center gap-1.5 text-[13px] font-bold mb-2" style={{ color: C.muted }}><span style={{ fontSize: 14 }}>🎵</span> ხმა</div>

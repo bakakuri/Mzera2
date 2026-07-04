@@ -1,6 +1,6 @@
 import { createPortal } from "react-dom";
 import {
-  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Gamepad2, Clapperboard, Music, Languages, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, levelInfo, kfmt, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, getFilters, STORY_STICKERS, setTheme, setME, POST_BGS, FEELINGS, t, LANG } from "./core";
+  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Gamepad2, Clapperboard, Music, Languages, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, levelInfo, kfmt, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, getFilters, STORY_STICKERS, setTheme, setME, POST_BGS, FEELINGS, UploadProgress, t, LANG } from "./core";
 
 export function Lightbox({ images, start, onClose }) {
   const [idx, setIdx] = useState(start || 0);
@@ -358,17 +358,19 @@ export function StoryViewer({ story, onClose, onDone, flash }) {
 export function CreateSheet({ onClose, onPost, live, taggable, myGroups, onGroupPost, onUpload, onUploadVideo }) {
   const [text, setText] = useState(""); const [pics, setPics] = useState([]); const [poll, setPoll] = useState(null); const [schedAt, setSchedAt] = useState(""); const [wantPublic, setWantPublic] = useState(false);
   const [bg, setBg] = useState(null); const [feeling, setFeeling] = useState(null); const [loc, setLoc] = useState(""); const [tagged, setTagged] = useState([]); const [panel, setPanel] = useState(null);
-  const [vid, setVid] = useState(null); const [vidUp, setVidUp] = useState(false); const vidRef = useRef(null); const [targetGroup, setTargetGroup] = useState(null);
-  const fileRef = useRef(null); const [uploading, setUploading] = useState(false);
-  const pickVideo = async (e) => { const f = e.target.files && e.target.files[0]; if (!f) { return; } setVidUp(true); try { const url = await onUploadVideo(f); if (url) { setVid(url); setPics([]); setPoll(null); setBg(null); } } catch (er) {} setVidUp(false); e.target.value = ""; };
+  const [vid, setVid] = useState(null); const [vidProgress, setVidProgress] = useState(null); const vidRef = useRef(null); const [targetGroup, setTargetGroup] = useState(null);
+  const fileRef = useRef(null); const [imgProgress, setImgProgress] = useState(null);
+  const vidUp = vidProgress != null; const uploading = imgProgress != null;
+  const pickVideo = async (e) => { const f = e.target.files && e.target.files[0]; if (!f) { return; } setVidProgress(0); try { const url = await onUploadVideo(f, setVidProgress); if (url) { setVid(url); setPics([]); setPoll(null); setBg(null); } } catch (er) {} setVidProgress(null); e.target.value = ""; };
   const pickFile = async (e) => {
     const files = Array.from(e.target.files || []); if (!files.length) return;
-    setUploading(true);
     const room = Math.max(0, 6 - pics.length);
+    const toUp = files.slice(0, room);
+    setImgProgress(0);
     const urls = [];
-    for (const f of files.slice(0, room)) { try { const url = await onUpload(f); if (url) urls.push(url); } catch (err) {} }
+    for (let i = 0; i < toUp.length; i++) { try { const url = await onUpload(toUp[i], (p) => setImgProgress(Math.round(((i + p / 100) / toUp.length) * 100))); if (url) urls.push(url); } catch (err) {} }
     if (urls.length) { setPics(p => [...p, ...urls].slice(0, 6)); setBg(null); setVid(null); }
-    setUploading(false); e.target.value = "";
+    setImgProgress(null); e.target.value = "";
   };
   const validPoll = poll && poll.filter(o => o.trim()).length >= 2;
   const useBg = bg && !pics.length && !poll && !vid;
@@ -387,6 +389,7 @@ export function CreateSheet({ onClose, onPost, live, taggable, myGroups, onGroup
           {poll.length < 4 && <button onClick={() => setPoll(p => [...p, ""])} className="flex items-center gap-1.5 text-sm font-semibold px-1 py-1" style={{ color: C.accent }}><Plus size={16} /> {t("compose.addOption")}</button>}
         </div>}
         <div className="px-4 pb-5 pt-1">
+          {(imgProgress != null || vidProgress != null) && <div className="mb-3"><UploadProgress pct={imgProgress != null ? imgProgress : vidProgress} label={t("word.loading")} /></div>}
           <div className="flex gap-2 mb-3">
             <button onClick={() => { setPoll(null); setVid(null); }} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition" style={(!poll && !vid) ? { background: C.accentSoft, color: C.accentText } : { background: C.surfaceMuted, color: C.muted }}><ImageIcon size={17} /> {t("compose.photo")}</button>
             <button onClick={() => vidRef.current && vidRef.current.click()} disabled={vidUp} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition" style={vid ? { background: C.accentSoft, color: C.accentText } : { background: C.surfaceMuted, color: C.muted }}><Film size={17} /> {vidUp ? "…" : t("word.video")}</button>
@@ -447,9 +450,10 @@ export function Explore({ posts, onTag, activeTag, clearTag, onOpenProfile, onSe
 export function StoryEditor({ onClose, onShare, live, onUpload }) {
   const [pic, setPic] = useState(null); const [filter, setFilter] = useState("none"); const [text, setText] = useState(""); const [stickers, setStickers] = useState([]); const [mode, setMode] = useState("text"); const [cf, setCf] = useState(false);
   const [g] = useState(() => GRADS[Math.floor(Math.random() * GRADS.length)]);
-  const fileRef = useRef(null); const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null); const [progress, setProgress] = useState(null);
+  const uploading = progress != null;
   const srcAt = (w, h) => (pic && pic.startsWith("http")) ? pic : null;
-  const pickFile = async (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; setUploading(true); try { const url = await onUpload(f); setPic(url); } catch (err) {} setUploading(false); e.target.value = ""; };
+  const pickFile = async (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; setProgress(0); try { const url = await onUpload(f, setProgress); setPic(url); } catch (err) {} setProgress(null); e.target.value = ""; };
   const addSticker = (e) => setStickers(s => [...s, { e, x: 25 + Math.random() * 50, y: 28 + Math.random() * 40 }]);
   return (
     <div className="fixed inset-0 z-[62] flex items-center justify-center" style={{ background: "rgba(0,0,0,.96)" }}>
@@ -466,6 +470,7 @@ export function StoryEditor({ onClose, onShare, live, onUpload }) {
           {mode === "text" && <input autoFocus value={text} onChange={e => setText(e.target.value)} placeholder={t("story.writeSomethingPh")} className="w-full mb-3 px-4 py-3 rounded-2xl text-white text-[15px] outline-none" style={{ background: "rgba(255,255,255,.15)", border: "1px solid rgba(255,255,255,.3)", backdropFilter: "blur(8px)" }} />}
           {mode === "sticker" && <div className="grid grid-cols-6 gap-1 mb-3 p-2 rounded-2xl" style={{ background: "rgba(255,255,255,.12)", backdropFilter: "blur(8px)" }}>{STORY_STICKERS.map(e => <button key={e} onClick={() => addSticker(e)} className="active:scale-90 transition" style={{ fontSize: 28, padding: 4 }}>{e}</button>)}</div>}
           <button onClick={() => setCf(v => !v)} className="w-full mb-2 rounded-xl flex items-center justify-center gap-2 py-2.5 font-bold text-[13px] active:scale-95 transition" style={cf ? { background: "#1f8f4e", color: "#fff" } : { background: "rgba(255,255,255,.18)", color: "#fff", backdropFilter: "blur(6px)" }}>{cf ? <><Star size={15} /> {t("story.closeFriendsOnly")}</> : <><Users size={15} /> {t("story.everyone")}</>}</button>
+          {uploading && <div className="flex items-center gap-2.5 mb-2 px-3 py-2 rounded-xl" style={{ background: "rgba(255,255,255,.12)", backdropFilter: "blur(6px)" }}><div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,.2)" }}><div className="h-full rounded-full" style={{ width: progress + "%", backgroundImage: GBRAND, transition: "width 150ms linear" }} /></div><span className="text-[12px] font-bold text-white">{progress}%</span></div>}
           <div className="flex items-center gap-2">
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickFile} />
             <button onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading} className="flex-1 rounded-xl flex items-center justify-center gap-2 py-3 active:scale-95 font-bold text-white text-[14px]" style={{ background: "rgba(255,255,255,.18)", backdropFilter: "blur(6px)" }}>{uploading ? <span className="text-[12px] font-bold">{t("word.loading")}</span> : <><Upload size={17} /> {t("compose.photo")}</>}</button>

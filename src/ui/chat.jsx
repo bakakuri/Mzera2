@@ -1,6 +1,6 @@
 import { createPortal } from "react-dom";
 import {
-  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, levelInfo, kfmt, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, STORY_STICKERS, setTheme, setME, compressImage, Phone, Video, t,
+  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, levelInfo, kfmt, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, STORY_STICKERS, setTheme, setME, compressImage, Phone, Video, t, UploadProgress,
 } from "./core";
 
 function applyReact(map, msgId, userId, emoji, removed) {
@@ -56,7 +56,9 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
   const stopTyping = () => { const ch = typingChanRef.current; lastTypeRef.current = 0; if (ch) { try { ch.send({ type: "broadcast", event: "typing", payload: { userId: ME, typing: false } }); } catch (e) {} } };
   const photoInputRef = useRef(null); const docInputRef = useRef(null);
   const mediaRec = useRef(null); const chunks = useRef([]); const recStart = useRef(0);
-  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(null);
+  const [locBusy, setLocBusy] = useState(false);
+  const uploading = progress != null || locBusy;
   const cv = convos.find(c => c.id === openId);
   const bottom = () => requestAnimationFrame(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; });
   const [vph, setVph] = useState(null);
@@ -88,9 +90,9 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
   const lpEnd = () => { if (lpRef.current) { clearTimeout(lpRef.current); lpRef.current = null; } };
   const openImg = (url) => { if (lpFiredRef.current) { lpFiredRef.current = false; return; } window.open(url, "_blank"); };
   const sendMedia = (p) => { onSend(cv.id, p); setAttach(null); afterSend(cv.id); };
-  const sendPhoto = async (file) => { if (!file) return; setAttach(null); setUploading(true); try { const url = await storageApi.upload(await compressImage(file), "chat"); onSend(cv.id, { type: "image", image: url }); } catch (e) {} setUploading(false); };
-  const sendDoc = async (file) => { if (!file) return; setAttach(null); setUploading(true); try { const url = await storageApi.upload(file, "chat"); const kb = Math.round(file.size / 1024); const size = kb > 1024 ? (kb / 1024).toFixed(1) + " MB" : kb + " KB"; onSend(cv.id, { type: "doc", doc: { name: file.name, size, url } }); } catch (e) {} setUploading(false); };
-  const sendLoc = () => { setAttach(null); if (!navigator.geolocation) { onSend(cv.id, { type: "location", place: t("chat.locationUnavailable") }); return; } setUploading(true); navigator.geolocation.getCurrentPosition((pos) => { const { latitude, longitude } = pos.coords; onSend(cv.id, { type: "location", place: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`, mapUrl: `https://maps.google.com/?q=${latitude},${longitude}` }); setUploading(false); }, () => { setUploading(false); onSend(cv.id, { type: "location", place: t("chat.locationUnavailable") }); }, { enableHighAccuracy: true, timeout: 8000 }); };
+  const sendPhoto = async (file) => { if (!file) return; setAttach(null); setProgress(0); try { const url = await storageApi.upload(await compressImage(file), "chat", setProgress); onSend(cv.id, { type: "image", image: url }); } catch (e) {} setProgress(null); };
+  const sendDoc = async (file) => { if (!file) return; setAttach(null); setProgress(0); try { const url = await storageApi.upload(file, "chat", setProgress); const kb = Math.round(file.size / 1024); const size = kb > 1024 ? (kb / 1024).toFixed(1) + " MB" : kb + " KB"; onSend(cv.id, { type: "doc", doc: { name: file.name, size, url } }); } catch (e) {} setProgress(null); };
+  const sendLoc = () => { setAttach(null); if (!navigator.geolocation) { onSend(cv.id, { type: "location", place: t("chat.locationUnavailable") }); return; } setLocBusy(true); navigator.geolocation.getCurrentPosition((pos) => { const { latitude, longitude } = pos.coords; onSend(cv.id, { type: "location", place: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`, mapUrl: `https://maps.google.com/?q=${latitude},${longitude}` }); setLocBusy(false); }, () => { setLocBusy(false); onSend(cv.id, { type: "location", place: t("chat.locationUnavailable") }); }, { enableHighAccuracy: true, timeout: 8000 }); };
   const startRec = async () => {
     setEmoji(false); setAttach(null); setRecSecs(0);
     try {
@@ -106,9 +108,9 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
         const bt = mr.mimeType || mime || "audio/webm";
         const blob = new Blob(chunks.current, { type: bt });
         const dur = Math.max(1, Math.round((Date.now() - recStart.current) / 1000));
-        setUploading(true);
-        try { const ext = bt.includes("mp4") ? "mp4" : bt.includes("ogg") ? "ogg" : "webm"; const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: bt }); const url = await storageApi.upload(file, "chat"); onSend(cv.id, { type: "voice", dur, audioUrl: url }); } catch (e) {}
-        setUploading(false);
+        setProgress(0);
+        try { const ext = bt.includes("mp4") ? "mp4" : bt.includes("ogg") ? "ogg" : "webm"; const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: bt }); const url = await storageApi.upload(file, "chat", setProgress); onSend(cv.id, { type: "voice", dur, audioUrl: url }); } catch (e) {}
+        setProgress(null);
       };
       mediaRec.current = mr; mr.start(250); setRecording(true);
     } catch (e) { setRecording(false); }
@@ -187,7 +189,7 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
               </div>
             </div>
           )}
-          {uploading && <div className="px-4 py-2 flex items-center gap-2 shrink-0" style={{ background: C.surface, borderTop: `1px solid ${C.line}` }}><span className="rounded-full" style={{ width: 8, height: 8, background: C.accent, animation: "tdot 1.2s infinite" }} /><Mono style={{ fontSize: 12, color: C.muted }}>{t("word.loading")}</Mono></div>}
+          {progress != null ? <div className="px-4 py-2 shrink-0" style={{ background: C.surface, borderTop: `1px solid ${C.line}` }}><UploadProgress pct={progress} label={t("word.loading")} /></div> : locBusy && <div className="px-4 py-2 flex items-center gap-2 shrink-0" style={{ background: C.surface, borderTop: `1px solid ${C.line}` }}><span className="rounded-full" style={{ width: 8, height: 8, background: C.accent, animation: "tdot 1.2s infinite" }} /><Mono style={{ fontSize: 12, color: C.muted }}>{t("word.loading")}</Mono></div>}
           {emoji && !recording && <EmojiPanel onPick={(e) => setDraft(d => d + e)} />}
           {(replyTo || editing) && !recording && (() => { const m = editing || replyTo; const pv = m.type === "text" ? (m.text || "") : m.type === "image" ? t("msg.photo") : m.type === "voice" ? t("msg.voice") : m.type === "doc" ? t("chat.docWord") : t("msg.location"); return (
             <div className="flex items-center gap-2.5 px-3 py-2 shrink-0" style={{ background: C.surface, borderTop: `1px solid ${C.line}` }}>

@@ -28,3 +28,8 @@ if (looksValid) {
 // თუ env არ არის/არასწორია, აპი მუშაობს demo რეჟიმში (in-memory).
 export const hasSupabase = !!client;
 export const supabase = client;
+// exposed so storageApi.upload() can hit the Storage REST endpoint directly
+// via XHR (for real upload-progress events — supabase-js's own
+// storage.upload() uses fetch under the hood, which has no progress API).
+export const supabaseUrl = url;
+export const supabaseAnonKey = anonKey;

@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { supabase, supabaseUrl, supabaseAnonKey } from "./supabase";
 
 /*
  * mzera — Supabase API ფენა.
@@ -1120,12 +1120,32 @@ function safeStorageName(name) {
 }
 
 export const storage = {
-  upload: async (file, folder = "uploads") => {
+  // onProgress(pct 0-100), when given, routes the upload through a raw XHR
+  // PUT against the Storage REST endpoint instead of supabase-js's own
+  // storage.upload() (which wraps fetch — fetch has no upload-progress
+  // event, so there's no way to get real byte-level progress through it).
+  upload: async (file, folder = "uploads", onProgress) => {
     const sb = need();
-    const uid = (await sb.auth.getUser()).data.user.id;
-    const path = `${uid}/${folder}/${Date.now()}-${safeStorageName(file.name)}`;
-    const { error } = await sb.storage.from("media").upload(path, file, { upsert: false });
-    if (error) throw error;
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) throw new Error("არ ხარ შესული");
+    const path = `${session.user.id}/${folder}/${Date.now()}-${safeStorageName(file.name)}`;
+    if (onProgress) {
+      await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", `${supabaseUrl}/storage/v1/object/media/${path.split("/").map(encodeURIComponent).join("/")}`);
+        xhr.setRequestHeader("Authorization", `Bearer ${session.access_token}`);
+        xhr.setRequestHeader("apikey", supabaseAnonKey);
+        xhr.setRequestHeader("x-upsert", "false");
+        xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+        xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100)); };
+        xhr.onload = () => { if (xhr.status >= 200 && xhr.status < 300) resolve(); else reject(new Error("ატვირთვა ვერ მოხერხდა (" + xhr.status + ")")); };
+        xhr.onerror = () => reject(new Error("ატვირთვის ქსელური შეცდომა"));
+        xhr.send(file);
+      });
+    } else {
+      const { error } = await sb.storage.from("media").upload(path, file, { upsert: false });
+      if (error) throw error;
+    }
     return sb.storage.from("media").getPublicUrl(path).data.publicUrl;
   },
 };
