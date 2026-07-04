@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, Image as ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Phone, Video, PhoneOff, VideoOff, MicOff, Gamepad2, Clapperboard, Music, Languages, BookOpen, GraduationCap, Shuffle, CheckCircle2, XCircle,
+  Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, Image as ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Phone, Video, PhoneOff, VideoOff, MicOff, Gamepad2, Clapperboard, Music, Languages, BookOpen, GraduationCap, Shuffle, CheckCircle2, XCircle, Gift, Calendar,
 } from "lucide-react";
 import { auth as authApi, profiles as profilesApi, posts as postsApi, reactions as reactionsApi, comments as commentsApi, follows as followsApi, chat as chatApi, notifications as notifsApi, storage as storageApi, stories as storiesApi, reels as reelsApi, market as marketApi, films as filmsApi, music as musicApi, groups as groupsApi, events as eventsApi, forum as forumApi, highlights as highlightsApi, presence as presenceApi, locations as locationsApi, polls as pollsApi, quests as questsApi, xp as xpApi, admin as adminApi, push as pushApi, languages as languagesApi } from "../lib/api";
 import { hasSupabase } from "../lib/supabase";
@@ -560,7 +560,7 @@ export function toDbMsg(p) {
 
 export function mapDbNotif(row) {
   if (row.from) mergeProfile(row.from);
-  return { id: row.id, type: row.type, fromId: row.from_id, text: row.text || undefined, time: timeAgo(row.created_at), read: !!row.read, postId: row.post_id || undefined, threadId: row.thread_id || undefined, commentId: row.comment_id || undefined, replyId: row.reply_id || undefined, reelId: row.reel_id || undefined, storyId: row.story_id || undefined, postImage: (row.post && row.post.image_url) ? row.post.image_url : undefined, postText: (row.post && row.post.text) ? row.post.text : undefined };
+  return { id: row.id, type: row.type, fromId: row.from_id, text: row.text || undefined, time: timeAgo(row.created_at), read: !!row.read, postId: row.post_id || undefined, threadId: row.thread_id || undefined, commentId: row.comment_id || undefined, replyId: row.reply_id || undefined, reelId: row.reel_id || undefined, storyId: row.story_id || undefined, groupId: row.group_id || undefined, eventId: row.event_id || undefined, postImage: (row.post && row.post.image_url) ? row.post.image_url : undefined, postText: (row.post && row.post.text) ? row.post.text : undefined };
 }
 
 export const resolveImg = (x) => !x ? null : (typeof x === "string" && x.startsWith("http") ? x : img(x));
@@ -804,7 +804,7 @@ export function ensureNotifPerm() {
 // from a realtime subscription callback outside any render (useNotifications),
 // so a frozen object would go stale the moment the language changed.
 export function notifVerb(type) {
-  const map = { like: "notif.liked", comment: "notif.commented", reply: "notif.replied", follow: "notif.followed", mention: "notif.tagged", thread_reply: "notif.threadReplied", thread_activity: "notif.threadActivity", profile_view: "notif.profileViewed", reel_like: "notif.reelLiked", reel_comment: "notif.reelCommented", story_like: "notif.storyLiked", story_comment: "notif.storyCommented", post_tag: "notif.postTagged", announcement: "notif.announcement", public_approved: "notif.publicApproved", public_rejected: "notif.publicRejected" };
+  const map = { like: "notif.liked", comment: "notif.commented", reply: "notif.replied", follow: "notif.followed", mention: "notif.tagged", thread_reply: "notif.threadReplied", thread_activity: "notif.threadActivity", profile_view: "notif.profileViewed", reel_like: "notif.reelLiked", reel_comment: "notif.reelCommented", story_like: "notif.storyLiked", story_comment: "notif.storyCommented", post_tag: "notif.postTagged", group_post: "notif.groupPost", group_approved: "notif.groupApproved", event_rsvp: "notif.eventRsvp", birthday: "notif.birthday", level_up: "notif.levelUp", announcement: "notif.announcement", public_approved: "notif.publicApproved", public_rejected: "notif.publicRejected" };
   return map[type] ? t(map[type]) : null;
 }
 
@@ -982,7 +982,7 @@ export function getFilters() {
 export const STORY_STICKERS = ["❤️", "🔥", "😎", "✨", "🎉", "📍", "☕", "🌅", "💯", "👀", "🥳", "🙌"];
 
 export { useState, useEffect, useRef };
-export { Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Phone, Video, PhoneOff, VideoOff, MicOff, Gamepad2, Clapperboard, Music, Languages, BookOpen, GraduationCap, Shuffle, CheckCircle2, XCircle };
+export { Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Phone, Video, PhoneOff, VideoOff, MicOff, Gamepad2, Clapperboard, Music, Languages, BookOpen, GraduationCap, Shuffle, CheckCircle2, XCircle, Gift, Calendar };
 export { authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, filmsApi, musicApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, questsApi, xpApi, adminApi, pushApi, languagesApi };
 export { t, setLang, LANG, LANGS };
 export { hasSupabase };

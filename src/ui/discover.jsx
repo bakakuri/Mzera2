@@ -272,12 +272,13 @@ export function Reels({ reels, onLike, onSave, onView, onOpenProfile, onMenu, fl
 
 /* ─────────────────────────  GROUPS + EVENTS  ───────────────────────── */
 
-export function Groups({ groups, events, onJoin, onRsvp, onOpenProfile, onMessage, live, onGroupPost, onUpload, onUploadVideo, onCreateGroup, onCreateEvent, pendingOpen, clearPending, onEditPost, onDeletePost, onEditGroup, onDeleteGroup, onEditEvent, onDeleteEvent, allPosts, loadGroupPosts, loadMembers, onApproveMember, onKickMember, onSetGroupPrivate, postProps, taggable }) {
+export function Groups({ groups, events, onJoin, onRsvp, onOpenProfile, onMessage, live, onGroupPost, onUpload, onUploadVideo, onCreateGroup, onCreateEvent, pendingOpen, clearPending, pendingEvent, clearPendingEvent, onEditPost, onDeletePost, onEditGroup, onDeleteGroup, onEditEvent, onDeleteEvent, allPosts, loadGroupPosts, loadMembers, onApproveMember, onKickMember, onSetGroupPrivate, postProps, taggable }) {
   const [seg, setSeg] = useState("groups"); const [gOpen, setGOpen] = useState(null); const [eOpen, setEOpen] = useState(null);
   const [mgmtOpen, setMgmtOpen] = useState(false); const [mem, setMem] = useState([]);
   useEffect(() => { if (gOpen && loadGroupPosts) loadGroupPosts(gOpen); setMgmtOpen(false); }, [gOpen]);
   useEffect(() => { if (mgmtOpen && gOpen && loadMembers) loadMembers(gOpen).then(setMem).catch(() => {}); }, [mgmtOpen, gOpen]);
   useEffect(() => { if (pendingOpen) { setSeg("groups"); setGOpen(pendingOpen); clearPending && clearPending(); } }, [pendingOpen]);
+  useEffect(() => { if (pendingEvent) { setSeg("events"); setEOpen(pendingEvent); clearPendingEvent && clearPendingEvent(); } }, [pendingEvent]);
   const [creating, setCreating] = useState(false); const [editId, setEditId] = useState(null); const [delTarget, setDelTarget] = useState(null);
   const [cName, setCName] = useState(""); const [cAbout, setCAbout] = useState(""); const [cLoc, setCLoc] = useState(""); const [cDate, setCDate] = useState(""); const [cCover, setCCover] = useState(null); const [cUp, setCUp] = useState(false); const cFileRef = useRef(null);
   const cPick = async (e) => { const f = e.target.files && e.target.files[0]; if (!f || !onUpload) return; setCUp(true); try { setCCover(await onUpload(f)); } catch (err) {} setCUp(false); e.target.value = ""; };

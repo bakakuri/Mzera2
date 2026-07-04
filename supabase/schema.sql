@@ -202,12 +202,24 @@ create table if not exists public.groups (
   created_by uuid references public.profiles(id) on delete set null,
   created_at timestamptz not null default now()
 );
+-- posts.group_id — group posts are just posts with this set (see
+-- useGroups.js's onGroupPost/postsApi.create); same undocumented-gap class
+-- as posts.tagged above. Has to wait until here since it references
+-- public.groups, which didn't exist yet back at the posts table.
+alter table public.posts add column if not exists group_id uuid references public.groups(id) on delete cascade;
+create index if not exists posts_group_idx on public.posts(group_id);
 
 create table if not exists public.group_members (
   group_id uuid not null references public.groups(id) on delete cascade,
   user_id  uuid not null references public.profiles(id) on delete cascade,
   primary key (group_id, user_id)
 );
+-- status/role: src/lib/api.js's groups.list()/members()/requestJoin()/approve()
+-- have read and written these for a while (private-group join requests need
+-- a pending state), never checked into this file — same class of gap as
+-- comments.parent_id/posts.tagged elsewhere in this file.
+alter table public.group_members add column if not exists status text not null default 'approved';
+alter table public.group_members add column if not exists role text not null default 'member';
 
 create table if not exists public.group_posts (
   id         uuid primary key default gen_random_uuid(),
@@ -337,7 +349,7 @@ end; $$;
 create table if not exists public.notifications (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid not null references public.profiles(id) on delete cascade,  -- ვის ეგზავნება
-  type       text not null,  -- like | comment | reply | follow | mention | thread_reply | thread_activity | profile_view | reel_like | reel_comment | story_like | story_comment | post_tag
+  type       text not null,  -- like | comment | reply | follow | mention | thread_reply | thread_activity | profile_view | reel_like | reel_comment | story_like | story_comment | post_tag | group_post | group_approved | event_rsvp | birthday | level_up
   from_id    uuid references public.profiles(id) on delete cascade,           -- ვინ გამოიწვია
   post_id    uuid references public.posts(id) on delete cascade,
   text       text,
@@ -353,6 +365,8 @@ create index if not exists notif_user_idx on public.notifications(user_id, creat
 alter table public.notifications add column if not exists comment_id uuid references public.comments(id) on delete cascade;
 alter table public.notifications add column if not exists reel_id uuid references public.reels(id) on delete cascade;
 alter table public.notifications add column if not exists story_id uuid references public.stories(id) on delete cascade;
+alter table public.notifications add column if not exists group_id uuid references public.groups(id) on delete cascade;
+alter table public.notifications add column if not exists event_id uuid references public.events(id) on delete cascade;
 
 -- like → notification
 create or replace function public.notify_on_reaction()
@@ -391,12 +405,13 @@ begin
 end;
 $$;
 
--- new post → scan for @mentions, and notify anyone explicitly tagged via the
--- compose "tag people" picker (post.tagged, separate from @handle mentions).
--- Also covers group posts, which are just posts with a group_id.
+-- new post → scan for @mentions, notify anyone explicitly tagged via the
+-- compose "tag people" picker (post.tagged, separate from @handle mentions),
+-- and — if this is a group post (posts with a group_id set) — fan out a
+-- 'group_post' ping to every approved group member except the author.
 create or replace function public.notify_on_post()
 returns trigger language plpgsql security definer set search_path = public as $$
-declare tagged_id uuid;
+declare tagged_id uuid; member_id uuid;
 begin
   perform public.notify_mentions(new.text, new.author_id, new.id, null);
   if new.tagged is not null then
@@ -405,6 +420,15 @@ begin
         insert into public.notifications (user_id, type, from_id, post_id)
         values (tagged_id, 'post_tag', new.author_id, new.id);
       end if;
+    end loop;
+  end if;
+  if new.group_id is not null then
+    for member_id in
+      select user_id from public.group_members
+      where group_id = new.group_id and status = 'approved' and user_id <> new.author_id
+    loop
+      insert into public.notifications (user_id, type, from_id, post_id, group_id)
+      values (member_id, 'group_post', new.author_id, new.id, new.group_id);
     end loop;
   end if;
   return new;
@@ -494,6 +518,81 @@ end; $$;
 drop trigger if exists trg_notify_follow on public.follows;
 create trigger trg_notify_follow after insert on public.follows
   for each row execute function public.notify_on_follow();
+
+-- event rsvp → notification for the host. rsvp() upserts, so re-rsvp'ing
+-- (going -> maybe -> no) only notifies once, on the first-ever response.
+create or replace function public.notify_on_event_rsvp()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare host uuid;
+begin
+  select host_id into host from public.events where id = new.event_id;
+  if host is not null and host <> new.user_id then
+    insert into public.notifications (user_id, type, from_id, event_id)
+    values (host, 'event_rsvp', new.user_id, new.event_id);
+  end if;
+  return new;
+end; $$;
+drop trigger if exists trg_notify_event_rsvp on public.event_rsvps;
+create trigger trg_notify_event_rsvp after insert on public.event_rsvps
+  for each row execute function public.notify_on_event_rsvp();
+
+-- notify_group_event: called directly by the client (groups.approve() in
+-- src/lib/api.js) when a group owner approves someone's join request — this
+-- RPC already existed as a client call with nothing behind it (silently
+-- swallowed by the try/catch, so "group_approved" pings never actually
+-- fired). Unlike every other notification path above, this one is directly
+-- callable by any authenticated client, so — unlike a plain insert trigger
+-- that only ever runs off the server's own row data — it needs its own
+-- authorization check: only the group's owner may notify on its behalf.
+create or replace function public.notify_group_event(target uuid, gid uuid, kind text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not exists (select 1 from public.groups where id = gid and created_by = auth.uid()) then
+    raise exception 'not authorized';
+  end if;
+  insert into public.notifications (user_id, type, from_id, group_id)
+  values (target, kind, auth.uid(), gid);
+end;
+$$;
+grant execute on function public.notify_group_event(uuid, uuid, text) to authenticated;
+
+-- notify_birthday_followers: called by the client once per day (on app
+-- load) when it's the caller's own birthday; idempotent per calendar day so
+-- reloading the app repeatedly doesn't spam followers.
+create or replace function public.notify_birthday_followers()
+returns void language plpgsql security definer set search_path = public as $$
+declare bday date; follower_id uuid;
+begin
+  select birthday into bday from public.profiles where id = auth.uid();
+  if bday is null then return; end if;
+  if extract(month from bday) <> extract(month from current_date) or extract(day from bday) <> extract(day from current_date) then
+    return;
+  end if;
+  for follower_id in select follower_id from public.follows where following_id = auth.uid() loop
+    if not exists (
+      select 1 from public.notifications
+      where user_id = follower_id and from_id = auth.uid() and type = 'birthday' and created_at::date = current_date
+    ) then
+      insert into public.notifications (user_id, type, from_id) values (follower_id, 'birthday', auth.uid());
+    end if;
+  end loop;
+end;
+$$;
+grant execute on function public.notify_birthday_followers() to authenticated;
+
+-- notify_level_up: called by the client right after a gainXp() crosses a
+-- level boundary (see src/hooks/useXp.js); text carries the new level number
+-- and doubles as the dedup key so re-triggering the same level is a no-op.
+create or replace function public.notify_level_up(p_level int)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not exists (select 1 from public.notifications where user_id = auth.uid() and type = 'level_up' and text = p_level::text) then
+    insert into public.notifications (user_id, type, from_id, text)
+    values (auth.uid(), 'level_up', auth.uid(), p_level::text);
+  end if;
+end;
+$$;
+grant execute on function public.notify_level_up(int) to authenticated;
 
 -- ============================================================================
 --  MODERATION

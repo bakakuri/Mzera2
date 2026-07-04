@@ -153,6 +153,7 @@ export const profiles = {
     const { count } = await sb.from("profile_views").select("viewer_id", { count: "exact", head: true }).eq("profile_id", uid);
     return count || 0;
   },
+  notifyBirthdayFollowers: async () => { const { error } = await need().rpc("notify_birthday_followers"); if (error) throw error; },
   deleteAccount: async () => { const sb = need(); const { error } = await sb.rpc("delete_my_account"); if (error) throw error; await sb.auth.signOut().catch(() => {}); },
   exportData: async () => {
     const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;
@@ -1137,6 +1138,7 @@ export const calls = {
 /* ───────────── XP + DAILY QUESTS ───────────── */
 export const xp = {
   add: async (amount) => { const sb = need(); const uid = (await sb.auth.getUser()).data.user.id; await sb.rpc("add_xp", { uid, amount }); },
+  notifyLevelUp: async (level) => { const { error } = await need().rpc("notify_level_up", { p_level: level }); if (error) throw error; },
 };
 export const quests = {
   today: async () => {
