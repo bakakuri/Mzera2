@@ -19,10 +19,10 @@ body {
 .no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
 @keyframes pop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
 
-@keyframes nardi-roll{0%{transform:rotate(0deg) scale(1)}50%{transform:rotate(200deg) scale(1.18)}100%{transform:rotate(360deg) scale(1)}}
-.nardi-dice-roll{animation:nardi-roll .45s ease-in-out}
 @keyframes nardi-glow{0%,100%{box-shadow:0 0 0 2px rgba(255,196,92,.95),0 0 12px 3px rgba(255,196,92,.55)}50%{box-shadow:0 0 0 2px rgba(255,196,92,.55),0 0 4px 1px rgba(255,196,92,.2)}}
 .nardi-selectable{animation:nardi-glow 1.3s ease-in-out infinite}
+@keyframes nardi-dest-glow{0%,100%{box-shadow:inset 0 0 0 2px rgba(120,255,180,.95),0 0 16px 4px rgba(120,255,180,.5)}50%{box-shadow:inset 0 0 0 2px rgba(120,255,180,.55),0 0 6px 1px rgba(120,255,180,.2)}}
+.nardi-dest-glow{animation:nardi-dest-glow .85s ease-in-out infinite}
 @keyframes nardi-hit{0%{transform:scale(1)}30%{transform:scale(1.35)}100%{transform:scale(1)}}
 .nardi-hit{animation:nardi-hit .35s ease-out}
 @keyframes nardi-in{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:scale(1)}}
