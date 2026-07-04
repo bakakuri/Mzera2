@@ -255,13 +255,14 @@ export default function App() {
       while (pos <= homeVisible.length + 8) { promoPositions.add(pos); pos += rand(5, 8); }
     }
     // Suggested-people row: same as the reels row, but resurfaced further down
-    // among posts too (not just once at the very top) — randomized spacing
+    // among posts too (not just once at the very top) — first appears randomly
+    // 2-4 posts down, then repeats every 20 posts after that
     const suggestedPositions = new Set();
     if (suggestedShown.length) {
       let seed = promoSeedRef.current * 68111;
       const rand = (min, max) => { seed = (seed * 9301 + 49297) % 233280; return Math.floor(min + (seed / 233280) * (max - min + 1)); };
-      let pos = rand(10, 16);
-      while (pos <= homeVisible.length + 35) { suggestedPositions.add(pos); pos += rand(30, 40); }
+      let pos = rand(2, 4);
+      while (pos <= homeVisible.length + 20) { suggestedPositions.add(pos); pos += 20; }
     }
     const out = []; let pi = 0;
     homeVisible.forEach((p, i) => {

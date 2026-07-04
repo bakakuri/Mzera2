@@ -53,7 +53,7 @@ export function SuggestedPeople({ people, isFollowing, onToggle, onDismiss, onOp
       <div className="flex gap-2.5 px-4 overflow-x-auto no-scrollbar pb-3">
         {people.map(u => <Tilt key={u.id} max={9} radius={18} touchAction="pan-x" className="shrink-0 p-3 flex flex-col items-center" style={{ width: 144, ...card() }}>
           <button onClick={() => onDismiss(u.id)} className="self-end -mt-1 -mr-1 rounded-full p-0.5 active:scale-90" style={{ color: C.faint }}><X size={15} /></button>
-          <button onClick={() => onOpenProfile(u.id)} className="flex flex-col items-center w-full"><Avatar id={u.id} size={62} /><div className="text-[13px] font-bold mt-2 text-center truncate w-full" style={{ color: C.ink }}>{USERS[u.id] ? USERS[u.id].name : "—"}</div><Mono className="text-[11px] truncate w-full text-center" style={{ color: C.faint }}>@{USERS[u.id] ? USERS[u.id].handle : ""}</Mono></button>
+          <button onClick={() => onOpenProfile(u.id)} className="flex flex-col items-center w-full"><Avatar id={u.id} size={72} /><div className="text-[13px] font-bold mt-2 text-center truncate w-full" style={{ color: C.ink }}>{USERS[u.id] ? USERS[u.id].name : "—"}</div><Mono className="text-[11px] truncate w-full text-center" style={{ color: C.faint }}>@{USERS[u.id] ? USERS[u.id].handle : ""}</Mono></button>
           <button onClick={() => onToggle(u.id)} className="w-full mt-2.5 py-1.5 rounded-lg text-[12.5px] font-bold transition active:scale-95" style={isFollowing(u.id) ? { background: C.surfaceMuted, color: C.ink } : { backgroundImage: GBRAND, color: "#fff" }}>{isFollowing(u.id) ? t("follow.followedCheck") : t("follow.followShort")}</button>
         </Tilt>)}
       </div>
