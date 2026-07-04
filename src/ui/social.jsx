@@ -232,16 +232,43 @@ export function Profile({ userId, posts, savedPosts, reels, xp, meProfile, follo
 }
 
 
-export function Notifications({ notifs, onOpenProfile, onOpenPost, onOpenForum, isFollowing, onToggleFollow }) {
-  const verb = { like: t("notif.likedShort"), comment: t("notif.commentedShort"), reply: t("notif.repliedShort"), follow: t("notif.followedShort"), mention: t("notif.tagged"), thread_reply: t("notif.threadRepliedShort"), thread_activity: t("notif.threadActivityShort"), profile_view: t("notif.profileViewedShort"), announcement: t("notif.announcement"), public_approved: t("notif.publicApproved"), public_rejected: t("notif.publicRejected") };
-  const Icon = { like: Heart, comment: MessageCircle, reply: Reply, follow: User, mention: Hash, thread_reply: MessageSquare, thread_activity: MessageSquare, profile_view: Eye, announcement: Bell, public_approved: Check, public_rejected: X };
-  const col = { like: C.like, comment: C.accent, reply: C.accent, follow: C.online, mention: C.star, thread_reply: C.accent, thread_activity: C.online, profile_view: C.cyan, announcement: C.accent, public_approved: C.online, public_rejected: C.like };
-  const postTypes = ["like", "comment", "reply", "thread_activity", "mention", "public_approved", "public_rejected"];
+// collapses consecutive/same-target like/reel_like/story_like/follow
+// notifications into one row ("X and 3 others liked your post"), Facebook-
+// style — comments/replies/mentions/etc. keep their own text and stay
+// individual. Purely a display concern, no schema change.
+function groupNotifs(list) {
+  const groupable = new Set(["like", "reel_like", "story_like", "follow"]);
+  const targetKey = (n) => n.type === "follow" ? "follow" : `${n.type}:${n.postId || n.reelId || n.storyId || ""}`;
+  const out = []; const byKey = {};
+  list.forEach(n => {
+    if (!groupable.has(n.type)) { out.push(n); return; }
+    const key = targetKey(n);
+    const existing = byKey[key];
+    if (existing) { existing.group.push(n.fromId); existing.count++; if (!n.read) existing.read = false; return; }
+    const g = { ...n, group: [n.fromId], count: 1 };
+    byKey[key] = g;
+    out.push(g);
+  });
+  return out;
+}
+
+export function Notifications({ notifs, onOpenProfile, onOpenPost, onOpenForum, onOpenReels, onOpenOwnStory, isFollowing, onToggleFollow }) {
+  const verb = { like: t("notif.likedShort"), comment: t("notif.commentedShort"), reply: t("notif.repliedShort"), follow: t("notif.followedShort"), mention: t("notif.tagged"), thread_reply: t("notif.threadRepliedShort"), thread_activity: t("notif.threadActivityShort"), profile_view: t("notif.profileViewedShort"), reel_like: t("notif.reelLikedShort"), reel_comment: t("notif.reelCommentedShort"), story_like: t("notif.storyLikedShort"), story_comment: t("notif.storyCommentedShort"), post_tag: t("notif.postTaggedShort"), announcement: t("notif.announcement"), public_approved: t("notif.publicApproved"), public_rejected: t("notif.publicRejected") };
+  const Icon = { like: Heart, comment: MessageCircle, reply: Reply, follow: User, mention: Hash, thread_reply: MessageSquare, thread_activity: MessageSquare, profile_view: Eye, reel_like: Heart, reel_comment: MessageCircle, story_like: Heart, story_comment: MessageCircle, post_tag: Tag, announcement: Bell, public_approved: Check, public_rejected: X };
+  const col = { like: C.like, comment: C.accent, reply: C.accent, follow: C.online, mention: C.star, thread_reply: C.accent, thread_activity: C.online, profile_view: C.cyan, reel_like: C.like, reel_comment: C.accent, story_like: C.like, story_comment: C.accent, post_tag: C.star, announcement: C.accent, public_approved: C.online, public_rejected: C.like };
+  const postTypes = ["like", "comment", "reply", "thread_activity", "mention", "post_tag", "public_approved", "public_rejected"];
+  const grouped = groupNotifs(notifs);
   return (
     <div className="pb-28 md:pb-8"><div className="px-4 pt-5 pb-3"><Title>{t("notif.pageTitle")}</Title></div>
       {notifs.length === 0 && <div className="flex flex-col items-center justify-center text-center px-10" style={{ paddingTop: 90, color: C.faint }}><div className="rounded-3xl flex items-center justify-center mb-4" style={{ width: 76, height: 76, background: C.accentSoft }}><Bell size={34} style={{ color: C.accent }} /></div><div className="text-[15px] font-bold mb-1.5" style={{ color: C.ink2 }}>{t("notif.emptyTitle")}</div><div className="text-[13px]" style={{ lineHeight: 1.5 }}>{t("notif.emptyDesc")}</div></div>}
-      {notifs.map(n => { const I = Icon[n.type] || Bell; return (
-        <button key={n.id} onClick={() => { if (n.threadId && onOpenForum) onOpenForum(); else if (n.postId && onOpenPost && postTypes.includes(n.type)) onOpenPost(n.postId); else onOpenProfile(n.fromId); }} className="w-full flex items-center gap-3 px-4 py-3 text-left transition hover:opacity-90" style={{ background: n.read ? "transparent" : C.accentSoft + "66", borderBottom: `1px solid ${C.lineSoft}` }}><div className="relative"><Avatar id={n.fromId} size={46} /><span className="absolute -bottom-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 22, height: 22, background: col[n.type] || C.accent, border: `2px solid ${C.paper}` }}><I size={12} color="#fff" fill="#fff" /></span></div><div className="flex-1 text-[14px]" style={{ color: C.ink2, lineHeight: 1.4 }}><span className="font-bold" style={{ color: C.ink }}>{USERS[n.fromId] ? USERS[n.fromId].name.split(" ")[0] : "mzera"} </span>{verb[n.type] || ""}{n.text && <span style={{ color: C.muted }}>: „{n.text}"</span>}<Mono className="ml-1" style={{ color: C.faint, fontSize: 12 }}>· {n.time}</Mono></div>{n.type === "follow" ? <FollowBtn id={n.fromId} isFollowing={isFollowing} onToggle={onToggleFollow} /> : (n.postImage || (!n.threadId && n.type !== "announcement" && n.type !== "public_approved" && n.type !== "public_rejected" && n.type !== "profile_view")) ? <Pic src={n.postImage} grad={GRADS[hashIdx(n.id, GRADS.length)]} round={12} style={{ width: 48, height: 48 }} className="shrink-0" /> : null}</button>
+      {grouped.map(n => { const I = Icon[n.type] || Bell; return (
+        <button key={n.id} onClick={() => {
+          if (n.type === "reel_like" || n.type === "reel_comment") { onOpenReels && onOpenReels(); return; }
+          if (n.type === "story_like" || n.type === "story_comment") { onOpenOwnStory && onOpenOwnStory(); return; }
+          if (n.threadId && onOpenForum) { onOpenForum(n.threadId, n.replyId); return; }
+          if (n.postId && onOpenPost && postTypes.includes(n.type)) { onOpenPost(n.postId, n.commentId); return; }
+          onOpenProfile(n.fromId);
+        }} className="w-full flex items-center gap-3 px-4 py-3 text-left transition hover:opacity-90" style={{ background: n.read ? "transparent" : C.accentSoft + "66", borderBottom: `1px solid ${C.lineSoft}` }}><div className="relative"><Avatar id={n.fromId} size={46} /><span className="absolute -bottom-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 22, height: 22, background: col[n.type] || C.accent, border: `2px solid ${C.paper}` }}><I size={12} color="#fff" fill="#fff" /></span></div><div className="flex-1 text-[14px]" style={{ color: C.ink2, lineHeight: 1.4 }}><span className="font-bold" style={{ color: C.ink }}>{USERS[n.fromId] ? USERS[n.fromId].name.split(" ")[0] : "mzera"} </span>{n.count > 1 && <span>{t("post.andMore")} {n.count - 1} {t("post.more")} </span>}{verb[n.type] || ""}{n.text && <span style={{ color: C.muted }}>: „{n.text}"</span>}<Mono className="ml-1" style={{ color: C.faint, fontSize: 12 }}>· {n.time}</Mono></div>{n.type === "follow" ? <FollowBtn id={n.fromId} isFollowing={isFollowing} onToggle={onToggleFollow} /> : (n.postImage || (!n.threadId && n.type !== "announcement" && n.type !== "public_approved" && n.type !== "public_rejected" && n.type !== "profile_view" && n.type !== "reel_like" && n.type !== "reel_comment" && n.type !== "story_like" && n.type !== "story_comment")) ? <Pic src={n.postImage} grad={GRADS[hashIdx(n.id, GRADS.length)]} round={12} style={{ width: 48, height: 48 }} className="shrink-0" /> : null}</button>
       ); })}
     </div>
   );

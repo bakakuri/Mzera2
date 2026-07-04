@@ -61,6 +61,10 @@ create table if not exists public.posts (
   created_at  timestamptz not null default now()
 );
 create index if not exists posts_author_idx on public.posts(author_id);
+-- tagged (people tagged in a photo/post via the compose "tag" picker) — same
+-- gap as comments.parent_id below: src/lib/api.js's posts.create() has sent
+-- this for a while, never checked into this file.
+alter table public.posts add column if not exists tagged uuid[];
 create index if not exists posts_created_idx on public.posts(created_at desc);
 
 create table if not exists public.poll_options (
@@ -333,7 +337,7 @@ end; $$;
 create table if not exists public.notifications (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid not null references public.profiles(id) on delete cascade,  -- ვის ეგზავნება
-  type       text not null,  -- like | comment | reply | follow | mention | thread_reply | thread_activity | profile_view
+  type       text not null,  -- like | comment | reply | follow | mention | thread_reply | thread_activity | profile_view | reel_like | reel_comment | story_like | story_comment | post_tag
   from_id    uuid references public.profiles(id) on delete cascade,           -- ვინ გამოიწვია
   post_id    uuid references public.posts(id) on delete cascade,
   text       text,
@@ -341,9 +345,14 @@ create table if not exists public.notifications (
   created_at timestamptz not null default now()
 );
 create index if not exists notif_user_idx on public.notifications(user_id, created_at desc);
--- thread_id (added further below, once public.threads exists — see FORUM
--- section) lets forum activity (thread_reply/thread_activity/mention-in-a-
--- thread) carry a reference with no post_id to hang off of.
+-- exact-target columns for deep-linking a notification to the specific
+-- comment/reply that triggered it, or to a reel/story (posts/comments/reels/
+-- stories all predate this table, so these are safe to add now — thread_id/
+-- reply_id have to wait for public.threads/public.thread_replies further
+-- below, see FORUM section).
+alter table public.notifications add column if not exists comment_id uuid references public.comments(id) on delete cascade;
+alter table public.notifications add column if not exists reel_id uuid references public.reels(id) on delete cascade;
+alter table public.notifications add column if not exists story_id uuid references public.stories(id) on delete cascade;
 
 -- like → notification
 create or replace function public.notify_on_reaction()
@@ -364,7 +373,10 @@ create trigger trg_notify_reaction after insert on public.reactions
 -- shared by every insert trigger below that can carry free text (posts,
 -- comments, thread titles/bodies, thread replies): finds every @handle in
 -- the text and notifies the matching profile, skipping self-mentions.
-create or replace function public.notify_mentions(p_text text, p_from_id uuid, p_post_id uuid, p_thread_id uuid)
+-- p_comment_id/p_reply_id are optional exact-target anchors so a mention
+-- inside a comment/reply can deep-link straight to it.
+drop function if exists public.notify_mentions(text, uuid, uuid, uuid);
+create or replace function public.notify_mentions(p_text text, p_from_id uuid, p_post_id uuid, p_thread_id uuid, p_comment_id uuid default null, p_reply_id uuid default null)
 returns void language plpgsql security definer set search_path = public as $$
 declare h text; target uuid;
 begin
@@ -372,19 +384,29 @@ begin
   for h in select distinct lower(m[1]) from regexp_matches(p_text, '@([A-Za-z0-9_]+)', 'g') as m loop
     select id into target from public.profiles where lower(username) = h limit 1;
     if target is not null and target <> p_from_id then
-      insert into public.notifications (user_id, type, from_id, post_id, thread_id, text)
-      values (target, 'mention', p_from_id, p_post_id, p_thread_id, p_text);
+      insert into public.notifications (user_id, type, from_id, post_id, thread_id, comment_id, reply_id, text)
+      values (target, 'mention', p_from_id, p_post_id, p_thread_id, p_comment_id, p_reply_id, p_text);
     end if;
   end loop;
 end;
 $$;
 
--- new post → scan for @mentions (also covers group posts, which are just
--- posts with a group_id)
+-- new post → scan for @mentions, and notify anyone explicitly tagged via the
+-- compose "tag people" picker (post.tagged, separate from @handle mentions).
+-- Also covers group posts, which are just posts with a group_id.
 create or replace function public.notify_on_post()
 returns trigger language plpgsql security definer set search_path = public as $$
+declare tagged_id uuid;
 begin
   perform public.notify_mentions(new.text, new.author_id, new.id, null);
+  if new.tagged is not null then
+    foreach tagged_id in array new.tagged loop
+      if tagged_id <> new.author_id then
+        insert into public.notifications (user_id, type, from_id, post_id)
+        values (tagged_id, 'post_tag', new.author_id, new.id);
+      end if;
+    end loop;
+  end if;
   return new;
 end; $$;
 drop trigger if exists trg_notify_post on public.posts;
@@ -399,6 +421,8 @@ create trigger trg_notify_post after insert on public.posts
 --     discussion", Facebook-style) gets a single 'thread_activity' ping —
 --     capped at one unread notification per (user, post) so a fast back-
 --     and-forth doesn't spam everyone on every single reply
+-- Every insert here carries comment_id = new.id so the client can scroll
+-- straight to the comment that triggered it.
 create or replace function public.notify_on_comment()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare owner uuid; parent_author uuid; participant uuid;
@@ -410,13 +434,13 @@ begin
   end if;
 
   if owner is not null and owner <> new.author_id then
-    insert into public.notifications (user_id, type, from_id, post_id, text)
-    values (owner, 'comment', new.author_id, new.post_id, new.text);
+    insert into public.notifications (user_id, type, from_id, post_id, comment_id, text)
+    values (owner, 'comment', new.author_id, new.post_id, new.id, new.text);
   end if;
 
   if parent_author is not null and parent_author <> new.author_id and parent_author is distinct from owner then
-    insert into public.notifications (user_id, type, from_id, post_id, text)
-    values (parent_author, 'reply', new.author_id, new.post_id, new.text);
+    insert into public.notifications (user_id, type, from_id, post_id, comment_id, text)
+    values (parent_author, 'reply', new.author_id, new.post_id, new.id, new.text);
   end if;
 
   for participant in
@@ -430,18 +454,34 @@ begin
       select 1 from public.notifications
       where user_id = participant and type = 'thread_activity' and post_id = new.post_id and read = false
     ) then
-      insert into public.notifications (user_id, type, from_id, post_id, text)
-      values (participant, 'thread_activity', new.author_id, new.post_id, new.text);
+      insert into public.notifications (user_id, type, from_id, post_id, comment_id, text)
+      values (participant, 'thread_activity', new.author_id, new.post_id, new.id, new.text);
     end if;
   end loop;
 
-  perform public.notify_mentions(new.text, new.author_id, new.post_id, null);
+  perform public.notify_mentions(new.text, new.author_id, new.post_id, null, new.id, null);
 
   return new;
 end; $$;
 drop trigger if exists trg_notify_comment on public.comments;
 create trigger trg_notify_comment after insert on public.comments
   for each row execute function public.notify_on_comment();
+
+-- reel like → notification (reels/reel_likes both predate this section)
+create or replace function public.notify_on_reel_like()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare owner uuid;
+begin
+  select author_id into owner from public.reels where id = new.reel_id;
+  if owner is not null and owner <> new.user_id then
+    insert into public.notifications (user_id, type, from_id, reel_id)
+    values (owner, 'reel_like', new.user_id, new.reel_id);
+  end if;
+  return new;
+end; $$;
+drop trigger if exists trg_notify_reel_like on public.reel_likes;
+create trigger trg_notify_reel_like after insert on public.reel_likes
+  for each row execute function public.notify_on_reel_like();
 
 -- follow → notification
 create or replace function public.notify_on_follow()
@@ -493,6 +533,9 @@ create table if not exists public.thread_replies (
   text       text not null,
   created_at timestamptz not null default now()
 );
+-- exact reply to deep-link/scroll to, for thread_reply/thread_activity/
+-- mention-in-a-reply notifications.
+alter table public.notifications add column if not exists reply_id uuid references public.thread_replies(id) on delete cascade;
 
 create table if not exists public.thread_votes (
   thread_id uuid not null references public.threads(id) on delete cascade,
@@ -530,6 +573,7 @@ create trigger trg_notify_thread after insert on public.threads
 -- "also in the discussion" idea as notify_on_comment), and scans for
 -- @mentions. thread_replies has no parent_id (flat, no nested replies), so
 -- there's no per-reply 'reply' notification here, only thread-level.
+-- Every insert here carries reply_id = new.id for deep-linking.
 create or replace function public.notify_on_thread_reply()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare owner uuid; participant uuid;
@@ -537,8 +581,8 @@ begin
   select author_id into owner from public.threads where id = new.thread_id;
 
   if owner is not null and owner <> new.author_id then
-    insert into public.notifications (user_id, type, from_id, thread_id, text)
-    values (owner, 'thread_reply', new.author_id, new.thread_id, new.text);
+    insert into public.notifications (user_id, type, from_id, thread_id, reply_id, text)
+    values (owner, 'thread_reply', new.author_id, new.thread_id, new.id, new.text);
   end if;
 
   for participant in
@@ -551,12 +595,12 @@ begin
       select 1 from public.notifications
       where user_id = participant and type = 'thread_activity' and thread_id = new.thread_id and read = false
     ) then
-      insert into public.notifications (user_id, type, from_id, thread_id, text)
-      values (participant, 'thread_activity', new.author_id, new.thread_id, new.text);
+      insert into public.notifications (user_id, type, from_id, thread_id, reply_id, text)
+      values (participant, 'thread_activity', new.author_id, new.thread_id, new.id, new.text);
     end if;
   end loop;
 
-  perform public.notify_mentions(new.text, new.author_id, null, new.thread_id);
+  perform public.notify_mentions(new.text, new.author_id, null, new.thread_id, null, new.id);
 
   return new;
 end; $$;
@@ -1050,6 +1094,22 @@ create policy story_likes_update on public.story_likes for update using (auth.ui
 drop policy if exists story_likes_delete on public.story_likes;
 create policy story_likes_delete on public.story_likes for delete using (auth.uid() = user_id);
 
+-- story like → notification
+create or replace function public.notify_on_story_like()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare owner uuid;
+begin
+  select author_id into owner from public.stories where id = new.story_id;
+  if owner is not null and owner <> new.user_id then
+    insert into public.notifications (user_id, type, from_id, story_id)
+    values (owner, 'story_like', new.user_id, new.story_id);
+  end if;
+  return new;
+end; $$;
+drop trigger if exists trg_notify_story_like on public.story_likes;
+create trigger trg_notify_story_like after insert on public.story_likes
+  for each row execute function public.notify_on_story_like();
+
 create table if not exists public.story_comments (
   id         uuid primary key default gen_random_uuid(),
   story_id   uuid not null references public.stories(id) on delete cascade,
@@ -1065,6 +1125,22 @@ create policy story_comments_insert on public.story_comments for insert with che
 drop policy if exists story_comments_delete on public.story_comments;
 create policy story_comments_delete on public.story_comments for delete using (auth.uid() = author_id or public.is_admin());
 
+-- story comment → notification
+create or replace function public.notify_on_story_comment()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare owner uuid;
+begin
+  select author_id into owner from public.stories where id = new.story_id;
+  if owner is not null and owner <> new.author_id then
+    insert into public.notifications (user_id, type, from_id, story_id, text)
+    values (owner, 'story_comment', new.author_id, new.story_id, new.text);
+  end if;
+  return new;
+end; $$;
+drop trigger if exists trg_notify_story_comment on public.story_comments;
+create trigger trg_notify_story_comment after insert on public.story_comments
+  for each row execute function public.notify_on_story_comment();
+
 create table if not exists public.reel_comments (
   id         uuid primary key default gen_random_uuid(),
   reel_id    uuid not null references public.reels(id) on delete cascade,
@@ -1079,6 +1155,22 @@ drop policy if exists reel_comments_insert on public.reel_comments;
 create policy reel_comments_insert on public.reel_comments for insert with check (auth.uid() = author_id);
 drop policy if exists reel_comments_delete on public.reel_comments;
 create policy reel_comments_delete on public.reel_comments for delete using (auth.uid() = author_id or public.is_admin());
+
+-- reel comment → notification
+create or replace function public.notify_on_reel_comment()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare owner uuid;
+begin
+  select author_id into owner from public.reels where id = new.reel_id;
+  if owner is not null and owner <> new.author_id then
+    insert into public.notifications (user_id, type, from_id, reel_id, text)
+    values (owner, 'reel_comment', new.author_id, new.reel_id, new.text);
+  end if;
+  return new;
+end; $$;
+drop trigger if exists trg_notify_reel_comment on public.reel_comments;
+create trigger trg_notify_reel_comment after insert on public.reel_comments
+  for each row execute function public.notify_on_reel_comment();
 
 create table if not exists public.quest_claims (
   user_id    uuid not null references public.profiles(id) on delete cascade,

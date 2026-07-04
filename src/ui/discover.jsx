@@ -19,9 +19,18 @@ function ConfirmDialog({ title, msg, confirmText = t("action.delete"), onCancel,
   );
 }
 
-export function Forum({ threads, onReply, onVote, onNew, onOpenProfile, onEdit, onDelete }) {
+export function Forum({ threads, onReply, onVote, onNew, onOpenProfile, onEdit, onDelete, pendingOpen, pendingReplyId, clearPending }) {
   const [cat, setCat] = useState("ყველა"); const [openId, setOpenId] = useState(null); const [creating, setCreating] = useState(false); const [draft, setDraft] = useState(""); const [editing, setEditing] = useState(null); const [confirmDel, setConfirmDel] = useState(false);
+  const replyRefs = useRef({}); const [scrollReplyId, setScrollReplyId] = useState(null);
   const th = threads.find(t => t.id === openId);
+  useEffect(() => { if (pendingOpen) { setOpenId(pendingOpen); setScrollReplyId(pendingReplyId || null); clearPending && clearPending(); } }, [pendingOpen]);
+  useEffect(() => {
+    if (!scrollReplyId || !th) return;
+    const el = replyRefs.current[scrollReplyId];
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    const tm = setTimeout(() => setScrollReplyId(null), 2200);
+    return () => clearTimeout(tm);
+  }, [scrollReplyId, th]);
   if (th) {
     const u = USERS[th.authorId];
     const send = () => { if (!draft.trim()) return; onReply(th.id, draft.trim()); setDraft(""); };
@@ -42,7 +51,7 @@ export function Forum({ threads, onReply, onVote, onNew, onOpenProfile, onEdit, 
           <div className="flex items-center gap-2 px-1 mt-5 mb-2"><MessageSquare size={16} style={{ color: C.muted }} /><span className="text-sm font-bold" style={{ color: C.ink }}>{th.replies.length} {t("word.reply")}</span></div>
           <div className="space-y-2.5">
             {th.replies.length ? th.replies.map(r => (
-              <div key={r.id} className="p-3.5 flex gap-3" style={card()}>
+              <div key={r.id} ref={el => { replyRefs.current[r.id] = el; }} className="p-3.5 flex gap-3 transition-colors" style={{ ...card(), background: scrollReplyId === r.id ? C.accentSoft : card().background, transitionDuration: "600ms" }}>
                 <button onClick={() => onOpenProfile(r.authorId)}><Avatar id={r.authorId} size={36} /></button>
                 <div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><Name id={r.authorId} className="text-[14px]" /><Mono style={{ color: C.faint, fontSize: 12 }}>{r.time}</Mono></div><div className="text-[14px] mt-1" style={{ color: C.ink2, lineHeight: 1.5 }}>{r.text}</div><div className="flex items-center gap-1.5 mt-2 text-[13px]" style={{ color: C.faint }}><Heart size={14} /> <Mono>{r.likes}</Mono></div></div>
               </div>

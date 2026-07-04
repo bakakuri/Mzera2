@@ -560,7 +560,7 @@ export function toDbMsg(p) {
 
 export function mapDbNotif(row) {
   if (row.from) mergeProfile(row.from);
-  return { id: row.id, type: row.type, fromId: row.from_id, text: row.text || undefined, time: timeAgo(row.created_at), read: !!row.read, postId: row.post_id || undefined, threadId: row.thread_id || undefined, postImage: (row.post && row.post.image_url) ? row.post.image_url : undefined, postText: (row.post && row.post.text) ? row.post.text : undefined };
+  return { id: row.id, type: row.type, fromId: row.from_id, text: row.text || undefined, time: timeAgo(row.created_at), read: !!row.read, postId: row.post_id || undefined, threadId: row.thread_id || undefined, commentId: row.comment_id || undefined, replyId: row.reply_id || undefined, reelId: row.reel_id || undefined, storyId: row.story_id || undefined, postImage: (row.post && row.post.image_url) ? row.post.image_url : undefined, postText: (row.post && row.post.text) ? row.post.text : undefined };
 }
 
 export const resolveImg = (x) => !x ? null : (typeof x === "string" && x.startsWith("http") ? x : img(x));
@@ -804,7 +804,7 @@ export function ensureNotifPerm() {
 // from a realtime subscription callback outside any render (useNotifications),
 // so a frozen object would go stale the moment the language changed.
 export function notifVerb(type) {
-  const map = { like: "notif.liked", comment: "notif.commented", reply: "notif.replied", follow: "notif.followed", mention: "notif.tagged", thread_reply: "notif.threadReplied", thread_activity: "notif.threadActivity", profile_view: "notif.profileViewed", announcement: "notif.announcement", public_approved: "notif.publicApproved", public_rejected: "notif.publicRejected" };
+  const map = { like: "notif.liked", comment: "notif.commented", reply: "notif.replied", follow: "notif.followed", mention: "notif.tagged", thread_reply: "notif.threadReplied", thread_activity: "notif.threadActivity", profile_view: "notif.profileViewed", reel_like: "notif.reelLiked", reel_comment: "notif.reelCommented", story_like: "notif.storyLiked", story_comment: "notif.storyCommented", post_tag: "notif.postTagged", announcement: "notif.announcement", public_approved: "notif.publicApproved", public_rejected: "notif.publicRejected" };
   return map[type] ? t(map[type]) : null;
 }
 

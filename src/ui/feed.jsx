@@ -146,9 +146,17 @@ export function FeedReelsRow({ reels, onOpen }) {
   );
 }
 
-export function PostCard({ post, onLike, onReact, onSave, onComment, onPollVote, onTag, onReport, onRemove, onOpenProfile, isAdmin, onEdit, onDelete, onEditComment, onDeleteComment, onLikeComment, onRepost, onReactors, onHide, onSeeLess, onFavorite, isFavorite }) {
-  const [open, setOpen] = useState(false); const [menu, setMenu] = useState(false); const [draft, setDraft] = useState(""); const [pop, setPop] = useState(false);
+export function PostCard({ post, onLike, onReact, onSave, onComment, onPollVote, onTag, onReport, onRemove, onOpenProfile, isAdmin, onEdit, onDelete, onEditComment, onDeleteComment, onLikeComment, onRepost, onReactors, onHide, onSeeLess, onFavorite, isFavorite, highlightCommentId }) {
+  const [open, setOpen] = useState(() => !!highlightCommentId); const [menu, setMenu] = useState(false); const [draft, setDraft] = useState(""); const [pop, setPop] = useState(false);
   const [csort, setCsort] = useState("top"); const [replyTo, setReplyTo] = useState(null); const [replyName, setReplyName] = useState(""); const cInRef = useRef(null);
+  const commentRefs = useRef({}); const [flashCommentId, setFlashCommentId] = useState(highlightCommentId || null);
+  useEffect(() => {
+    if (!highlightCommentId) return;
+    setOpen(true); setFlashCommentId(highlightCommentId);
+    const raf = requestAnimationFrame(() => { const el = commentRefs.current[highlightCommentId]; if (el) el.scrollIntoView({ behavior: "smooth", block: "center" }); });
+    const tm = setTimeout(() => setFlashCommentId(null), 2200);
+    return () => { cancelAnimationFrame(raf); clearTimeout(tm); };
+  }, [highlightCommentId]);
   const [reactOpen, setReactOpen] = useState(false); const [shared, setShared] = useState(false);
   const [shareMenu, setShareMenu] = useState(false); const [repostOpen, setRepostOpen] = useState(false); const [repostText, setRepostText] = useState("");
   const [reactorsOpen, setReactorsOpen] = useState(false); const [reactors, setReactors] = useState(null);
@@ -244,7 +252,7 @@ export function PostCard({ post, onLike, onReact, onSave, onComment, onPollVote,
             const tops = cmts.filter(c => !c.parentId).sort(sortFn);
             const repliesOf = (id) => cmts.filter(c => c.parentId === id).sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
             const row = (c, reply) => { const cMine = c.authorId === ME; const cu = USERS[c.authorId]; return (
-              <div key={c.id} className="flex gap-2.5 py-1.5" style={reply ? { marginLeft: 36 } : undefined}>
+              <div key={c.id} ref={el => { commentRefs.current[c.id] = el; }} className="flex gap-2.5 py-1.5 rounded-xl transition-colors" style={{ ...(reply ? { marginLeft: 36 } : null), background: flashCommentId === c.id ? C.accentSoft : "transparent", transitionDuration: "600ms" }}>
                 <button onClick={() => onOpenProfile(c.authorId)} className="shrink-0 self-start"><Avatar id={c.authorId} size={reply ? 26 : 30} /></button>
                 <div className="min-w-0 flex-1">
                   {editC === c.id ? <div className="flex items-center gap-1.5"><input value={editCText} onChange={e => setEditCText(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { onEditComment && onEditComment(post.id, c.id, editCText.trim()); setEditC(null); } }} className="flex-1 px-2.5 py-1.5 rounded-lg text-[13px] outline-none" style={{ background: C.surfaceMuted, color: C.ink }} autoFocus /><button onClick={() => { onEditComment && onEditComment(post.id, c.id, editCText.trim()); setEditC(null); }} className="text-xs font-bold" style={{ color: C.accent }}>ok</button><button onClick={() => setEditC(null)} className="text-xs" style={{ color: C.faint }}>✕</button></div> : <>

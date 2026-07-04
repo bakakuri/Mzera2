@@ -37,6 +37,7 @@ export function useFeed({ tab, session, flash, dbErr, setDbError, gainXp }) {
   const [activeTag, setActiveTag] = useState(null);
   const [tagView, setTagView] = useState(null);
   const [postView, setPostView] = useState(null);
+  const [postViewCommentId, setPostViewCommentId] = useState(null);
   const [tagPosts, setTagPosts] = useState([]);
   const [tagLoading, setTagLoading] = useState(false);
 
@@ -180,7 +181,7 @@ export function useFeed({ tab, session, flash, dbErr, setDbError, gainXp }) {
     setPosts(prev => { const m = new Map(prev.map(p => [p.id, p])); mapped.forEach(p => m.set(p.id, p)); return Array.from(m.values()); });
   };
   const openTag = (tag, setProfileId) => { setActiveTag(tag); setTagView(tag); setProfileId(null); if (hasSupabase) postsApi.byHashtag(tag).then(rows => { rows.forEach(r => { if (r.author) mergeProfile(r.author); }); return hydrateMerge(rows.map(mapDbPost)); }).catch(() => {}); };
-  const openPost = (id) => { const ex = posts.find(p => p.id === id); if (ex) { setPostView(id); return; } if (!hasSupabase) return; postsApi.byId(id).then(row => { if (row) { if (row.author) mergeProfile(row.author); return hydrateMerge([mapDbPost(row)]).then(() => setPostView(id)); } }).catch(() => {}); };
+  const openPost = (id, commentId) => { setPostViewCommentId(commentId || null); const ex = posts.find(p => p.id === id); if (ex) { setPostView(id); return; } if (!hasSupabase) return; postsApi.byId(id).then(row => { if (row) { if (row.author) mergeProfile(row.author); return hydrateMerge([mapDbPost(row)]).then(() => setPostView(id)); } }).catch(() => {}); };
   const loadUserPosts = (id) => {
     if (!hasSupabase || !id) return;
     postsApi.byUser(id).then(async rows => {
@@ -195,7 +196,7 @@ export function useFeed({ tab, session, flash, dbErr, setDbError, gainXp }) {
     feedSort, setFeedSort, hiddenPosts, setHiddenPosts, favorites, setFavorites, seeLess, setSeeLess,
     posts, setPosts, savedPosts, setSavedPosts, shareCounts, newPosts, setNewPosts,
     feedCursor, feedMore, feedLoadingMore, feedSentinelRef, memories, setMemories,
-    activeTag, setActiveTag, tagView, setTagView, postView, setPostView, tagPosts, tagLoading,
+    activeTag, setActiveTag, tagView, setTagView, postView, setPostView, postViewCommentId, setPostViewCommentId, tagPosts, tagLoading,
     hydrateShared, hydrateMerge, loadFeed, reloadFeed, loadShareCounts, loadMorePosts, runSearch,
     onLike, onReact, onPollVote, onSave, onComment, onLikeComment, onEditPost, onRepost,
     onHidePost, onSeeLess, onToggleFavorite, onDeletePost, onEditComment, onDeleteComment,
