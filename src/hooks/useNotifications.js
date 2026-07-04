@@ -2,10 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import { notifsApi, mapDbNotif, pushNotif, ensureNotifPerm, notifVerb, USERS, t } from "../ui/core";
 
 // which Settings > Notifications toggle gates a push for each type; types
-// missing here (post_tag/announcement/public_approved/public_rejected)
+// missing here (post_tag/group_post/group_join_request/event_rsvp/birthday/
+// level_up/market_review/announcement/public_approved/public_rejected)
 // always push — there's no dedicated toggle for them yet.
 const PUSH_GATE = {
-  like: "nLikes", reel_like: "nLikes", story_like: "nLikes",
+  like: "nLikes", reel_like: "nLikes", story_like: "nLikes", comment_like: "nLikes",
   comment: "nComments", reply: "nComments", thread_reply: "nComments", thread_activity: "nComments", reel_comment: "nComments", story_comment: "nComments",
   follow: "nFollows",
   mention: "nMentions",

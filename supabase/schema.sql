@@ -349,7 +349,7 @@ end; $$;
 create table if not exists public.notifications (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid not null references public.profiles(id) on delete cascade,  -- ვის ეგზავნება
-  type       text not null,  -- like | comment | reply | follow | mention | thread_reply | thread_activity | profile_view | reel_like | reel_comment | story_like | story_comment | post_tag | group_post | group_approved | event_rsvp | birthday | level_up
+  type       text not null,  -- like | comment | reply | follow | mention | thread_reply | thread_activity | profile_view | reel_like | reel_comment | story_like | story_comment | post_tag | group_post | group_approved | group_join_request | event_rsvp | birthday | level_up | comment_like | market_review
   from_id    uuid references public.profiles(id) on delete cascade,           -- ვინ გამოიწვია
   post_id    uuid references public.posts(id) on delete cascade,
   text       text,
@@ -518,6 +518,40 @@ end; $$;
 drop trigger if exists trg_notify_follow on public.follows;
 create trigger trg_notify_follow after insert on public.follows
   for each row execute function public.notify_on_follow();
+
+-- private-group join request → notify the group owner (public-group joins
+-- insert status='approved' directly, so those don't need action and don't
+-- notify here — only a genuine pending request does).
+create or replace function public.notify_on_group_join_request()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare owner uuid;
+begin
+  if new.status = 'pending' then
+    select created_by into owner from public.groups where id = new.group_id;
+    if owner is not null and owner <> new.user_id then
+      insert into public.notifications (user_id, type, from_id, group_id)
+      values (owner, 'group_join_request', new.user_id, new.group_id);
+    end if;
+  end if;
+  return new;
+end; $$;
+drop trigger if exists trg_notify_group_join on public.group_members;
+create trigger trg_notify_group_join after insert on public.group_members
+  for each row execute function public.notify_on_group_join_request();
+
+-- marketplace review → notification for the seller
+create or replace function public.notify_on_review()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.seller_id <> new.author_id then
+    insert into public.notifications (user_id, type, from_id, text)
+    values (new.seller_id, 'market_review', new.author_id, new.text);
+  end if;
+  return new;
+end; $$;
+drop trigger if exists trg_notify_review on public.reviews;
+create trigger trg_notify_review after insert on public.reviews
+  for each row execute function public.notify_on_review();
 
 -- event rsvp → notification for the host. rsvp() upserts, so re-rsvp'ing
 -- (going -> maybe -> no) only notifies once, on the first-ever response.
@@ -1138,6 +1172,23 @@ drop policy if exists comment_likes_insert on public.comment_likes;
 create policy comment_likes_insert on public.comment_likes for insert with check (auth.uid() = user_id);
 drop policy if exists comment_likes_delete on public.comment_likes;
 create policy comment_likes_delete on public.comment_likes for delete using (auth.uid() = user_id);
+
+-- comment like → notification for the comment's author (distinct from a
+-- post like, so it carries the comment_id for deep-linking straight to it)
+create or replace function public.notify_on_comment_like()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare owner uuid; pid uuid;
+begin
+  select author_id, post_id into owner, pid from public.comments where id = new.comment_id;
+  if owner is not null and owner <> new.user_id then
+    insert into public.notifications (user_id, type, from_id, post_id, comment_id)
+    values (owner, 'comment_like', new.user_id, pid, new.comment_id);
+  end if;
+  return new;
+end; $$;
+drop trigger if exists trg_notify_comment_like on public.comment_likes;
+create trigger trg_notify_comment_like after insert on public.comment_likes
+  for each row execute function public.notify_on_comment_like();
 
 create table if not exists public.message_reactions (
   message_id uuid not null references public.messages(id) on delete cascade,

@@ -237,8 +237,8 @@ export function Profile({ userId, posts, savedPosts, reels, xp, meProfile, follo
 // style — comments/replies/mentions/etc. keep their own text and stay
 // individual. Purely a display concern, no schema change.
 function groupNotifs(list) {
-  const groupable = new Set(["like", "reel_like", "story_like", "follow"]);
-  const targetKey = (n) => n.type === "follow" ? "follow" : `${n.type}:${n.postId || n.reelId || n.storyId || ""}`;
+  const groupable = new Set(["like", "reel_like", "story_like", "follow", "comment_like"]);
+  const targetKey = (n) => n.type === "follow" ? "follow" : `${n.type}:${n.commentId || n.postId || n.reelId || n.storyId || ""}`;
   const out = []; const byKey = {};
   list.forEach(n => {
     if (!groupable.has(n.type)) { out.push(n); return; }
@@ -254,11 +254,11 @@ function groupNotifs(list) {
 
 export function Notifications({ notifs, onOpenProfile, onOpenPost, onOpenForum, onOpenReels, onOpenOwnStory, onOpenGroup, onOpenEvent, isFollowing, onToggleFollow }) {
   const [filter, setFilter] = useState("all");
-  const verb = { like: t("notif.likedShort"), comment: t("notif.commentedShort"), reply: t("notif.repliedShort"), follow: t("notif.followedShort"), mention: t("notif.tagged"), thread_reply: t("notif.threadRepliedShort"), thread_activity: t("notif.threadActivityShort"), profile_view: t("notif.profileViewedShort"), reel_like: t("notif.reelLikedShort"), reel_comment: t("notif.reelCommentedShort"), story_like: t("notif.storyLikedShort"), story_comment: t("notif.storyCommentedShort"), post_tag: t("notif.postTaggedShort"), group_post: t("notif.groupPostShort"), group_approved: t("notif.groupApprovedShort"), event_rsvp: t("notif.eventRsvpShort"), birthday: t("notif.birthdayShort"), level_up: t("notif.levelUpShort"), announcement: t("notif.announcement"), public_approved: t("notif.publicApproved"), public_rejected: t("notif.publicRejected") };
-  const Icon = { like: Heart, comment: MessageCircle, reply: Reply, follow: User, mention: Hash, thread_reply: MessageSquare, thread_activity: MessageSquare, profile_view: Eye, reel_like: Heart, reel_comment: MessageCircle, story_like: Heart, story_comment: MessageCircle, post_tag: Tag, group_post: Users, group_approved: Users, event_rsvp: Calendar, birthday: Gift, level_up: Trophy, announcement: Bell, public_approved: Check, public_rejected: X };
-  const col = { like: C.like, comment: C.accent, reply: C.accent, follow: C.online, mention: C.star, thread_reply: C.accent, thread_activity: C.online, profile_view: C.cyan, reel_like: C.like, reel_comment: C.accent, story_like: C.like, story_comment: C.accent, post_tag: C.star, group_post: C.accent, group_approved: C.online, event_rsvp: C.accent, birthday: C.star, level_up: C.star, announcement: C.accent, public_approved: C.online, public_rejected: C.like };
-  const postTypes = ["like", "comment", "reply", "thread_activity", "mention", "post_tag", "group_post", "public_approved", "public_rejected"];
-  const noImageTypes = new Set(["announcement", "public_approved", "public_rejected", "profile_view", "reel_like", "reel_comment", "story_like", "story_comment", "group_post", "group_approved", "event_rsvp", "birthday", "level_up"]);
+  const verb = { like: t("notif.likedShort"), comment: t("notif.commentedShort"), reply: t("notif.repliedShort"), follow: t("notif.followedShort"), mention: t("notif.tagged"), thread_reply: t("notif.threadRepliedShort"), thread_activity: t("notif.threadActivityShort"), profile_view: t("notif.profileViewedShort"), reel_like: t("notif.reelLikedShort"), reel_comment: t("notif.reelCommentedShort"), story_like: t("notif.storyLikedShort"), story_comment: t("notif.storyCommentedShort"), post_tag: t("notif.postTaggedShort"), group_post: t("notif.groupPostShort"), group_approved: t("notif.groupApprovedShort"), event_rsvp: t("notif.eventRsvpShort"), birthday: t("notif.birthdayShort"), level_up: t("notif.levelUpShort"), group_join_request: t("notif.groupJoinRequestShort"), comment_like: t("notif.commentLikedShort"), market_review: t("notif.marketReviewShort"), announcement: t("notif.announcement"), public_approved: t("notif.publicApproved"), public_rejected: t("notif.publicRejected") };
+  const Icon = { like: Heart, comment: MessageCircle, reply: Reply, follow: User, mention: Hash, thread_reply: MessageSquare, thread_activity: MessageSquare, profile_view: Eye, reel_like: Heart, reel_comment: MessageCircle, story_like: Heart, story_comment: MessageCircle, post_tag: Tag, group_post: Users, group_approved: Users, event_rsvp: Calendar, birthday: Gift, level_up: Trophy, group_join_request: Users, comment_like: Heart, market_review: ShoppingBag, announcement: Bell, public_approved: Check, public_rejected: X };
+  const col = { like: C.like, comment: C.accent, reply: C.accent, follow: C.online, mention: C.star, thread_reply: C.accent, thread_activity: C.online, profile_view: C.cyan, reel_like: C.like, reel_comment: C.accent, story_like: C.like, story_comment: C.accent, post_tag: C.star, group_post: C.accent, group_approved: C.online, event_rsvp: C.accent, birthday: C.star, level_up: C.star, group_join_request: C.accent, comment_like: C.like, market_review: C.accent, announcement: C.accent, public_approved: C.online, public_rejected: C.like };
+  const postTypes = ["like", "comment", "reply", "thread_activity", "mention", "post_tag", "group_post", "comment_like", "public_approved", "public_rejected"];
+  const noImageTypes = new Set(["announcement", "public_approved", "public_rejected", "profile_view", "reel_like", "reel_comment", "story_like", "story_comment", "group_post", "group_approved", "event_rsvp", "birthday", "level_up", "group_join_request", "comment_like", "market_review"]);
   const filtered = filter === "mentions" ? notifs.filter(n => n.type === "mention") : filter === "unread" ? notifs.filter(n => !n.read) : notifs;
   const grouped = groupNotifs(filtered);
   return (
@@ -270,7 +270,7 @@ export function Notifications({ notifs, onOpenProfile, onOpenPost, onOpenForum, 
         <button key={n.id} onClick={() => {
           if (n.type === "reel_like" || n.type === "reel_comment") { onOpenReels && onOpenReels(n.reelId); return; }
           if (n.type === "story_like" || n.type === "story_comment") { onOpenOwnStory && onOpenOwnStory(); return; }
-          if ((n.type === "group_post" || n.type === "group_approved") && n.groupId && onOpenGroup) { onOpenGroup(n.groupId); return; }
+          if ((n.type === "group_post" || n.type === "group_approved" || n.type === "group_join_request") && n.groupId && onOpenGroup) { onOpenGroup(n.groupId); return; }
           if (n.type === "event_rsvp" && n.eventId && onOpenEvent) { onOpenEvent(n.eventId); return; }
           if (n.threadId && onOpenForum) { onOpenForum(n.threadId, n.replyId); return; }
           if (n.postId && onOpenPost && postTypes.includes(n.type)) { onOpenPost(n.postId, n.commentId); return; }
