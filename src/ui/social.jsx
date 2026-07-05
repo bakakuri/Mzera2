@@ -565,11 +565,26 @@ export function PullMenu({ open, setOpen, nav, onNav, onCreate, flash, tab, mode
 
   const progress = open ? Math.max(0, 1 + drag / 130) : Math.min(1.12, drag / 90);
   const shownProgress = Math.min(1, progress);
-  const tabWidth = 46 + Math.min(1, drag / 90) * 18;
+  const tabWidth = 138 + Math.min(1, drag / 90) * 54;
 
   return (
     <>
-      <div className="w-full flex justify-center py-1.5" style={{ touchAction: "none" }}>
+      <div className="w-full flex flex-col items-center justify-center gap-1.5 py-1.5" style={{ touchAction: "none" }}>
+        <span
+          className="text-[12px] font-bold text-center"
+          style={{
+            backgroundImage: `linear-gradient(90deg, hsl(${PULLMENU_HUES[0]},80%,60%), hsl(${PULLMENU_HUES[2]},75%,50%))`,
+            WebkitBackgroundClip: "text",
+            backgroundClip: "text",
+            color: "transparent",
+            letterSpacing: "0.01em",
+            opacity: 1 - shownProgress,
+            transform: `translateY(${shownProgress * -4}px)`,
+            transition: isDragging ? "none" : "opacity .3s ease, transform .3s ease",
+          }}
+        >
+          {t("drawer.pullHint")}
+        </span>
         <button
           onPointerDown={onDown} onPointerMove={onDrag} onPointerUp={onUp} onPointerCancel={onUp}
           className="rounded-full flex items-center justify-center active:scale-95"
