@@ -870,9 +870,12 @@ create policy follows_insert on public.follows for insert with check (auth.uid()
 create policy follows_delete on public.follows for delete using (auth.uid() = follower_id);
 
 -- CONVERSATIONS: მხოლოდ წევრები
+alter table public.conversations add column if not exists pinned_message_id uuid references public.messages(id) on delete set null;
 drop policy if exists conv_read on public.conversations;
 create policy conv_read on public.conversations for select using (public.is_conversation_member(id));
 create policy conv_insert on public.conversations for insert with check (auth.uid() = created_by);
+drop policy if exists conv_update on public.conversations;
+create policy conv_update on public.conversations for update using (public.is_conversation_member(id)) with check (public.is_conversation_member(id));
 
 -- CONVERSATION MEMBERS
 drop policy if exists conv_mem_read on public.conversation_members;
@@ -1746,6 +1749,9 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 do $$ begin
   alter publication supabase_realtime add table public.user_locations;
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter publication supabase_realtime add table public.conversations;
 exception when duplicate_object then null; end $$;
 
 -- ============================================================================

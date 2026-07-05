@@ -1,6 +1,6 @@
 import { createPortal } from "react-dom";
 import {
-  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, ChevronDown, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, levelInfo, kfmt, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, STORY_STICKERS, setTheme, setME, compressImage, Phone, Video, t, UploadProgress,
+  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, ChevronDown, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Pin, Forward, ChevronUp, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, levelInfo, kfmt, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, STORY_STICKERS, setTheme, setME, compressImage, Phone, Video, t, UploadProgress,
 } from "./core";
 import { LinkPreview } from "./feed";
 
@@ -15,7 +15,7 @@ function applyReact(map, msgId, userId, emoji, removed) {
 const lsGet = (k, def) => { try { const v = typeof localStorage !== "undefined" && localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch (e) { return def; } };
 const lsSet = (k, v) => { try { if (typeof localStorage !== "undefined") localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
-export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg, onDeleteMsg, onDeleteConvo, onCreateConvo, onOpenProfile, live, onMenu, groups, onOpenGroup, onlineIds, onMessageUser, onStartCall, peerReadAt, initialReactions, onMarkRead, onReactMsg, mutedConvoIds, onToggleMuteConvo }) {
+export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg, onDeleteMsg, onDeleteConvo, onCreateConvo, onOpenProfile, live, onMenu, groups, onOpenGroup, onlineIds, onMessageUser, onStartCall, peerReadAt, initialReactions, onMarkRead, onReactMsg, mutedConvoIds, onToggleMuteConvo, onPinMessage, onUnpinMessage }) {
   const [draft, setDraft] = useState(""); const [typing, setTyping] = useState(false);
   const [peerSeenTs, setPeerSeenTs] = useState(null);
   const [reactions, setReactions] = useState({});
@@ -25,6 +25,9 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
   const [attach, setAttach] = useState(null); const [emoji, setEmoji] = useState(false); const [picker, setPicker] = useState(null);
   const [listQ, setListQ] = useState("");
   const [atBottom, setAtBottom] = useState(true);
+  const [chatSearchOpen, setChatSearchOpen] = useState(false); const [searchQ, setSearchQ] = useState(""); const [searchIdx, setSearchIdx] = useState(0);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [forwardMsg, setForwardMsg] = useState(null); const [forwardSel, setForwardSel] = useState([]);
   const scrollRef = useRef(null);
   const prevLenRef = useRef(0); const prevOpenIdRef = useRef(null);
   const typingChanRef = useRef(null); const typingTORef = useRef(null); const lastTypeRef = useRef(0);
@@ -74,6 +77,7 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
   const uploading = progress != null || locBusy;
   const cv = convos.find(c => c.id === openId);
   const bottom = () => requestAnimationFrame(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; });
+  const scrollToMsg = (mid) => { const el = document.getElementById("msg-" + mid); if (el && el.scrollIntoView) el.scrollIntoView({ block: "center", behavior: "smooth" }); };
   const [vph, setVph] = useState(null);
   useEffect(() => {
     const vv = window.visualViewport; if (!vv) return;
@@ -109,7 +113,7 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
     return () => clearTimeout(t);
   }, [openId, live, cv?.messages.length]);
   useEffect(() => { if (!recording) return; const t = setInterval(() => setRecSecs(s => s + 1), 1000); return () => clearInterval(t); }, [recording]);
-  useEffect(() => { setReplyTo(null); setEditing(null); setMsgMenu(null); setConvMenu(false); setConfirmDel(false); }, [openId]);
+  useEffect(() => { setReplyTo(null); setEditing(null); setMsgMenu(null); setConvMenu(false); setConfirmDel(false); setChatSearchOpen(false); setSearchQ(""); setSearchIdx(0); setGalleryOpen(false); setForwardMsg(null); setForwardSel([]); }, [openId]);
 
   const afterSend = (id) => {};
   const sendText = () => { const t = draft.trim(); if (!t) return; stopTyping(); if (editing) { onEditMsg(cv.id, editing.id, t); setEditing(null); setDraft(""); setEmoji(false); return; } onSend(cv.id, { type: "text", text: t, reply_to: replyTo ? replyTo.id : undefined }); setDraft(""); setReplyTo(null); setEmoji(false); afterSend(cv.id); };
@@ -152,6 +156,21 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
     const members = convMembers(cv); const group = convIsGroup(cv); const other = USERS[members[0]];
     const startAdd = (sel) => { const id = onCreateConvo([...members, ...sel]); setPicker(null); setOpenId(id); };
     const isMuted = !!(mutedConvoIds && mutedConvoIds.includes(cv.id));
+    const searchMatches = searchQ.trim() ? cv.messages.filter(m => m.type === "text" && m.text && m.text.toLowerCase().includes(searchQ.trim().toLowerCase())) : [];
+    const currentMatchId = searchMatches[searchIdx] ? searchMatches[searchIdx].id : null;
+    const goMatch = (delta) => {
+      if (!searchMatches.length) return;
+      const next = (searchIdx + delta + searchMatches.length) % searchMatches.length;
+      setSearchIdx(next);
+      scrollToMsg(searchMatches[next].id);
+    };
+    const pinnedMsg = cv.pinnedMessageId ? cv.messages.find(m => m.id === cv.pinnedMessageId) : null;
+    const galleryImages = cv.messages.filter(m => m.type === "image");
+    const doForwardSend = () => {
+      const payload = { type: forwardMsg.type, text: forwardMsg.text, image: forwardMsg.image, audioUrl: forwardMsg.audioUrl, dur: forwardMsg.dur, doc: forwardMsg.doc, place: forwardMsg.place, mapUrl: forwardMsg.mapUrl };
+      forwardSel.forEach(cid2 => onSend(cid2, payload));
+      setForwardMsg(null); setForwardSel([]);
+    };
     // top+bottom (no explicit height) lets the browser's native fixed-positioning stretch
     // this panel to fill exactly that gap on its own, tracking address-bar show/hide
     // correctly without any JS measurement or dvh (which — combined with an outer
@@ -169,12 +188,39 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
             <div className="leading-tight min-w-0 flex-1 overflow-hidden"><div className="flex items-center gap-1.5">{group ? <div className="font-bold truncate" style={{ color: C.ink }}>{cv.name}</div> : <div className="min-w-0"><Name id={other.id} className="text-[15px] max-w-full" /></div>}{isMuted && <VolumeX size={13} style={{ color: C.faint }} className="shrink-0" />}</div><div className="text-[12px] truncate" style={{ color: typing ? C.accent : group ? C.muted : (other.online ? C.online : C.faint) }}>{typing ? t("chat.typing") : group ? `${members.length + 1} ${t("chat.participants")}` : (other.online ? t("chat.online") : t("chat.lastSeenPre") + "2" + t("time.hour") + t("chat.hoursAgoSuffix"))}</div></div>
             <div className="flex items-center gap-0.5 shrink-0">
               {!group && onStartCall && other && (<><button onClick={() => onStartCall(other.id, false)} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 36, height: 36, color: C.ink2 }}><Phone size={19} /></button><button onClick={() => onStartCall(other.id, true)} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 36, height: 36, color: C.ink2 }}><Video size={20} /></button></>)}
+              <button onClick={() => setChatSearchOpen(v => !v)} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 36, height: 36, color: chatSearchOpen ? C.accent : C.ink2 }} aria-label={t("chat.searchInChat")}><Search size={19} /></button>
               <div className="relative">
                 <button onClick={() => setConvMenu(v => !v)} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 36, height: 36, color: C.ink2 }}><MoreHorizontal size={22} /></button>
-                {convMenu && <><div className="fixed inset-0" style={{ zIndex: 10 }} onClick={() => setConvMenu(false)} /><div className="absolute right-0 z-20 rounded-xl overflow-hidden" style={{ top: "100%", marginTop: 4, background: C.surface, border: `1px solid ${C.line}`, boxShadow: "0 8px 24px rgba(0,0,0,.16)", minWidth: 200 }}><button onClick={() => { setConvMenu(false); setPicker("add"); }} className="w-full flex items-center gap-2.5 px-4 py-3 text-[14px] font-medium active:opacity-70" style={{ color: C.ink }}><UserPlus size={17} /> {t("chat.addPeople")}</button><button onClick={() => { setConvMenu(false); onToggleMuteConvo && onToggleMuteConvo(cv.id); }} className="w-full flex items-center gap-2.5 px-4 py-3 text-[14px] font-medium active:opacity-70" style={{ color: C.ink, borderTop: `1px solid ${C.line}` }}>{isMuted ? <Volume2 size={17} /> : <VolumeX size={17} />} {isMuted ? t("chat.unmute") : t("chat.mute")}</button><button onClick={() => { setConvMenu(false); setConfirmDel(true); }} className="w-full flex items-center gap-2.5 px-4 py-3 text-[14px] font-medium active:opacity-70" style={{ color: C.like, borderTop: `1px solid ${C.line}` }}><Trash2 size={17} /> {t("chat.deleteConvo")}</button></div></>}
+                {convMenu && <><div className="fixed inset-0" style={{ zIndex: 10 }} onClick={() => setConvMenu(false)} /><div className="absolute right-0 z-20 rounded-xl overflow-hidden" style={{ top: "100%", marginTop: 4, background: C.surface, border: `1px solid ${C.line}`, boxShadow: "0 8px 24px rgba(0,0,0,.16)", minWidth: 200 }}><button onClick={() => { setConvMenu(false); setPicker("add"); }} className="w-full flex items-center gap-2.5 px-4 py-3 text-[14px] font-medium active:opacity-70" style={{ color: C.ink }}><UserPlus size={17} /> {t("chat.addPeople")}</button><button onClick={() => { setConvMenu(false); setGalleryOpen(true); }} className="w-full flex items-center gap-2.5 px-4 py-3 text-[14px] font-medium active:opacity-70" style={{ color: C.ink, borderTop: `1px solid ${C.line}` }}><ImageIcon size={17} /> {t("chat.viewMedia")}</button><button onClick={() => { setConvMenu(false); onToggleMuteConvo && onToggleMuteConvo(cv.id); }} className="w-full flex items-center gap-2.5 px-4 py-3 text-[14px] font-medium active:opacity-70" style={{ color: C.ink, borderTop: `1px solid ${C.line}` }}>{isMuted ? <Volume2 size={17} /> : <VolumeX size={17} />} {isMuted ? t("chat.unmute") : t("chat.mute")}</button><button onClick={() => { setConvMenu(false); setConfirmDel(true); }} className="w-full flex items-center gap-2.5 px-4 py-3 text-[14px] font-medium active:opacity-70" style={{ color: C.like, borderTop: `1px solid ${C.line}` }}><Trash2 size={17} /> {t("chat.deleteConvo")}</button></div></>}
               </div>
             </div>
           </div>
+
+          {chatSearchOpen && (
+            <div className="flex items-center gap-2 px-3 py-2 shrink-0" style={{ background: C.surface, borderBottom: `1px solid ${C.line}` }}>
+              <Search size={16} style={{ color: C.faint }} />
+              <input autoFocus value={searchQ} onChange={e => {
+                const val = e.target.value; setSearchQ(val); setSearchIdx(0);
+                const vq = val.trim().toLowerCase();
+                const matches = vq ? cv.messages.filter(mm => mm.type === "text" && mm.text && mm.text.toLowerCase().includes(vq)) : [];
+                if (matches.length) requestAnimationFrame(() => scrollToMsg(matches[0].id));
+              }} placeholder={t("chat.searchInChat")} className="flex-1 bg-transparent outline-none text-[14px]" style={{ color: C.ink }} />
+              {searchQ.trim() && <Mono style={{ fontSize: 12, color: C.faint }}>{searchMatches.length ? (searchIdx + 1) + "/" + searchMatches.length : "0"}</Mono>}
+              <button onClick={() => goMatch(-1)} disabled={!searchMatches.length} className="active:scale-90" style={{ color: searchMatches.length ? C.ink2 : C.faint }}><ChevronUp size={18} /></button>
+              <button onClick={() => goMatch(1)} disabled={!searchMatches.length} className="active:scale-90" style={{ color: searchMatches.length ? C.ink2 : C.faint }}><ChevronDown size={18} /></button>
+              <button onClick={() => { setChatSearchOpen(false); setSearchQ(""); }} className="active:scale-90" style={{ color: C.faint }}><X size={18} /></button>
+            </div>
+          )}
+          {pinnedMsg && (
+            <button onClick={() => scrollToMsg(pinnedMsg.id)} className="flex items-center gap-2.5 px-3.5 py-2 w-full text-left shrink-0 active:opacity-80" style={{ background: C.accentSoft, borderBottom: `1px solid ${C.line}` }}>
+              <Pin size={15} style={{ color: C.accent }} className="shrink-0" />
+              <div className="min-w-0 flex-1">
+                <div className="text-[11px] font-bold" style={{ color: C.accent }}>{t("chat.pinnedMessage")}</div>
+                <div className="text-[13px] truncate" style={{ color: C.ink2 }}>{pinnedMsg.type === "text" ? pinnedMsg.text : pinnedMsg.type === "image" ? t("msg.photo") : pinnedMsg.type === "voice" ? t("msg.voice") : pinnedMsg.type === "doc" ? t("chat.docWord") : t("msg.location")}</div>
+              </div>
+              <button onClick={(e) => { e.stopPropagation(); onUnpinMessage && onUnpinMessage(cv.id); }} className="shrink-0 active:scale-90" style={{ color: C.faint }}><X size={16} /></button>
+            </button>
+          )}
 
           <div className="relative flex-1 min-h-0">
           <div ref={scrollRef} onScroll={onListScroll} className="h-full overflow-y-auto px-3 py-4 space-y-1.5">
@@ -187,10 +233,13 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
               const showSender = group && !mine && m.from && (!prev || prev.from !== m.from || prev.fromMe);
               const bubbleStyle = mine ? { backgroundImage: GBRAND, color: "#fff", borderRadius: "18px 18px 5px 18px" } : { background: C.surface, color: C.ink, border: `1px solid ${C.line}`, borderRadius: "18px 18px 18px 5px" };
               const tcol = mine ? "rgba(255,255,255,.72)" : C.faint;
+              const isCurrentMatch = m.id === currentMatchId;
+              const isPinned = m.id === cv.pinnedMessageId;
               return (
-                <div key={m.id} className={"flex gap-2 " + (mine ? "justify-end" : "justify-start")}>
+                <div key={m.id} id={"msg-" + m.id} className={"flex gap-2 " + (mine ? "justify-end" : "justify-start")}>
                   {group && !mine && <div className="shrink-0 self-end" style={{ width: 28 }}>{showSender && <button onClick={() => onOpenProfile(m.from)} className="active:scale-90"><Avatar id={m.from} size={28} /></button>}</div>}
-                  <div className="max-w-[80%] flex flex-col" style={{ alignItems: mine ? "flex-end" : "flex-start", WebkitUserSelect: "none", userSelect: "none" }} onTouchStart={() => lpStart(m)} onTouchEnd={lpEnd} onTouchMove={lpEnd} onContextMenu={(e) => { e.preventDefault(); setMsgMenu(m); }}>
+                  <div className="max-w-[80%] flex flex-col rounded-2xl transition" style={{ alignItems: mine ? "flex-end" : "flex-start", WebkitUserSelect: "none", userSelect: "none", boxShadow: isCurrentMatch ? `0 0 0 2px ${C.accent}` : "none", padding: isCurrentMatch ? 2 : 0 }} onTouchStart={() => lpStart(m)} onTouchEnd={lpEnd} onTouchMove={lpEnd} onContextMenu={(e) => { e.preventDefault(); setMsgMenu(m); }}>
+                    {isPinned && <div className="flex items-center gap-1 mb-0.5 px-1" style={{ color: C.accent }}><Pin size={11} /><span className="text-[10.5px] font-bold">{t("chat.pinnedMessage")}</span></div>}
                     {showSender && <span className="text-[11px] font-bold mb-0.5 px-1" style={{ color: GRADS[hashIdx(m.from, GRADS.length)][0] }}>{USERS[m.from].name.split(" ")[0]}</span>}
                     {m.replyTo && (() => { const tgt = cv.messages.find(x => x.id === m.replyTo); if (!tgt) return null; const who = tgt.fromMe ? t("chat.you") : (USERS[tgt.from] ? USERS[tgt.from].name.split(" ")[0] : t("word.user")); const prev = tgt.type === "text" ? (tgt.text || "") : tgt.type === "image" ? t("msg.photo") : tgt.type === "voice" ? t("msg.voice") : tgt.type === "doc" ? t("chat.docWord") : tgt.type === "location" ? t("msg.location") : t("word.message"); return <div className="px-2.5 py-1 mb-1 rounded-lg" style={{ background: mine ? "rgba(255,255,255,.16)" : C.surfaceMuted, borderLeft: `3px solid ${mine ? "rgba(255,255,255,.65)" : C.accent}`, maxWidth: 230 }}><div className="text-[11px] font-bold truncate" style={{ color: mine ? "rgba(255,255,255,.92)" : C.accent }}>{who}</div><div className="text-[12px] truncate" style={{ color: mine ? "rgba(255,255,255,.8)" : C.muted }}>{prev}</div></div>; })()}
                     {m.type === "image" ? (
@@ -265,6 +314,8 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
               <div className="flex items-center justify-around px-3 pb-1">{["❤️", "😂", "👍", "🔥", "😮", "🙏"].map(em => { const active = reactions[msgMenu.id] && reactions[msgMenu.id][ME] === em; return <button key={em} onClick={() => toggleReact(msgMenu, em)} className="rounded-full flex items-center justify-center active:scale-90 transition" style={{ width: 44, height: 44, fontSize: 24, background: active ? C.accentSoft : "transparent" }}>{em}</button>; })}</div>
               <div style={{ height: 1, background: C.line, margin: "4px 0" }} />
               <button onClick={() => startReply(msgMenu)} className="w-full flex items-center gap-3 px-5 py-3.5 active:opacity-60" style={{ color: C.ink }}><CornerUpLeft size={20} style={{ color: C.accent }} /><span className="text-[15px] font-medium">{t("chat.replyAction")}</span></button>
+              <button onClick={() => { setForwardMsg(msgMenu); setMsgMenu(null); }} className="w-full flex items-center gap-3 px-5 py-3.5 active:opacity-60" style={{ color: C.ink }}><Forward size={20} style={{ color: C.ink2 }} /><span className="text-[15px] font-medium">{t("chat.forward")}</span></button>
+              <button onClick={() => { const already = cv.pinnedMessageId === msgMenu.id; const mid = msgMenu.id; setMsgMenu(null); if (already) onUnpinMessage && onUnpinMessage(cv.id); else onPinMessage && onPinMessage(cv.id, mid); }} className="w-full flex items-center gap-3 px-5 py-3.5 active:opacity-60" style={{ color: C.ink }}><Pin size={20} style={{ color: C.ink2 }} /><span className="text-[15px] font-medium">{cv.pinnedMessageId === msgMenu.id ? t("chat.unpin") : t("chat.pin")}</span></button>
               {msgMenu.type === "image" && <button onClick={() => { const u = msgMenu.image; setMsgMenu(null); window.open(u, "_blank"); }} className="w-full flex items-center gap-3 px-5 py-3.5 active:opacity-60" style={{ color: C.ink }}><Download size={20} style={{ color: C.ink2 }} /><span className="text-[15px] font-medium">{t("chat.openDownload")}</span></button>}
               {msgMenu.type === "text" && <button onClick={() => { try { navigator.clipboard && navigator.clipboard.writeText(msgMenu.text || ""); } catch (e) {} setMsgMenu(null); }} className="w-full flex items-center gap-3 px-5 py-3.5 active:opacity-60" style={{ color: C.ink }}><Copy size={20} style={{ color: C.ink2 }} /><span className="text-[15px] font-medium">{t("action.copy")}</span></button>}
               {msgMenu.fromMe && msgMenu.type === "text" && <button onClick={() => startEdit(msgMenu)} className="w-full flex items-center gap-3 px-5 py-3.5 active:opacity-60" style={{ color: C.ink }}><Pencil size={20} style={{ color: C.ink2 }} /><span className="text-[15px] font-medium">{t("post.edit")}</span></button>}
@@ -282,6 +333,49 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
               <div className="flex gap-3">
                 <button onClick={() => setConfirmDel(false)} className="flex-1 py-3 rounded-2xl font-semibold active:scale-95" style={{ background: C.surfaceMuted, color: C.ink2 }}>{t("action.cancel")}</button>
                 <button onClick={() => { setConfirmDel(false); onDeleteConvo(cv.id); }} className="flex-1 py-3 rounded-2xl font-semibold text-white active:scale-95" style={{ background: C.like }}>{t("action.delete")}</button>
+              </div>
+            </div>
+          </div>
+        )}
+        {galleryOpen && (
+          <div className="fixed inset-0 z-50 flex flex-col" style={{ background: C.paper }}>
+            <div className="flex items-center gap-3 px-4 py-3 shrink-0" style={{ background: C.surface, borderBottom: `1px solid ${C.line}`, paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}>
+              <button onClick={() => setGalleryOpen(false)} className="active:scale-90" style={{ color: C.ink2 }}><ArrowLeft size={22} /></button>
+              <span className="font-bold text-[16px]" style={{ color: C.ink, fontFamily: DISPLAY }}>{t("chat.viewMedia")}</span>
+            </div>
+            {galleryImages.length === 0 ? (
+              <div className="flex-1 flex items-center justify-center text-[14px]" style={{ color: C.faint }}>{t("chat.noMediaYet")}</div>
+            ) : (
+              <div className="flex-1 overflow-y-auto p-1 grid grid-cols-3 gap-1 content-start">
+                {galleryImages.map(gm => (
+                  <button key={gm.id} onClick={() => window.open(gm.image, "_blank")} className="relative overflow-hidden active:opacity-80" style={{ aspectRatio: "1" }}>
+                    <Pic src={gm.image} grad={GRADS[hashIdx(gm.id, GRADS.length)]} style={{ aspectRatio: "1" }} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        {forwardMsg && (
+          <div className="fixed inset-0 z-50 flex items-end" style={{ background: "rgba(0,0,0,.45)" }} onClick={() => { setForwardMsg(null); setForwardSel([]); }}>
+            <div className="w-full rounded-t-3xl pb-6 pt-2 flex flex-col" style={{ background: C.paper, maxWidth: 600, margin: "0 auto", maxHeight: "78vh", animation: "up .25s ease both" }} onClick={e => e.stopPropagation()}>
+              <div className="mx-auto rounded-full mb-2 shrink-0" style={{ width: 38, height: 4, background: C.line }} />
+              <div className="px-5 pb-3 font-bold text-[16px] shrink-0" style={{ color: C.ink, fontFamily: DISPLAY }}>{t("chat.forwardTo")}</div>
+              <div className="flex-1 overflow-y-auto px-3">
+                {convos.map(c2 => {
+                  const mem2 = convMembers(c2); const grp2 = convIsGroup(c2); const o2 = USERS[mem2[0]];
+                  const checked = forwardSel.includes(c2.id);
+                  return (
+                    <button key={c2.id} onClick={() => setForwardSel(s => checked ? s.filter(x => x !== c2.id) : [...s, c2.id])} className="w-full flex items-center gap-3 px-2 py-2.5 rounded-xl active:opacity-70">
+                      {grp2 ? <GroupAvatar ids={mem2} size={42} /> : <Avatar id={o2.id} size={42} />}
+                      <span className="flex-1 text-left text-[14px] font-semibold truncate" style={{ color: C.ink }}>{grp2 ? c2.name : o2.name}</span>
+                      <div className="rounded-full flex items-center justify-center shrink-0" style={{ width: 22, height: 22, border: `2px solid ${checked ? C.accent : C.line}`, background: checked ? C.accent : "transparent" }}>{checked && <Check size={14} color="#fff" />}</div>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="px-4 pt-3 shrink-0">
+                <button onClick={doForwardSend} disabled={!forwardSel.length} className="w-full py-3 rounded-2xl font-bold text-white active:scale-[.98]" style={{ backgroundImage: GBRAND, opacity: forwardSel.length ? 1 : 0.4 }}>{t("chat.sendForward")}{forwardSel.length ? ` (${forwardSel.length})` : ""}</button>
               </div>
             </div>
           </div>

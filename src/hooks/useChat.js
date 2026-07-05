@@ -27,7 +27,7 @@ export function useChat({ live, session, flash, dbErr, setDbError, setTab, onInc
         profs.forEach(mergeProfile);
         const memberIds = profs.map(p => p.id).filter(id => id !== ME);
         const msgs = (r.messages || []).slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at)).map(mapDbMsg);
-        return { id: r.id, members: memberIds, isGroup: r.is_group, name: r.name, unread: 0, messages: msgs };
+        return { id: r.id, members: memberIds, isGroup: r.is_group, name: r.name, unread: 0, messages: msgs, pinnedMessageId: r.pinned_message_id || null };
       });
       mapped.sort((a, b) => { const la = a.messages[a.messages.length - 1], lb = b.messages[b.messages.length - 1]; return new Date(lb?._ts || 0) - new Date(la?._ts || 0); });
       setConvos(mapped);
@@ -74,6 +74,8 @@ export function useChat({ live, session, flash, dbErr, setDbError, setTab, onInc
       } else if (evt === "DELETE") {
         const did = oldRow && oldRow.id;
         if (did) setConvos(cs => cs.map(x => x.id !== c.id ? x : { ...x, messages: x.messages.filter(z => z.id !== did) }));
+      } else if (evt === "CONV_UPDATE") {
+        setConvos(cs => cs.map(x => x.id !== c.id ? x : { ...x, pinnedMessageId: row.pinned_message_id || null }));
       }
     }));
     return () => { chanRef.current.forEach(ch => { try { ch.unsubscribe(); } catch (e) {} }); chanRef.current = []; };
@@ -83,6 +85,8 @@ export function useChat({ live, session, flash, dbErr, setDbError, setTab, onInc
   const onEditMsg = (cid, mid, text) => { setConvos(cs => cs.map(c => c.id === cid ? { ...c, messages: c.messages.map(m => m.id === mid ? { ...m, text, edited: true } : m) } : c)); chatApi.editMessage(mid, text).catch(dbErr("რედაქტირება")); };
   const onDeleteMsg = (cid, mid) => { setConvos(cs => cs.map(c => c.id === cid ? { ...c, messages: c.messages.filter(m => m.id !== mid) } : c)); chatApi.deleteMessage(mid).catch(dbErr("წაშლა")); };
   const onDeleteConvo = (cid) => { setOpenConvoId(null); setConvos(cs => cs.filter(c => c.id !== cid)); chatApi.deleteConversation(cid).then(() => flash(t("toast.convoDeleted"))).catch(dbErr("მიმოწერის წაშლა")); };
+  const onPinMessage = (cid, mid) => { setConvos(cs => cs.map(c => c.id === cid ? { ...c, pinnedMessageId: mid } : c)); chatApi.pinMessage(cid, mid).catch(dbErr("დაპინვა")); };
+  const onUnpinMessage = (cid) => { setConvos(cs => cs.map(c => c.id === cid ? { ...c, pinnedMessageId: null } : c)); chatApi.unpinMessage(cid).catch(dbErr("დაპინვა")); };
   const onReply = (cid) => setConvos(cs => cs.map(c => { if (c.id !== cid) return c; const mem = c.members || (c.withId ? [c.withId] : []); const from = mem.length > 1 ? mem[Math.floor(Math.random() * mem.length)] : mem[0]; return { ...c, messages: [...c.messages, { id: "m" + Date.now() + Math.round(Math.random() * 777), fromMe: false, from, type: "text", text: REPLIES[Math.floor(Math.random() * REPLIES.length)], time: t("time.now") }] }; }));
   const onCreateConvo = (memberIds) => { const members = [...new Set(memberIds)].filter(x => x !== ME); const name = members.length > 1 ? members.map(m => (USERS[m]?.name || "").split(" ")[0]).join(", ") : null; chatApi.createConversation(members, name).then(async (conv) => { await loadConvos(); setOpenConvoId(conv.id); }).catch(dbErr("საუბარი")); return null; };
   const onMessageUser = (uid) => { setTab("messages"); const ex = convos.find(c => { const m = c.members || (c.withId ? [c.withId] : []); return m.length === 1 && m[0] === uid; }); setOpenConvoId(ex ? ex.id : onCreateConvo([uid])); };
@@ -93,6 +97,7 @@ export function useChat({ live, session, flash, dbErr, setDbError, setTab, onInc
     convos, setConvos, openConvoId, setOpenConvoId, peerReadAt, chatReactions,
     callRef, startCall, loadConvos, onMarkRead, onReactMsg,
     onSendMsg, onEditMsg, onDeleteMsg, onDeleteConvo, onReply, onCreateConvo, onMessageUser,
+    onPinMessage, onUnpinMessage,
     unreadMsgs, mutedConvoIds, toggleMuteConvo,
   };
 }

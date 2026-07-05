@@ -556,7 +556,7 @@ export const chat = {
     }
     return conv;
   },
-  // Realtime: ახალ მესიჯებზე გამოწერა
+  // Realtime: ახალ მესიჯებზე + დაპინულის ცვლილებაზე გამოწერა
   subscribe: (conversationId, onChange) =>
     need()
       .channel(`messages:${conversationId}`)
@@ -565,7 +565,20 @@ export const chat = {
         { event: "*", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
         (p) => onChange(p.eventType, p.new, p.old)
       )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "conversations", filter: `id=eq.${conversationId}` },
+        (p) => onChange("CONV_UPDATE", p.new, p.old)
+      )
       .subscribe(),
+  pinMessage: async (conversationId, messageId) => {
+    const { error } = await need().from("conversations").update({ pinned_message_id: messageId }).eq("id", conversationId);
+    if (error) throw error;
+  },
+  unpinMessage: async (conversationId) => {
+    const { error } = await need().from("conversations").update({ pinned_message_id: null }).eq("id", conversationId);
+    if (error) throw error;
+  },
   typingChannel: (conversationId) => need().channel(`typing:${conversationId}`, { config: { broadcast: { self: false } } }),
   markRead: async (conversationId) => {
     const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;
