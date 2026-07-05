@@ -565,38 +565,48 @@ export function PullMenu({ open, setOpen, nav, onNav, onCreate, flash, tab, mode
 
   const progress = open ? Math.max(0, 1 + drag / 130) : Math.min(1.12, drag / 90);
   const shownProgress = Math.min(1, progress);
-  const tabWidth = 138 + Math.min(1, drag / 90) * 54;
+  const CLOSED_W = 36, OPEN_W = 186;
+  const tabWidth = OPEN_W - shownProgress * (OPEN_W - CLOSED_W);
 
   return (
     <>
-      <div className="w-full flex flex-col items-center justify-center gap-1.5 py-1.5" style={{ touchAction: "none" }}>
-        <span
-          className="text-[12px] font-bold text-center"
-          style={{
-            backgroundImage: `linear-gradient(90deg, hsl(${PULLMENU_HUES[0]},80%,60%), hsl(${PULLMENU_HUES[2]},75%,50%))`,
-            WebkitBackgroundClip: "text",
-            backgroundClip: "text",
-            color: "transparent",
-            letterSpacing: "0.01em",
-            opacity: 1 - shownProgress,
-            transform: `translateY(${shownProgress * -4}px)`,
-            transition: isDragging ? "none" : "opacity .3s ease, transform .3s ease",
-          }}
-        >
-          {t("drawer.pullHint")}
-        </span>
+      <div className="w-full flex justify-center py-1.5" style={{ touchAction: "none" }}>
         <button
           onPointerDown={onDown} onPointerMove={onDrag} onPointerUp={onUp} onPointerCancel={onUp}
-          className="rounded-full flex items-center justify-center active:scale-95"
+          className="relative rounded-full flex items-center active:scale-95 overflow-hidden"
           style={{
-            width: tabWidth, height: 26,
-            background: `linear-gradient(135deg, hsla(${PULLMENU_HUES[0]},80%,60%,.22), hsla(${PULLMENU_HUES[2]},75%,55%,.22))`,
+            width: tabWidth, height: 34,
+            paddingLeft: 4, paddingRight: 4,
+            background: `linear-gradient(90deg, hsla(${PULLMENU_HUES[0]},75%,55%,.14), hsla(${PULLMENU_HUES[2]},70%,50%,.14))`,
             border: `1px solid ${C.line}`,
-            transition: isDragging ? "none" : "width .3s cubic-bezier(.34,1.56,.64,1)",
+            boxShadow: SH.soft,
+            transition: isDragging ? "none" : "width .4s cubic-bezier(.34,1.56,.64,1)",
           }}
           aria-label={t("drawer.pullHint")}
         >
-          <ChevronDown size={16} style={{ color: C.accent, transform: open ? "rotate(180deg)" : "none", transition: "transform .3s ease", animation: (!open && !isDragging) ? "mzPullHint 1.6s ease-in-out infinite" : "none" }} />
+          <span
+            className="flex-1 text-[12px] font-bold whitespace-nowrap px-2 text-left"
+            style={{
+              backgroundImage: `linear-gradient(90deg, hsl(${PULLMENU_HUES[0]},80%,55%), hsl(${PULLMENU_HUES[2]},75%,48%))`,
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              color: "transparent",
+              opacity: 1 - shownProgress,
+              transition: isDragging ? "none" : "opacity .25s ease",
+            }}
+          >
+            {t("drawer.pullHint")}
+          </span>
+          <span
+            className="rounded-full flex items-center justify-center shrink-0"
+            style={{
+              width: 26, height: 26,
+              backgroundImage: `linear-gradient(135deg, hsl(${PULLMENU_HUES[0]},75%,58%), hsl(${PULLMENU_HUES[2]},70%,50%))`,
+              boxShadow: `0 2px 10px -2px hsla(${PULLMENU_HUES[0]},75%,50%,.65)`,
+            }}
+          >
+            <ChevronDown size={15} color="#fff" style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .3s ease", animation: (!open && !isDragging) ? "mzPullHint 1.6s ease-in-out infinite" : "none" }} />
+          </span>
         </button>
       </div>
 
