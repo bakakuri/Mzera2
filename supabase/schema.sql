@@ -1814,6 +1814,22 @@ drop trigger if exists messages_rate_limit on public.messages;
 create trigger messages_rate_limit before insert on public.messages
   for each row execute function public.rl_enforce('sender_id', 20, 15);
 
+drop trigger if exists reactions_rate_limit on public.reactions;
+create trigger reactions_rate_limit before insert on public.reactions
+  for each row execute function public.rl_enforce('user_id', 40, 30);
+
+drop trigger if exists follows_rate_limit on public.follows;
+create trigger follows_rate_limit before insert on public.follows
+  for each row execute function public.rl_enforce('follower_id', 20, 30);
+
+drop trigger if exists listings_rate_limit on public.listings;
+create trigger listings_rate_limit before insert on public.listings
+  for each row execute function public.rl_enforce('seller_id', 5, 60);
+
+drop trigger if exists threads_rate_limit on public.threads;
+create trigger threads_rate_limit before insert on public.threads
+  for each row execute function public.rl_enforce('author_id', 5, 60);
+
 -- ============================================================================
 --  STORAGE (media bucket: avatars, post images, story media, voice notes)
 -- ============================================================================
