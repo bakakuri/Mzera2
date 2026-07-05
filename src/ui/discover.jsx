@@ -139,15 +139,31 @@ export function Market({ listings, onSave, onNew, onMessage, onOpenProfile, flas
   );
 }
 
-export function MapView({ onMessage, onMenu, onOpenProfile }) {
-  const mapRef = useRef(null); const mapObj = useRef(null); const markersRef = useRef([]);
+function haversineKm(a, b) {
+  const R = 6371, toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(b[0] - a[0]), dLng = toRad(b[1] - a[1]);
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a[0])) * Math.cos(toRad(b[0])) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+const LOCATION_STALE_MS = 60 * 60 * 1000;
+
+export function MapView({ onMessage, onMenu, onOpenProfile, sharing, myPos, myAccuracy, lastSharedAt, geoErr, setGeoErr, busy, onStartShare, onStopShare }) {
+  const mapRef = useRef(null); const mapObj = useRef(null); const markersRef = useRef([]); const accCircleRef = useRef(null);
   const [sel, setSel] = useState(null);
-  const [pins, setPins] = useState([]); const [sharing, setSharing] = useState(false); const [loading, setLoading] = useState(true); const [busy, setBusy] = useState(false); const [geoErr, setGeoErr] = useState(""); const [myPos, setMyPos] = useState(null);
+  const [pins, setPins] = useState([]); const [loading, setLoading] = useState(true);
   const load = async () => {
-    try { const rows = await locationsApi.shared(); rows.forEach(r => { if (r.profile) mergeProfile(r.profile); }); setPins(rows.filter(r => r.lat != null && r.lng != null)); } catch (e) { setPins([]); }
-    try { const m = await locationsApi.mine(); setSharing(!!(m && m.shared)); if (m && m.lat != null) setMyPos([m.lat, m.lng]); } catch (e) {}
+    try {
+      const rows = await locationsApi.shared();
+      rows.forEach(r => { if (r.profile) mergeProfile(r.profile); });
+      const cutoff = Date.now() - LOCATION_STALE_MS;
+      setPins(rows.filter(r => r.lat != null && r.lng != null && (r.user_id === ME || new Date(r.updated_at).getTime() >= cutoff)));
+    } catch (e) { setPins([]); }
   };
   useEffect(() => { let c = false; (async () => { await load(); if (!c) setLoading(false); })(); return () => { c = true; }; }, []);
+  useEffect(() => {
+    const ch = locationsApi.subscribe(() => load());
+    return () => { try { ch.unsubscribe(); } catch (e) {} };
+  }, []);
   useEffect(() => {
     const L = window.L; if (!L || !mapRef.current || mapObj.current) return;
     const map = L.map(mapRef.current, { zoomControl: false, attributionControl: false }).setView([41.7151, 44.8271], 12);
@@ -173,19 +189,22 @@ export function MapView({ onMessage, onMenu, onOpenProfile }) {
     if (pins.length === 1) { try { map.setView([pins[0].lat, pins[0].lng], 14); } catch (e) {} }
     else if (pins.length > 1) { try { map.fitBounds(pins.map(p => [p.lat, p.lng]), { padding: [70, 70], maxZoom: 15 }); } catch (e) {} }
   }, [pins]);
+  useEffect(() => {
+    const L = window.L; const map = mapObj.current; if (!L || !map) return;
+    if (accCircleRef.current) { try { map.removeLayer(accCircleRef.current); } catch (e) {} accCircleRef.current = null; }
+    if (sharing && myPos && myAccuracy) {
+      accCircleRef.current = L.circle(myPos, { radius: myAccuracy, color: "#6d5efc", weight: 1, fillColor: "#6d5efc", fillOpacity: 0.08 }).addTo(map);
+    }
+  }, [sharing, myPos, myAccuracy]);
   const toggleShare = () => {
     setGeoErr("");
-    if (sharing) { setBusy(true); locationsApi.stop().then(() => setSharing(false)).then(load).catch(() => {}).finally(() => setBusy(false)); return; }
-    if (!navigator.geolocation) { setGeoErr(t("map.notSupported")); return; }
-    setBusy(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => { const lat = pos.coords.latitude, lng = pos.coords.longitude; setMyPos([lat, lng]); if (mapObj.current) { try { mapObj.current.setView([lat, lng], 15); } catch (e) {} } locationsApi.share(lat, lng).then(() => setSharing(true)).then(load).catch(() => setGeoErr(t("map.saveFailed"))).finally(() => setBusy(false)); },
-      () => { setBusy(false); setGeoErr(t("map.permissionDenied")); },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+    if (sharing) { onStopShare(); return; }
+    onStartShare();
   };
+  useEffect(() => { if (sharing && myPos && mapObj.current) { try { mapObj.current.setView(myPos, 15); } catch (e) {} } }, [sharing]);
   const recenter = () => { const map = mapObj.current; if (!map) return; if (myPos) map.setView(myPos, 15); else if (pins.length) { try { map.fitBounds(pins.map(p => [p.lat, p.lng]), { padding: [70, 70], maxZoom: 15 }); } catch (e) {} } };
   const sf = sel ? pins.find(p => p.user_id === sel) : null;
+  const distKm = (sf && myPos && sf.user_id !== ME) ? haversineKm(myPos, [sf.lat, sf.lng]) : null;
   return (
     <div className="relative" style={{ height: "100dvh", background: C.mapBase }}>
       <div ref={mapRef} className="absolute inset-0" style={{ zIndex: 0, background: C.mapBase }} />
@@ -203,12 +222,23 @@ export function MapView({ onMessage, onMenu, onOpenProfile }) {
         </div>
         <button onClick={recenter} className="rounded-2xl flex items-center justify-center active:scale-90" style={{ width: 44, height: 44, background: C.surface, boxShadow: SH.card, color: C.accent }}><Navigation size={19} /></button>
       </div>
-      <div className="absolute left-3 right-3 flex flex-col items-center" style={{ zIndex: 1000, bottom: sf ? 200 : 96 }}>
-        {geoErr && <div className="mb-2 px-3 py-2 rounded-xl text-[12px] font-semibold" style={{ background: C.likeSoft, color: C.like }}>{geoErr}</div>}
+      <div className="absolute left-3 right-3 flex flex-col items-center gap-2" style={{ zIndex: 1000, bottom: sf ? 200 : 96 }}>
+        {geoErr && <div className="px-3 py-2 rounded-xl text-[12px] font-semibold" style={{ background: C.likeSoft, color: C.like }}>{geoErr}</div>}
+        {sharing && (
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full" style={{ background: C.surface, boxShadow: SH.card }}>
+            <span className="relative flex items-center justify-center shrink-0" style={{ width: 8, height: 8 }}>
+              <span className="absolute inset-0 rounded-full" style={{ background: C.online, animation: "mzLiveDot 1.8s ease-out infinite" }} />
+              <span className="relative rounded-full" style={{ width: 8, height: 8, background: C.online }} />
+            </span>
+            <span className="text-[12px] font-bold" style={{ color: C.ink }}>{t("map.liveActive")}</span>
+            {lastSharedAt && <Mono style={{ fontSize: 11, color: C.faint }}>· {timeAgo(lastSharedAt)}</Mono>}
+          </div>
+        )}
         <button onClick={toggleShare} disabled={busy} className="flex items-center gap-2 px-5 py-3 rounded-full text-[14px] font-bold active:scale-95" style={sharing ? { background: C.surface, color: C.online, boxShadow: SH.card } : { backgroundImage: GBRAND, color: "#fff", boxShadow: SH.glow }}>
           {busy ? <div className="rounded-full" style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,.5)", borderTopColor: "#fff", animation: "spin 0.8s linear infinite" }} /> : <Navigation size={16} />}
           {sharing ? t("map.sharingStop") : t("map.shareMine")}
         </button>
+        <div className="text-[11px] text-center px-6" style={{ color: C.faint }}>{sharing ? t("map.autoRefresh") : t("map.mutualOnly")}</div>
       </div>
       {!loading && pins.length === 0 && (
         <div className="absolute left-4 right-4 flex flex-col items-center text-center px-6 py-4 rounded-2xl" style={{ zIndex: 999, top: 78, background: C.surface + "f2", boxShadow: SH.card, pointerEvents: "none" }}>
@@ -219,7 +249,7 @@ export function MapView({ onMessage, onMenu, onOpenProfile }) {
       {sf && (
         <div className="absolute left-3 right-3 p-3.5 flex items-center gap-3" style={{ zIndex: 1000, bottom: 90, ...card() }}>
           <button onClick={() => onOpenProfile(sf.user_id)}><Avatar id={sf.user_id} size={50} /></button>
-          <div className="flex-1 min-w-0"><Name id={sf.user_id} className="text-[15px]" /><div className="flex items-center gap-1.5 text-[13px] mt-0.5" style={{ color: C.muted }}><MapPin size={13} style={{ color: C.accent }} /> <Mono style={{ color: C.online }}>{sf.user_id === ME ? t("map.youAreHere") : t("map.sharedPre") + timeAgo(sf.updated_at)}</Mono></div></div>
+          <div className="flex-1 min-w-0"><Name id={sf.user_id} className="text-[15px]" /><div className="flex items-center gap-1.5 text-[13px] mt-0.5" style={{ color: C.muted }}><MapPin size={13} style={{ color: C.accent }} /> <Mono style={{ color: C.online }}>{sf.user_id === ME ? t("map.youAreHere") : t("map.sharedPre") + timeAgo(sf.updated_at)}</Mono></div>{distKm != null && <Mono style={{ fontSize: 12, color: C.faint }}>{distKm.toFixed(1)} {t("map.kmAway")}</Mono>}</div>
           {sf.user_id !== ME && <button onClick={() => onMessage(sf.user_id)} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 44, height: 44, backgroundImage: GBRAND, color: "#fff", boxShadow: SH.glow }}><Send size={18} /></button>}
           <button onClick={() => setSel(null)} className="rounded-full flex items-center justify-center" style={{ width: 32, height: 32, color: C.faint }}><X size={18} /></button>
         </div>

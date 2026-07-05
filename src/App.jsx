@@ -25,6 +25,7 @@ import { usePresence } from "./hooks/usePresence";
 import { useGames } from "./hooks/useGames";
 import { useReferrals } from "./hooks/useReferrals";
 import { useLanguages } from "./hooks/useLanguages";
+import { useLocationSharing } from "./hooks/useLocationSharing";
 
 // Lazy-loaded tabs → split into separate chunks for a smaller/faster first load
 const Messages = lazy(() => import("./ui/chat").then(m => ({ default: m.Messages })));
@@ -111,6 +112,7 @@ export default function App() {
   const referrals = useReferrals({ session, flash });
   const languages = useLanguages({ session, gainXp });
   const notifications = useNotifications({ session, live, settings, onIncoming: showTicker });
+  const locationSharing = useLocationSharing({ live });
   const presence = usePresence({ session });
   const games = useGames();
 
@@ -391,6 +393,7 @@ export default function App() {
         @keyframes slideIn{from{opacity:0;transform:translateX(22px)}to{opacity:1;transform:none}}
         @keyframes mzTicker{from{transform:translateX(100%)}to{transform:translateX(-100%)}}
         @keyframes mzPullHint{0%,100%{transform:translateY(0)}50%{transform:translateY(4px)}}
+        @keyframes mzLiveDot{0%{transform:scale(1);opacity:.7}70%{transform:scale(2.4);opacity:0}100%{opacity:0}}
         .fadein{animation:fadeOnly .35s ease both}
         .slidein{animation:slideIn .28s cubic-bezier(.2,.8,.2,1) both}
         .stagger>*{animation:up .5s cubic-bezier(.22,.61,.36,1) both}
@@ -458,7 +461,7 @@ export default function App() {
             {tab === "games" && <GamesList onOpenBura={() => games.setBuraOpen(true)} onOpenNardi={() => games.setNardiOpen(true)} onOpenChess={() => games.setChessOpen(true)} />}
             {tab === "movies" && <Movies films={movies.films} watch={movies.filmWatch} onNew={movies.onNewFilm} onEdit={movies.onEditFilm} onDelete={movies.onDeleteFilm} onOpenProfile={openProfile} flash={flash} onUpload={(f, onProgress) => uploadImage(f, "films", onProgress)} onUploadVideo={(f, onProgress) => storageApi.upload(f, "films", onProgress)} getReviews={movies.getFilmReviews} onAddReview={movies.addFilmReviewApi} onSetWatch={movies.onSetFilmWatch} onClearWatch={movies.onClearFilmWatch} sentinelRef={movies.filmSentinelRef} hasMore={movies.filmMore} loadingMore={movies.filmLoadingMore} pendingOpen={movies.pendingFilm} clearPending={() => movies.setPendingFilm(null)} />}
             {tab === "music" && <MusicPage songs={music.songs} nowPlaying={music.nowPlaying} isPlaying={music.isPlaying} onPlay={music.playSong} onNew={music.onNewSong} onEdit={music.onEditSong} onDelete={music.onDeleteSong} onUpload={(f, onProgress) => uploadImage(f, "music", onProgress)} onUploadAudio={(f, onProgress) => storageApi.upload(f, "music", onProgress)} />}
-            {tab === "map" && <MapView onMessage={chat.onMessageUser} onMenu={() => setDrawerOpen(true)} onOpenProfile={openProfile} />}
+            {tab === "map" && <MapView onMessage={chat.onMessageUser} onMenu={() => setDrawerOpen(true)} onOpenProfile={openProfile} sharing={locationSharing.sharing} myPos={locationSharing.myPos} myAccuracy={locationSharing.myAccuracy} lastSharedAt={locationSharing.lastSharedAt} geoErr={locationSharing.geoErr} setGeoErr={locationSharing.setGeoErr} busy={locationSharing.busy} onStartShare={locationSharing.start} onStopShare={locationSharing.stop} />}
             {tab === "reels" && <Reels reels={reelsHook.reels} onLike={reelsHook.onReelLike} onSave={reelsHook.onReelSave} onView={reelsHook.onReelView} onOpenProfile={openProfile} onMenu={() => setDrawerOpen(true)} flash={flash} onCreate={() => reelsHook.setReelCreateOpen(true)} onComments={reelsHook.openReelComments} sentinelRef={reelsHook.reelsSentinelRef} hasMore={reelsHook.reelsMore} loadingMore={reelsHook.reelsLoadingMore} pendingOpen={pendingReelId} clearPending={() => setPendingReelId(null)} />}
             {tab === "groups" && <Groups groups={groups.groups} events={groups.events} onJoin={groups.onJoinGroup} onRsvp={groups.onRsvp} onOpenProfile={openProfile} onMessage={chat.onMessageUser} live={live} onGroupPost={groups.onGroupPost} onUpload={(f, onProgress) => uploadImage(f, "groups", onProgress)} onUploadVideo={(f, onProgress) => storageApi.upload(f, "groups", onProgress)} onCreateGroup={groups.onCreateGroup} onCreateEvent={groups.onCreateEvent} pendingOpen={groups.pendingGroup} clearPending={() => groups.setPendingGroup(null)} pendingEvent={pendingEventId} clearPendingEvent={() => setPendingEventId(null)} onEditPost={groups.onEditGroupPost} onDeletePost={groups.onDeleteGroupPost} onEditGroup={groups.onEditGroup} onDeleteGroup={groups.onDeleteGroup} onEditEvent={groups.onEditEvent} onDeleteEvent={groups.onDeleteEvent} allPosts={feed.posts} loadGroupPosts={groups.mergeGroupPosts} loadMembers={(gid) => groupsApi.members(gid).then(rows => { rows.forEach(r => { if (r.profile) mergeProfile(r.profile); }); return rows; })} onApproveMember={groups.onApproveMember} onKickMember={groups.onKickMember} onSetGroupPrivate={groups.onSetGroupPrivate} taggable={following} postProps={{ onLike: feed.onLike, onReact: feed.onReact, onSave: feed.onSave, onComment: feed.onComment, onPollVote: feed.onPollVote, onTag, onReport: admin.onReport, onRemove: feed.onRemovePost, onOpenProfile: openProfile, isAdmin: me.admin, onEdit: feed.onEditPost, onDelete: feed.onDeletePost, onEditComment: feed.onEditComment, onDeleteComment: feed.onDeleteComment, onLikeComment: feed.onLikeComment, onRepost: feed.onRepost, onReactors: (pid) => reactionsApi.listForPost(pid) }} />}
             {tab === "messages" && <Messages convos={chat.convos} openId={chat.openConvoId} setOpenId={chat.setOpenConvoId} onSend={chat.onSendMsg} onReply={chat.onReply} onEditMsg={chat.onEditMsg} onDeleteMsg={chat.onDeleteMsg} onDeleteConvo={chat.onDeleteConvo} onCreateConvo={chat.onCreateConvo} onOpenProfile={openProfile} live={live} onMenu={() => setDrawerOpen(true)} groups={groups.groups} onOpenGroup={(id) => { groups.setPendingGroup(id); setTab("groups"); }} onlineIds={presence.onlineIds} onMessageUser={chat.onMessageUser} onStartCall={chat.startCall} peerReadAt={chat.peerReadAt} initialReactions={chat.chatReactions} onMarkRead={chat.onMarkRead} onReactMsg={chat.onReactMsg} />}

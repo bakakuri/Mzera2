@@ -649,6 +649,12 @@ export const locations = {
     if (error) throw error;
     return data || [];
   },
+  // Realtime: someone (mutually followed) shares/updates/stops their live location
+  subscribe: (onChange) =>
+    need()
+      .channel("user-locations")
+      .on("postgres_changes", { event: "*", schema: "public", table: "user_locations" }, () => onChange())
+      .subscribe(),
 };
 
 /* ───────────── LEADERBOARD ───────────── */

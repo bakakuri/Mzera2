@@ -1298,7 +1298,16 @@ create table if not exists public.user_locations (
 );
 alter table public.user_locations enable row level security;
 drop policy if exists user_locations_read on public.user_locations;
-create policy user_locations_read on public.user_locations for select using (auth.uid() = user_id or shared = true);
+-- shared locations are only visible to *mutual* followers (you follow them
+-- and they follow you back) — not to every authenticated user.
+create policy user_locations_read on public.user_locations for select using (
+  auth.uid() = user_id
+  or (
+    shared = true
+    and exists (select 1 from public.follows where follower_id = auth.uid() and following_id = user_locations.user_id)
+    and exists (select 1 from public.follows where follower_id = user_locations.user_id and following_id = auth.uid())
+  )
+);
 drop policy if exists user_locations_insert on public.user_locations;
 create policy user_locations_insert on public.user_locations for insert with check (auth.uid() = user_id);
 drop policy if exists user_locations_update on public.user_locations;
@@ -1734,6 +1743,9 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 do $$ begin
   alter publication supabase_realtime add table public.posts;
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter publication supabase_realtime add table public.user_locations;
 exception when duplicate_object then null; end $$;
 
 -- ============================================================================
