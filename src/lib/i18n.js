@@ -283,6 +283,7 @@ const DICT = {
   "drawer.help": { ka: "დახმარება", en: "Help", ru: "Помощь" },
   "drawer.helpSoon": { ka: "დახმარება — მალე ✨", en: "Help — coming soon ✨", ru: "Помощь — скоро ✨" },
   "drawer.signout": { ka: "გასვლა", en: "Log out", ru: "Выйти" },
+  "drawer.pullHint": { ka: "ჩამოწიე მენიუსთვის", en: "Pull down for menu", ru: "Потяни вниз для меню" },
 
   "online.searchPh": { ka: "მოძებნე ონლაინ ხალხი…", en: "Search online people…", ru: "Поиск людей онлайн…" },
   "online.notFound": { ka: "ვერ მოიძებნა", en: "Not found", ru: "Не найдено" },

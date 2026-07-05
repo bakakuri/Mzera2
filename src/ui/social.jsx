@@ -1,5 +1,5 @@
 import {
-  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Clapperboard, Music, Gift, Calendar, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, questsApi, xpApi, adminApi, pushApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Tilt, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, levelInfo, kfmt, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, STORY_STICKERS, setTheme, setME, t, LANGS, Languages, UploadRing,
+  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, ChevronDown, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Clapperboard, Music, Gift, Calendar, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, questsApi, xpApi, adminApi, pushApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Tilt, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, levelInfo, kfmt, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, STORY_STICKERS, setTheme, setME, t, LANGS, Languages, UploadRing,
 } from "./core";
 import { PostCard, Lightbox } from "./feed";
 
@@ -534,6 +534,78 @@ export function Drawer({ open, onClose, nav, onNav, onCreate, flash, tab, mode, 
         <div className="px-5 py-4" style={{ borderTop: `1px solid ${C.lineSoft}` }}><Mono style={{ fontSize: 11, color: C.faint }}>mzera v0.4 · build c4d1 · React + Vite</Mono></div>
       </aside>
     </div>
+  );
+}
+
+// same menu as Drawer, but pulled down (not tapped) into a 3D "trap-door"
+// dropdown — a little pull-tab in the feed opens it on a downward drag.
+export function PullMenu({ open, setOpen, nav, onNav, onCreate, flash, tab, mode, setMode, xp, followers, following, onSettings, onSignOut }) {
+  const me = USERS[ME]; const { lvl, into } = levelInfo(xp);
+  const extras = [{ label: t("drawer.saved"), icon: Bookmark, act: () => onNav("profile") }, { label: t("drawer.settings"), icon: Settings, act: () => onSettings() }, { label: t("drawer.help"), icon: HelpCircle, act: () => flash(t("drawer.helpSoon")) }, { label: t("drawer.signout"), icon: LogOut, act: () => onSignOut(), danger: true }];
+  const startY = useRef(null);
+  const onDown = (e) => { startY.current = e.clientY; };
+  const onDrag = (e) => {
+    if (startY.current == null) return;
+    const dy = e.clientY - startY.current;
+    if (dy > 26 && !open) { setOpen(true); startY.current = null; }
+    else if (dy < -26 && open) { setOpen(false); startY.current = null; }
+  };
+  const onUp = () => { startY.current = null; };
+  const go = (key) => { onNav(key); setOpen(false); };
+  return (
+    <>
+      <div className="w-full flex justify-center py-1" style={{ touchAction: "none" }}>
+        <button
+          onPointerDown={onDown} onPointerMove={onDrag} onPointerUp={onUp} onPointerCancel={onUp}
+          className="rounded-full flex items-center justify-center active:scale-95"
+          style={{ width: 46, height: 24, background: C.surfaceMuted, border: `1px solid ${C.line}` }}
+          aria-label={t("drawer.pullHint")}
+        >
+          <ChevronDown size={16} style={{ color: C.muted, transform: open ? "rotate(180deg)" : "none", transition: "transform .25s ease" }} />
+        </button>
+      </div>
+
+      <div className="fixed inset-0 z-[54] md:hidden" style={{ pointerEvents: open ? "auto" : "none" }}>
+        <div onClick={() => setOpen(false)} className="absolute inset-0" style={{ background: "rgba(6,7,12,.45)", opacity: open ? 1 : 0, transition: "opacity .3s ease" }} />
+        <div
+          className="absolute left-1/2 w-full max-w-[420px] rounded-b-[28px] overflow-hidden"
+          style={{
+            top: "var(--mz-hdr, 56px)",
+            transform: `translateX(-50%) perspective(1400px) rotateX(${open ? 0 : -95}deg)`,
+            transformOrigin: "top center",
+            opacity: open ? 1 : 0,
+            transition: "transform .42s cubic-bezier(.2,.9,.25,1.1), opacity .28s ease",
+            background: C.surface,
+            boxShadow: open ? "0 30px 60px -15px rgba(0,0,0,.5)" : "none",
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="p-5 pb-4" style={{ backgroundImage: GBRAND, color: "#fff" }}>
+            <div className="flex items-center justify-between mb-4"><span style={{ fontFamily: DISPLAY, fontWeight: 700, fontSize: 20, letterSpacing: "-0.04em" }}>mzera.</span><button onClick={() => setOpen(false)} className="active:scale-90 rounded-full p-1" style={{ background: "rgba(255,255,255,.2)" }}><X size={18} /></button></div>
+            <button onClick={() => go("profile")} className="flex items-center gap-3 w-full text-left"><div className="rounded-full p-[2px]" style={{ background: "rgba(255,255,255,.45)" }}><Avatar id={ME} size={46} /></div><div className="min-w-0"><div className="flex items-center gap-1 font-bold text-[15px]">{me.name}<ShieldCheck size={13} /></div><Mono style={{ fontSize: 11.5, opacity: 0.85 }}>@{me.handle}</Mono></div></button>
+            <div className="flex gap-4 mt-2.5 text-[12px]"><span><Mono className="font-bold">{fmtN(following)}</Mono> <span style={{ opacity: 0.8 }}>მიჰყვება</span></span><span><Mono className="font-bold">{fmtN(followers)}</Mono> <span style={{ opacity: 0.8 }}>მიმდევარი</span></span></div>
+            <div className="mt-3 rounded-2xl p-2.5" style={{ background: "rgba(255,255,255,.18)" }}>
+              <div className="flex items-center justify-between text-[11.5px] mb-1"><span className="flex items-center gap-1 font-bold"><Zap size={12} fill="#fff" /> Level {lvl}</span><Mono style={{ opacity: 0.85 }}>{into}/100 XP</Mono></div>
+              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,.3)" }}><div className="h-full rounded-full" style={{ width: into + "%", background: "#fff" }} /></div>
+            </div>
+          </div>
+          <div className="px-3 pt-3"><ThemeToggle mode={mode} setMode={setMode} full /></div>
+          <div className="max-h-[52vh] overflow-y-auto py-2.5 px-3">
+            {nav.map((n, i) => (
+              <button key={n.key} onClick={() => n.key === "create" ? (onCreate(), setOpen(false)) : go(n.key)} className="relative w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl active:scale-[.98]" style={{ background: tab === n.key ? C.accentSoft : "transparent", color: tab === n.key ? C.accentText : C.ink2, fontWeight: tab === n.key ? 700 : 500, opacity: open ? 1 : 0, transform: open ? "translateY(0)" : "translateY(-8px)", transition: `opacity .3s ease ${open ? i * 20 : 0}ms, transform .3s ease ${open ? i * 20 : 0}ms` }}>
+                <n.icon size={20} /><span className="text-[15px]">{n.label}</span>{n.badge > 0 && <span className="ml-auto rounded-full text-white px-1.5 py-0.5" style={{ background: C.like, fontFamily: MONO, fontSize: 11, fontWeight: 700 }}>{n.badge}</span>}
+              </button>
+            ))}
+            <div className="my-2.5 mx-3.5" style={{ borderTop: `1px solid ${C.lineSoft}` }} />
+            {extras.map((e, i) => (
+              <button key={e.label} onClick={() => { e.act(); setOpen(false); }} className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl active:scale-[.98]" style={{ color: e.danger ? C.like : C.ink2, opacity: open ? 1 : 0, transform: open ? "translateY(0)" : "translateY(-8px)", transition: `opacity .3s ease ${open ? (nav.length + i) * 20 : 0}ms, transform .3s ease ${open ? (nav.length + i) * 20 : 0}ms` }}>
+                <e.icon size={19} /><span className="text-[14px] font-medium">{e.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
