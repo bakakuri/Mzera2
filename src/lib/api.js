@@ -486,7 +486,7 @@ export const chat = {
   conversations: async () => {
     const { data, error } = await need()
       .from("conversations")
-      .select("*, members:conversation_members(profiles!conversation_members_user_id_fkey(*)), messages(*)")
+      .select("*, members:conversation_members(profiles!conversation_members_user_id_fkey(*)), messages!messages_conversation_id_fkey(*)")
       .order("created_at", { ascending: false });
     if (error) throw error;
     return data;
