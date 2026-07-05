@@ -13,9 +13,10 @@ const PUSH_GATE = {
   profile_view: "nProfileViews",
 };
 
-export function useNotifications({ session, live, settings }) {
+export function useNotifications({ session, live, settings, onIncoming }) {
   const [notifs, setNotifs] = useState([]);
   const settingsRef = useRef(settings); settingsRef.current = settings;
+  const onIncomingRef = useRef(onIncoming); onIncomingRef.current = onIncoming;
 
   const loadNotifs = async () => { try { const rows = await notifsApi.list(); setNotifs(rows.map(mapDbNotif)); } catch (e) {} };
 
@@ -27,7 +28,10 @@ export function useNotifications({ session, live, settings }) {
       const gate = PUSH_GATE[row.type];
       if (gate && settingsRef.current && settingsRef.current[gate] === false) return;
       const who = USERS[row.from_id];
-      pushNotif((who && who.name) ? who.name : "mzera 🔔", notifVerb(row.type) || t("notif.fallback"));
+      const whoName = (who && who.name) ? who.name : "mzera 🔔";
+      const verb = notifVerb(row.type) || t("notif.fallback");
+      pushNotif(whoName, verb);
+      if (onIncomingRef.current) onIncomingRef.current(`${whoName} ${verb}`);
     });
     return () => { try { ch.unsubscribe(); } catch (e) {} };
   }, [live, session]);

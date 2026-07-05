@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { chatApi, mapDbMsg, toDbMsg, mergeProfile, hasSupabase, USERS, ME, pushNotif, REPLIES, t } from "../ui/core";
 
-export function useChat({ live, session, flash, dbErr, setDbError, setTab }) {
+export function useChat({ live, session, flash, dbErr, setDbError, setTab, onIncoming }) {
   const [convos, setConvos] = useState([]);
   const [openConvoId, setOpenConvoId] = useState(null);
   const [peerReadAt, setPeerReadAt] = useState(null);
@@ -9,6 +9,7 @@ export function useChat({ live, session, flash, dbErr, setDbError, setTab }) {
   const openRef = useRef(openConvoId);
   const chanRef = useRef([]);
   const callRef = useRef(null);
+  const onIncomingRef = useRef(onIncoming); onIncomingRef.current = onIncoming;
 
   const startCall = (uid, video) => { if (callRef.current) callRef.current.startCall({ id: uid, name: (USERS[uid] && USERS[uid].name) || "" }, video); };
 
@@ -48,7 +49,13 @@ export function useChat({ live, session, flash, dbErr, setDbError, setTab }) {
     chanRef.current = convos.map(c => chatApi.subscribe(c.id, (evt, row, oldRow) => {
       if (evt === "INSERT") {
         const m = mapDbMsg(row);
-        if (!m.fromMe && openRef.current !== c.id) { const other = USERS[m.from]; pushNotif((other && other.name) ? other.name : t("chat.newMessage"), m.type === "text" ? m.text : m.type === "image" ? t("msg.photo") : m.type === "voice" ? t("msg.voice") : m.type === "doc" ? (t("msg.file") + t("msg.fileFallback")) : m.type === "location" ? t("msg.location") : t("chat.newMessage")); }
+        if (!m.fromMe && openRef.current !== c.id) {
+          const other = USERS[m.from];
+          const name = (other && other.name) ? other.name : t("chat.newMessage");
+          const preview = m.type === "text" ? m.text : m.type === "image" ? t("msg.photo") : m.type === "voice" ? t("msg.voice") : m.type === "doc" ? (t("msg.file") + t("msg.fileFallback")) : m.type === "location" ? t("msg.location") : t("chat.newMessage");
+          pushNotif(name, preview);
+          if (onIncomingRef.current) onIncomingRef.current(`${name}: ${preview}`);
+        }
         setConvos(cs => cs.map(x => {
           if (x.id !== c.id) return x;
           if (x.messages.some(z => z.id === m.id)) return x;

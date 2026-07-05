@@ -669,6 +669,28 @@ export function MiniPlayer({ song, playing, onToggle, onStop }) {
   );
 }
 
+// compact header banner for an incoming notification/message — shown in the
+// same header slot as MiniPlayer (which yields to it while it's visible).
+// scrolls as a marquee if the text doesn't fit in the available width.
+export function HeaderTicker({ text }) {
+  const outerRef = useRef(null);
+  const innerRef = useRef(null);
+  const [scroll, setScroll] = useState(false);
+  useEffect(() => {
+    const outer = outerRef.current, inner = innerRef.current;
+    if (!outer || !inner) return;
+    setScroll(inner.scrollWidth > outer.clientWidth);
+  }, [text]);
+  return (
+    <div className="flex items-center gap-1.5 pl-2 pr-3 py-1 rounded-full min-w-0" style={{ background: C.accentSoft, maxWidth: 230 }}>
+      <Bell size={13} style={{ color: C.accent, flexShrink: 0 }} />
+      <div ref={outerRef} className="min-w-0 flex-1 overflow-hidden">
+        <div ref={innerRef} className="whitespace-nowrap text-[12.5px] font-bold inline-block" style={{ color: C.accentText, ...(scroll ? { animation: "mzTicker 6s linear infinite" } : {}) }}>{text}</div>
+      </div>
+    </div>
+  );
+}
+
 export function mapDbGroup(row, uid) {
   const mem = row.group_members || [];
   const mine = mem.find(m => m.user_id === uid);

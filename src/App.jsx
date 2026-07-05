@@ -1,5 +1,5 @@
 import {
-  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Gamepad2, Clapperboard, Music, Languages, MiniPlayer, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, filmsApi, musicApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, questsApi, xpApi, adminApi, pushApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, ProfileViewers, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, mapDbListing, mapDbReview, mapDbFilm, mapDbSong, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, levelInfo, kfmt, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, STORY_STICKERS, setTheme, setME, compressImage, POST_BGS, t, setLang} from "./ui/core";
+  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Gamepad2, Clapperboard, Music, Languages, MiniPlayer, HeaderTicker, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, filmsApi, musicApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, questsApi, xpApi, adminApi, pushApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, ProfileViewers, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, mapDbListing, mapDbReview, mapDbFilm, mapDbSong, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, levelInfo, kfmt, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, STORY_STICKERS, setTheme, setME, compressImage, POST_BGS, t, setLang} from "./ui/core";
 import { PostCard, StoryViewer, CreateSheet, Explore, StoryEditor, FeedPromoCard, FeedReelsRow } from "./ui/feed";
 import { Profile, Notifications, Admin, Drawer, OnlinePage, Progress, SettingsView, Leaderboard, SearchView, SuggestedPeople, Onboarding } from "./ui/social";
 import { lazy, Suspense } from "react";
@@ -65,6 +65,18 @@ export default function App() {
   const { installEvt, setInstallEvt, doInstall } = usePwaInstall();
   useLayoutFit(tab);
 
+  // header ticker — shows incoming notifications/messages in the header's
+  // MiniPlayer slot (yielding music aside for a few seconds), scrolling as a
+  // marquee if the text is too long to fit.
+  const [ticker, setTicker] = useState(null);
+  const tickerTimeoutRef = useRef(null);
+  const showTicker = (msg) => {
+    if (!msg) return;
+    setTicker(msg);
+    clearTimeout(tickerTimeoutRef.current);
+    tickerTimeoutRef.current = setTimeout(() => setTicker(null), 5000);
+  };
+
   const xpHook = useXp({ tab, flash, dbErr });
   const { xp, gainXp, questData, onClaimQuest, setXp } = xpHook;
 
@@ -79,7 +91,7 @@ export default function App() {
 
   const stories = useStories({ flash, dbErr, setDbError, gainXp });
   const reelsHook = useReels({ tab, flash, dbErr, setDbError, gainXp });
-  const chat = useChat({ live, session, flash, dbErr, setDbError, setTab });
+  const chat = useChat({ live, session, flash, dbErr, setDbError, setTab, onIncoming: showTicker });
   const market = useMarket({ tab, flash, dbErr, setDbError });
   const movies = useMovies({ tab, session, flash, dbErr });
   const music = useMusic({ flash, dbErr });
@@ -88,7 +100,7 @@ export default function App() {
   const admin = useAdmin({ tab, session, flash, dbErr, setXp, setPosts: feed.setPosts });
   const referrals = useReferrals({ session, flash });
   const languages = useLanguages({ session, gainXp });
-  const notifications = useNotifications({ session, live, settings });
+  const notifications = useNotifications({ session, live, settings, onIncoming: showTicker });
   const presence = usePresence({ session });
   const games = useGames();
 
@@ -366,6 +378,7 @@ export default function App() {
         @keyframes pulse{0%{transform:translate(-50%,-50%) scale(.6);opacity:.7}100%{transform:translate(-50%,-50%) scale(1.6);opacity:0}}
         @keyframes fadeOnly{from{opacity:0}to{opacity:1}}
         @keyframes slideIn{from{opacity:0;transform:translateX(22px)}to{opacity:1;transform:none}}
+        @keyframes mzTicker{from{transform:translateX(100%)}to{transform:translateX(-100%)}}
         .fadein{animation:fadeOnly .35s ease both}
         .slidein{animation:slideIn .28s cubic-bezier(.2,.8,.2,1) both}
         .stagger>*{animation:up .5s cubic-bezier(.22,.61,.36,1) both}
@@ -377,7 +390,7 @@ export default function App() {
         <aside className="hidden md:flex flex-col w-[235px] shrink-0 px-3 py-6 sticky top-0 h-screen" style={{ borderRight: `1px solid ${C.line}`, background: C.surface }}>
           <div className="px-3 mb-6">
             <Wordmark size={25} />
-            {music.nowPlaying && <div className="mt-2.5"><MiniPlayer song={music.nowPlaying} playing={music.isPlaying} onToggle={() => music.setIsPlaying(p => !p)} onStop={music.stopPlaying} /></div>}
+            {ticker ? <div className="mt-2.5"><HeaderTicker text={ticker} /></div> : music.nowPlaying && <div className="mt-2.5"><MiniPlayer song={music.nowPlaying} playing={music.isPlaying} onToggle={() => music.setIsPlaying(p => !p)} onStop={music.stopPlaying} /></div>}
           </div>
           <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-1">
             {NAV.map(n => <button key={n.key} onClick={() => goTab(n.key)} className="relative flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl transition active:scale-[.98] shrink-0" style={{ background: tab === n.key ? C.accentSoft : "transparent", color: tab === n.key ? C.accentText : C.ink2, fontWeight: tab === n.key ? 700 : 500 }}>{tab === n.key && <span className="absolute left-0 rounded-full" style={{ width: 4, height: 20, backgroundImage: GBRAND }} />}<n.icon size={23} />{n.label}{n.badge > 0 && <span className="ml-auto rounded-full text-white px-1.5 py-0.5" style={{ background: C.like, fontFamily: MONO, fontSize: 11, fontWeight: 700 }}>{n.badge}</span>}</button>)}
@@ -396,7 +409,7 @@ export default function App() {
                 <button onClick={() => setDrawerOpen(true)} className="rounded-full active:scale-90 flex items-center justify-center" style={{ width: 40, height: 40, color: C.ink2 }}><Menu size={24} /></button>
                 <button onClick={() => goTab("home")} className="active:scale-95 flex items-center pr-2" aria-label="მთავარი"><Wordmark size={21} /></button>
               </div>
-              <div className="flex-1 min-w-0 flex justify-center px-1">{music.nowPlaying && <MiniPlayer song={music.nowPlaying} playing={music.isPlaying} onToggle={() => music.setIsPlaying(p => !p)} onStop={music.stopPlaying} />}</div>
+              <div className="flex-1 min-w-0 flex justify-center px-1">{ticker ? <HeaderTicker text={ticker} /> : music.nowPlaying && <MiniPlayer song={music.nowPlaying} playing={music.isPlaying} onToggle={() => music.setIsPlaying(p => !p)} onStop={music.stopPlaying} />}</div>
               <div className="flex items-center shrink-0"><IconBtn onClick={() => setSearchOpen(true)}><Search size={23} /></IconBtn><ThemeToggle mode={mode} setMode={setMode} /><IconBtn onClick={() => goTab("online")} badge={onlineCount}><Users size={23} /></IconBtn><IconBtn onClick={() => goTab("notifications")} badge={unreadNotifs}><Bell size={23} /></IconBtn></div>
             </header>
           )}
