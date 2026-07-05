@@ -1,52 +1,90 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 
 const LIGHT_TILE = 0xe8d3ad;
 const DARK_TILE = 0x8a5a34;
 const SEL_COLOR = 0x6750f2;
 const MOVE_COLOR = 0x8a7bf5;
 const CAP_COLOR = 0xe5484d;
-const WHITE_MAT = () => new THREE.MeshStandardMaterial({ color: 0xf3ecdd, roughness: 0.45, metalness: 0.06 });
-const BLACK_MAT = () => new THREE.MeshStandardMaterial({ color: 0x2a2730, roughness: 0.4, metalness: 0.12 });
+const WHITE_MAT = () => new THREE.MeshStandardMaterial({ color: 0xf1e6cf, roughness: 0.32, metalness: 0.04, envMapIntensity: 1 });
+const BLACK_MAT = () => new THREE.MeshStandardMaterial({ color: 0x241f27, roughness: 0.28, metalness: 0.12, envMapIntensity: 1 });
 
 const worldX = (c) => c - 3.5;
 const worldZ = (r) => r - 3.5;
 
-// builds a stylized (primitive-only, no external assets) low-poly piece mesh group.
+// turns a 2D (radius, height) profile into a smooth lathe-revolved solid —
+// the same technique real Staunton chess pieces are turned on a lathe with.
+function lathe(points, segments = 40) {
+  const geo = new THREE.LatheGeometry(points.map(([x, y]) => new THREE.Vector2(x, y)), segments);
+  geo.computeVertexNormals();
+  return geo;
+}
+
+// a ring of small meshes (crenellations / crown points) around the piece's axis.
+function radialRing(makeMesh, count, radius, y) {
+  const group = new THREE.Group();
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2;
+    const m = makeMesh();
+    m.position.set(Math.cos(a) * radius, y, Math.sin(a) * radius);
+    group.add(m);
+  }
+  return group;
+}
+
+const PROFILES = {
+  P: [[0.001, 0], [0.32, 0], [0.32, 0.045], [0.27, 0.075], [0.15, 0.13], [0.13, 0.28], [0.19, 0.335], [0.125, 0.385],
+    [0.185, 0.435], [0.20, 0.495], [0.18, 0.55], [0.13, 0.605], [0.06, 0.655], [0.001, 0.69]],
+  R: [[0.001, 0], [0.30, 0], [0.30, 0.045], [0.245, 0.075], [0.205, 0.45], [0.235, 0.50], [0.255, 0.545], [0.295, 0.585], [0.295, 0.62]],
+  B: [[0.001, 0], [0.28, 0], [0.28, 0.045], [0.22, 0.075], [0.15, 0.13], [0.13, 0.40], [0.19, 0.455], [0.115, 0.51],
+    [0.10, 0.545], [0.225, 0.615], [0.195, 0.715], [0.10, 0.815], [0.03, 0.865]],
+  Q: [[0.001, 0], [0.32, 0], [0.32, 0.05], [0.25, 0.08], [0.17, 0.15], [0.15, 0.55], [0.21, 0.615], [0.135, 0.675],
+    [0.235, 0.775], [0.29, 0.845], [0.29, 0.875]],
+  K: [[0.001, 0], [0.33, 0], [0.33, 0.05], [0.26, 0.08], [0.18, 0.16], [0.16, 0.60], [0.22, 0.665], [0.145, 0.725],
+    [0.255, 0.845], [0.295, 0.915], [0.295, 0.945], [0.19, 0.995]],
+};
+
+// builds a lathe-turned (Bishop/King/Pawn/Queen/Rook) or hand-modeled
+// (Knight isn't radially symmetric) piece — no external model assets.
 function buildPiece(type, mat) {
   const g = new THREE.Group();
   const add = (mesh, y) => { mesh.position.y = y; mesh.material = mat; mesh.castShadow = true; mesh.receiveShadow = true; g.add(mesh); return mesh; };
-  const base = new THREE.CylinderGeometry(0.32, 0.36, 0.12, 20);
-  add(new THREE.Mesh(base), 0.06);
-  if (type === "P") {
-    add(new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 0.28, 16)), 0.12 + 0.14);
-    add(new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 12)), 0.12 + 0.28 + 0.1);
-  } else if (type === "R") {
-    add(new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.26, 0.42, 16)), 0.12 + 0.21);
-    add(new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.12, 8)), 0.12 + 0.42 + 0.06);
-  } else if (type === "N") {
-    add(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 0.3, 16)), 0.12 + 0.15);
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.34, 0.42));
-    head.rotation.x = -0.35;
-    add(head, 0.12 + 0.3 + 0.13);
+
+  if (type === "N") {
+    add(new THREE.Mesh(lathe([[0.001, 0], [0.30, 0], [0.30, 0.05], [0.23, 0.09], [0.19, 0.24], [0.21, 0.28]])), 0);
+    // horse head+neck as an extruded 2D side-profile silhouette — the classic
+    // way to make a recognizable knight without a literal 3D horse model.
+    const shape = new THREE.Shape();
+    const pts = [
+      [-0.14, 0], [-0.17, 0.16], [-0.15, 0.32], [-0.09, 0.40], [-0.14, 0.48],
+      [-0.06, 0.54], [-0.01, 0.47], [0.06, 0.46], [0.14, 0.40], [0.23, 0.31],
+      [0.18, 0.26], [0.12, 0.24], [0.08, 0.18], [0.03, 0.14], [0.05, 0.06], [0.10, 0],
+    ];
+    shape.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) shape.lineTo(pts[i][0], pts[i][1]);
+    shape.closePath();
+    const headGeo = new THREE.ExtrudeGeometry(shape, { depth: 0.17, bevelEnabled: true, bevelThickness: 0.015, bevelSize: 0.012, bevelSegments: 2 });
+    headGeo.translate(0, 0, -0.085);
+    headGeo.computeVertexNormals();
+    add(new THREE.Mesh(headGeo), 0.24);
+    return g;
+  }
+
+  add(new THREE.Mesh(lathe(PROFILES[type])), 0);
+
+  if (type === "R") {
+    g.add(radialRing(() => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.1, 0.06)); m.material = mat; m.castShadow = true; m.receiveShadow = true; return m; }, 8, 0.25, 0.67));
   } else if (type === "B") {
-    add(new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.26, 0.4, 16)), 0.12 + 0.2);
-    add(new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.34, 16)), 0.12 + 0.4 + 0.16);
-    add(new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8)), 0.12 + 0.4 + 0.34 + 0.05);
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.045, 12, 10)), 0.90);
   } else if (type === "Q") {
-    add(new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.28, 0.5, 16)), 0.12 + 0.25);
-    add(new THREE.Mesh(new THREE.SphereGeometry(0.24, 16, 12)), 0.12 + 0.5 + 0.1);
-    const crown = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.035, 8, 20));
-    crown.rotation.x = Math.PI / 2;
-    add(crown, 0.12 + 0.5 + 0.22);
+    g.add(radialRing(() => { const m = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.14, 10)); m.material = mat; m.castShadow = true; m.receiveShadow = true; return m; }, 8, 0.27, 0.92));
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.055, 12, 10)), 1.02);
   } else if (type === "K") {
-    add(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, 0.56, 16)), 0.12 + 0.28);
-    add(new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 12)), 0.12 + 0.56 + 0.08);
-    const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.24, 0.06));
-    add(crossV, 0.12 + 0.56 + 0.16 + 0.12);
-    const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.06, 0.06));
-    add(crossH, 0.12 + 0.56 + 0.16 + 0.16);
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 10)), 1.01);
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.22, 0.055)), 1.16);
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.055, 0.055)), 1.14);
   }
   return g;
 }
@@ -76,6 +114,12 @@ export function Board3D({ game, selected, legalTargets, onSquareTap, flipped, di
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(renderer.domElement);
+
+    // procedural room environment (no external HDRI asset) — gives the
+    // pieces' materials a subtle realistic sheen instead of looking flat/matte.
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    scene.environment = envTex;
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
@@ -189,6 +233,8 @@ export function Board3D({ game, selected, legalTargets, onSquareTap, flipped, di
         if (obj.geometry) obj.geometry.dispose();
         if (obj.material) { if (Array.isArray(obj.material)) obj.material.forEach((m) => m.dispose()); else obj.material.dispose(); }
       });
+      envTex.dispose();
+      pmrem.dispose();
       renderer.dispose();
       if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);
     };

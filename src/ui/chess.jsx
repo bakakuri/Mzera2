@@ -28,7 +28,7 @@ export function ChessGame({ onExit }) {
   const [sel, setSel] = useState(null);
   const [legal, setLegal] = useState([]);
   const [flipped, setFlipped] = useState(false);
-  const [fullscreen, setFullscreen] = useState(false);
+  const [fullscreen, setFullscreen] = useState(true);
   const [promo, setPromo] = useState(null);
 
   const [clock, setClock] = useState(null); // { w, b } seconds, or null (no clock)
