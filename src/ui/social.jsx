@@ -64,6 +64,26 @@ export function PullMenu({ open, setOpen, nav, onNav, onCreate, flash, tab, mode
   const CLOSED_W = 36, OPEN_W = 186;
   const tabWidth = OPEN_W - shownProgress * (OPEN_W - CLOSED_W);
 
+  const trackRef = useRef(null);
+  const [activeIdx, setActiveIdx] = useState(0);
+  const SLIDE_W = 100;
+  const onTrackScroll = () => {
+    const el = trackRef.current;
+    if (!el) return;
+    setActiveIdx(Math.max(0, Math.min(tiles.length - 1, Math.round(el.scrollLeft / SLIDE_W))));
+  };
+  const scrollToIdx = (i, smooth = true) => {
+    const el = trackRef.current;
+    if (!el) return;
+    el.scrollTo({ left: i * SLIDE_W, behavior: smooth ? "smooth" : "auto" });
+  };
+  useEffect(() => {
+    if (!open) return;
+    const idx = Math.max(0, tiles.findIndex(tl => tl.key === tab));
+    setActiveIdx(idx);
+    requestAnimationFrame(() => scrollToIdx(idx, false));
+  }, [open]);
+
   return (
     <>
       <div className="w-full flex justify-center py-1.5" style={{ touchAction: "none" }}>
@@ -144,32 +164,45 @@ export function PullMenu({ open, setOpen, nav, onNav, onCreate, flash, tab, mode
             </div>
           </div>
 
-          <div className="grid grid-cols-4 gap-2.5 px-4 pt-1 pb-5 max-h-[56vh] overflow-y-auto">
+          <div
+            ref={trackRef}
+            onScroll={onTrackScroll}
+            className="flex overflow-x-auto no-scrollbar pt-1 pb-4"
+            style={{ scrollSnapType: "x mandatory", touchAction: "pan-x", paddingLeft: "calc(50% - 50px)", paddingRight: "calc(50% - 50px)" }}
+          >
             {tiles.map((tl, i) => {
               const hue = PULLMENU_HUES[i % PULLMENU_HUES.length];
-              const active = tab === tl.key;
+              const isTab = tab === tl.key;
+              const near = Math.abs(i - activeIdx) <= 1;
               const stagger = Math.max(0, Math.min(1, (shownProgress - i * 0.035) / (1 - i * 0.035 || 1)));
               const p = isDragging ? stagger : shownProgress > 0.98 ? 1 : shownProgress < 0.02 ? 0 : stagger;
               return (
                 <button
                   key={tl.key}
-                  onClick={() => { tl.act(); setOpen(false); }}
-                  className="relative flex flex-col items-center gap-1.5 py-2.5 rounded-2xl active:scale-[.94]"
+                  onClick={() => { if (i === activeIdx) { tl.act(); setOpen(false); } else scrollToIdx(i); }}
+                  className="relative flex flex-col items-center gap-2 shrink-0 active:scale-95"
                   style={{
-                    opacity: p,
-                    transform: `scale(${0.55 + p * 0.45}) translateY(${(1 - p) * 16}px) rotate(${(1 - p) * -8}deg)`,
-                    transition: isDragging ? "none" : `opacity .4s cubic-bezier(.34,1.56,.64,1) ${i * 18}ms, transform .4s cubic-bezier(.34,1.56,.64,1) ${i * 18}ms`,
-                    background: active ? `hsla(${hue},75%,55%,.14)` : "transparent",
+                    width: 100,
+                    scrollSnapAlign: "center",
+                    opacity: p * (i === activeIdx ? 1 : near ? 0.65 : 0.35),
+                    transform: `scale(${(i === activeIdx ? 1 : 0.82) * (0.7 + p * 0.3)}) translateY(${(1 - p) * 16}px)`,
+                    transition: isDragging ? "none" : `opacity .35s cubic-bezier(.34,1.56,.64,1) ${i * 12}ms, transform .35s cubic-bezier(.34,1.56,.64,1) ${i * 12}ms`,
                   }}
                 >
-                  <div className="relative rounded-full flex items-center justify-center" style={{ width: 44, height: 44, background: tl.danger ? C.like + "1f" : `hsla(${hue},75%,55%,.16)`, boxShadow: active ? `0 0 0 2px hsla(${hue},75%,55%,.55)` : "none" }}>
-                    <tl.icon size={19} style={{ color: tl.danger ? C.like : `hsl(${hue},70%,42%)` }} />
-                    {tl.badge > 0 && <span className="absolute -top-1 -right-1 rounded-full text-white flex items-center justify-center" style={{ minWidth: 15, height: 15, padding: "0 3px", background: C.like, fontFamily: MONO, fontSize: 9.5, fontWeight: 700 }}>{tl.badge}</span>}
+                  <div className="relative rounded-[26px] flex items-center justify-center" style={{ width: 76, height: 76, background: tl.danger ? C.like + "1f" : `hsla(${hue},75%,55%,.16)`, boxShadow: i === activeIdx ? `0 12px 26px -12px hsla(${hue},75%,50%,.6), 0 0 0 2px hsla(${hue},75%,55%,.55)` : "none" }}>
+                    <tl.icon size={28} style={{ color: tl.danger ? C.like : `hsl(${hue},70%,42%)` }} />
+                    {tl.badge > 0 && <span className="absolute -top-1 -right-1 rounded-full text-white flex items-center justify-center" style={{ minWidth: 16, height: 16, padding: "0 3px", background: C.like, fontFamily: MONO, fontSize: 10, fontWeight: 700 }}>{tl.badge}</span>}
+                    {isTab && <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded-full" style={{ width: 5, height: 5, background: `hsl(${hue},70%,42%)` }} />}
                   </div>
-                  <span className="text-[11px] leading-tight text-center" style={{ color: tl.danger ? C.like : (active ? C.ink : C.ink2), fontWeight: active ? 700 : 500 }}>{tl.label}</span>
+                  <span className="text-[12px] leading-tight text-center font-bold whitespace-nowrap" style={{ color: tl.danger ? C.like : C.ink }}>{tl.label}</span>
                 </button>
               );
             })}
+          </div>
+          <div className="flex justify-center flex-wrap gap-1.5 px-6 pb-4">
+            {tiles.map((tl, i) => (
+              <button key={tl.key} onClick={() => scrollToIdx(i)} aria-label={tl.label} className="rounded-full transition-all" style={{ width: i === activeIdx ? 14 : 5, height: 5, background: i === activeIdx ? C.accent : C.line }} />
+            ))}
           </div>
         </div>
       </div>
