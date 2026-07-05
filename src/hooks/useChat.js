@@ -1,15 +1,21 @@
 import { useState, useRef, useEffect } from "react";
 import { chatApi, mapDbMsg, toDbMsg, mergeProfile, hasSupabase, USERS, ME, pushNotif, REPLIES, t } from "../ui/core";
 
+const lsGet = (k, def) => { try { const v = typeof localStorage !== "undefined" && localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch (e) { return def; } };
+const lsSet = (k, v) => { try { if (typeof localStorage !== "undefined") localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+
 export function useChat({ live, session, flash, dbErr, setDbError, setTab, onIncoming }) {
   const [convos, setConvos] = useState([]);
   const [openConvoId, setOpenConvoId] = useState(null);
   const [peerReadAt, setPeerReadAt] = useState(null);
   const [chatReactions, setChatReactions] = useState({});
+  const [mutedConvoIds, setMutedConvoIds] = useState(() => lsGet("mz_muted_convos", []));
   const openRef = useRef(openConvoId);
+  const mutedRef = useRef(mutedConvoIds); mutedRef.current = mutedConvoIds;
   const chanRef = useRef([]);
   const callRef = useRef(null);
   const onIncomingRef = useRef(onIncoming); onIncomingRef.current = onIncoming;
+  const toggleMuteConvo = (cid) => setMutedConvoIds(ids => { const next = ids.includes(cid) ? ids.filter(x => x !== cid) : [...ids, cid]; lsSet("mz_muted_convos", next); return next; });
 
   const startCall = (uid, video) => { if (callRef.current) callRef.current.startCall({ id: uid, name: (USERS[uid] && USERS[uid].name) || "" }, video); };
 
@@ -49,7 +55,7 @@ export function useChat({ live, session, flash, dbErr, setDbError, setTab, onInc
     chanRef.current = convos.map(c => chatApi.subscribe(c.id, (evt, row, oldRow) => {
       if (evt === "INSERT") {
         const m = mapDbMsg(row);
-        if (!m.fromMe && openRef.current !== c.id) {
+        if (!m.fromMe && openRef.current !== c.id && !mutedRef.current.includes(c.id)) {
           const other = USERS[m.from];
           const name = (other && other.name) ? other.name : t("chat.newMessage");
           const preview = m.type === "text" ? m.text : m.type === "image" ? t("msg.photo") : m.type === "voice" ? t("msg.voice") : m.type === "doc" ? (t("msg.file") + t("msg.fileFallback")) : m.type === "location" ? t("msg.location") : t("chat.newMessage");
@@ -87,6 +93,6 @@ export function useChat({ live, session, flash, dbErr, setDbError, setTab, onInc
     convos, setConvos, openConvoId, setOpenConvoId, peerReadAt, chatReactions,
     callRef, startCall, loadConvos, onMarkRead, onReactMsg,
     onSendMsg, onEditMsg, onDeleteMsg, onDeleteConvo, onReply, onCreateConvo, onMessageUser,
-    unreadMsgs,
+    unreadMsgs, mutedConvoIds, toggleMuteConvo,
   };
 }

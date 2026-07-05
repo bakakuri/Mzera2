@@ -1,7 +1,8 @@
 import { createPortal } from "react-dom";
 import {
-  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, levelInfo, kfmt, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, STORY_STICKERS, setTheme, setME, compressImage, Phone, Video, t, UploadProgress,
+  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, ChevronDown, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, levelInfo, kfmt, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, STORY_STICKERS, setTheme, setME, compressImage, Phone, Video, t, UploadProgress,
 } from "./core";
+import { LinkPreview } from "./feed";
 
 function applyReact(map, msgId, userId, emoji, removed) {
   const next = { ...map };
@@ -11,7 +12,10 @@ function applyReact(map, msgId, userId, emoji, removed) {
   return next;
 }
 
-export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg, onDeleteMsg, onDeleteConvo, onCreateConvo, onOpenProfile, live, onMenu, groups, onOpenGroup, onlineIds, onMessageUser, onStartCall, peerReadAt, initialReactions, onMarkRead, onReactMsg }) {
+const lsGet = (k, def) => { try { const v = typeof localStorage !== "undefined" && localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch (e) { return def; } };
+const lsSet = (k, v) => { try { if (typeof localStorage !== "undefined") localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+
+export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg, onDeleteMsg, onDeleteConvo, onCreateConvo, onOpenProfile, live, onMenu, groups, onOpenGroup, onlineIds, onMessageUser, onStartCall, peerReadAt, initialReactions, onMarkRead, onReactMsg, mutedConvoIds, onToggleMuteConvo }) {
   const [draft, setDraft] = useState(""); const [typing, setTyping] = useState(false);
   const [peerSeenTs, setPeerSeenTs] = useState(null);
   const [reactions, setReactions] = useState({});
@@ -19,8 +23,17 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
   const lpRef = useRef(null); const inputRef = useRef(null); const lpFiredRef = useRef(false);
   const [recording, setRecording] = useState(false); const [recSecs, setRecSecs] = useState(0);
   const [attach, setAttach] = useState(null); const [emoji, setEmoji] = useState(false); const [picker, setPicker] = useState(null);
+  const [listQ, setListQ] = useState("");
+  const [atBottom, setAtBottom] = useState(true);
   const scrollRef = useRef(null);
+  const prevLenRef = useRef(0); const prevOpenIdRef = useRef(null);
   const typingChanRef = useRef(null); const typingTORef = useRef(null); const lastTypeRef = useRef(0);
+  useEffect(() => { setDraft(openId ? lsGet(`mz_draft_${openId}`, "") : ""); }, [openId]);
+  useEffect(() => {
+    if (!openId) return;
+    if (draft) lsSet(`mz_draft_${openId}`, draft);
+    else try { localStorage.removeItem(`mz_draft_${openId}`); } catch (e) {}
+  }, [draft]);
   useEffect(() => {
     setTyping(false);
     if (!openId || !live) return;
@@ -68,7 +81,24 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
     onR(); vv.addEventListener("resize", onR); vv.addEventListener("scroll", onR);
     return () => { vv.removeEventListener("resize", onR); vv.removeEventListener("scroll", onR); };
   }, []);
-  useEffect(() => { bottom(); }, [cv?.messages.length, typing, openId, attach, emoji, vph]);
+  const onListScroll = () => {
+    const el = scrollRef.current; if (!el) return;
+    setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 80);
+  };
+  useEffect(() => {
+    if (openId !== prevOpenIdRef.current) {
+      prevOpenIdRef.current = openId;
+      prevLenRef.current = cv ? cv.messages.length : 0;
+      setAtBottom(true);
+      bottom();
+      return;
+    }
+    const len = cv ? cv.messages.length : 0;
+    const grew = len > prevLenRef.current;
+    const lastMine = grew && cv.messages[len - 1].fromMe;
+    prevLenRef.current = len;
+    if (atBottom || lastMine) bottom();
+  }, [cv?.messages.length, typing, openId, attach, emoji, vph]);
   useEffect(() => {
     if (!openId || !live || !cv || !cv.messages || !cv.messages.length) return;
     onMarkRead && onMarkRead(openId);
@@ -121,6 +151,7 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
   if (cv) {
     const members = convMembers(cv); const group = convIsGroup(cv); const other = USERS[members[0]];
     const startAdd = (sel) => { const id = onCreateConvo([...members, ...sel]); setPicker(null); setOpenId(id); };
+    const isMuted = !!(mutedConvoIds && mutedConvoIds.includes(cv.id));
     // top+bottom (no explicit height) lets the browser's native fixed-positioning stretch
     // this panel to fill exactly that gap on its own, tracking address-bar show/hide
     // correctly without any JS measurement or dvh (which — combined with an outer
@@ -135,17 +166,18 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
           <div className="flex items-center gap-3 px-3 py-2.5 shrink-0" style={{ background: C.surface + "f2", backdropFilter: "blur(14px)", borderBottom: `1px solid ${C.line}` }}>
             <button onClick={() => setOpenId(null)} className="active:scale-90" style={{ color: C.ink2 }}><ArrowLeft size={22} /></button>
             {group ? <GroupAvatar ids={members} size={40} /> : <button onClick={() => onOpenProfile(other.id)} className="relative active:scale-90"><Avatar id={other.id} size={38} />{other.online && <span className="absolute bottom-0 right-0"><Dot size={11} /></span>}</button>}
-            <div className="leading-tight min-w-0 flex-1 overflow-hidden">{group ? <div className="font-bold truncate" style={{ color: C.ink }}>{cv.name}</div> : <div className="min-w-0"><Name id={other.id} className="text-[15px] max-w-full" /></div>}<div className="text-[12px] truncate" style={{ color: typing ? C.accent : group ? C.muted : (other.online ? C.online : C.faint) }}>{typing ? t("chat.typing") : group ? `${members.length + 1} ${t("chat.participants")}` : (other.online ? t("chat.online") : t("chat.lastSeenPre") + "2" + t("time.hour") + t("chat.hoursAgoSuffix"))}</div></div>
+            <div className="leading-tight min-w-0 flex-1 overflow-hidden"><div className="flex items-center gap-1.5">{group ? <div className="font-bold truncate" style={{ color: C.ink }}>{cv.name}</div> : <div className="min-w-0"><Name id={other.id} className="text-[15px] max-w-full" /></div>}{isMuted && <VolumeX size={13} style={{ color: C.faint }} className="shrink-0" />}</div><div className="text-[12px] truncate" style={{ color: typing ? C.accent : group ? C.muted : (other.online ? C.online : C.faint) }}>{typing ? t("chat.typing") : group ? `${members.length + 1} ${t("chat.participants")}` : (other.online ? t("chat.online") : t("chat.lastSeenPre") + "2" + t("time.hour") + t("chat.hoursAgoSuffix"))}</div></div>
             <div className="flex items-center gap-0.5 shrink-0">
               {!group && onStartCall && other && (<><button onClick={() => onStartCall(other.id, false)} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 36, height: 36, color: C.ink2 }}><Phone size={19} /></button><button onClick={() => onStartCall(other.id, true)} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 36, height: 36, color: C.ink2 }}><Video size={20} /></button></>)}
               <div className="relative">
                 <button onClick={() => setConvMenu(v => !v)} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 36, height: 36, color: C.ink2 }}><MoreHorizontal size={22} /></button>
-                {convMenu && <><div className="fixed inset-0" style={{ zIndex: 10 }} onClick={() => setConvMenu(false)} /><div className="absolute right-0 z-20 rounded-xl overflow-hidden" style={{ top: "100%", marginTop: 4, background: C.surface, border: `1px solid ${C.line}`, boxShadow: "0 8px 24px rgba(0,0,0,.16)", minWidth: 200 }}><button onClick={() => { setConvMenu(false); setPicker("add"); }} className="w-full flex items-center gap-2.5 px-4 py-3 text-[14px] font-medium active:opacity-70" style={{ color: C.ink }}><UserPlus size={17} /> {t("chat.addPeople")}</button><button onClick={() => { setConvMenu(false); setConfirmDel(true); }} className="w-full flex items-center gap-2.5 px-4 py-3 text-[14px] font-medium active:opacity-70" style={{ color: C.like, borderTop: `1px solid ${C.line}` }}><Trash2 size={17} /> {t("chat.deleteConvo")}</button></div></>}
+                {convMenu && <><div className="fixed inset-0" style={{ zIndex: 10 }} onClick={() => setConvMenu(false)} /><div className="absolute right-0 z-20 rounded-xl overflow-hidden" style={{ top: "100%", marginTop: 4, background: C.surface, border: `1px solid ${C.line}`, boxShadow: "0 8px 24px rgba(0,0,0,.16)", minWidth: 200 }}><button onClick={() => { setConvMenu(false); setPicker("add"); }} className="w-full flex items-center gap-2.5 px-4 py-3 text-[14px] font-medium active:opacity-70" style={{ color: C.ink }}><UserPlus size={17} /> {t("chat.addPeople")}</button><button onClick={() => { setConvMenu(false); onToggleMuteConvo && onToggleMuteConvo(cv.id); }} className="w-full flex items-center gap-2.5 px-4 py-3 text-[14px] font-medium active:opacity-70" style={{ color: C.ink, borderTop: `1px solid ${C.line}` }}>{isMuted ? <Volume2 size={17} /> : <VolumeX size={17} />} {isMuted ? t("chat.unmute") : t("chat.mute")}</button><button onClick={() => { setConvMenu(false); setConfirmDel(true); }} className="w-full flex items-center gap-2.5 px-4 py-3 text-[14px] font-medium active:opacity-70" style={{ color: C.like, borderTop: `1px solid ${C.line}` }}><Trash2 size={17} /> {t("chat.deleteConvo")}</button></div></>}
               </div>
             </div>
           </div>
 
-          <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-1.5">
+          <div className="relative flex-1 min-h-0">
+          <div ref={scrollRef} onScroll={onListScroll} className="h-full overflow-y-auto px-3 py-4 space-y-1.5">
             {cv.messages.length === 0 && <div className="flex flex-col items-center justify-center text-center py-12" style={{ color: C.faint }}><div className="rounded-2xl flex items-center justify-center mb-3" style={{ width: 56, height: 56, background: C.accentSoft }}><Send size={24} style={{ color: C.accent }} /></div><div className="text-[14px]">{t("chat.startConvo")}</div></div>}
             {cv.messages.map((m, i) => {
               const mine = m.fromMe; const prev = cv.messages[i - 1];
@@ -166,10 +198,13 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
                     ) : m.type === "location" ? (
                       <button onClick={() => m.mapUrl && window.open(m.mapUrl, "_blank")} className="p-2 active:scale-[.98] text-left" style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 16, width: 224 }}><MiniMap h={110} /><div className="flex items-center justify-between mt-1.5"><div className="flex items-center gap-1.5 text-[13px]" style={{ color: C.ink2 }}><MapPin size={14} style={{ color: C.accent }} /> {m.place}</div><Mono style={{ fontSize: 10, color: C.faint }}>{m.time}</Mono></div></button>
                     ) : (
-                      <div className="px-3.5 py-2 text-[15px]" style={{ ...bubbleStyle, lineHeight: 1.4 }}>
-                        {m.type === "voice" ? <VoiceMsg id={m.id} dur={m.dur} mine={mine} url={m.audioUrl} /> : m.type === "doc" ? <DocMsg doc={m.doc} mine={mine} /> : m.text}
-                        <div className="text-right" style={{ marginTop: 2 }}><Mono style={{ fontSize: 10, color: tcol }}>{m.edited ? t("chat.editedPre") : ""}{m.time}{mine ? (read ? " ✓✓" : " ✓") : ""}</Mono></div>
-                      </div>
+                      <>
+                        <div className="px-3.5 py-2 text-[15px]" style={{ ...bubbleStyle, lineHeight: 1.4 }}>
+                          {m.type === "voice" ? <VoiceMsg id={m.id} dur={m.dur} mine={mine} url={m.audioUrl} /> : m.type === "doc" ? <DocMsg doc={m.doc} mine={mine} /> : m.text}
+                          <div className="text-right" style={{ marginTop: 2 }}><Mono style={{ fontSize: 10, color: tcol }}>{m.edited ? t("chat.editedPre") : ""}{m.time}{mine ? (read ? " ✓✓" : " ✓") : ""}</Mono></div>
+                        </div>
+                        {m.type === "text" && <LinkPreview text={m.text} compact />}
+                      </>
                     )}
                     {rxList.length > 0 && <div className="flex gap-1 mt-1 flex-wrap" style={{ justifyContent: mine ? "flex-end" : "flex-start" }}>{rxList.map(([em, n]) => <span key={em} className="rounded-full px-1.5 py-0.5 text-[12px] flex items-center gap-0.5" style={{ background: C.surface, border: `1px solid ${C.line}`, boxShadow: SH.card }}>{em}{n > 1 && <span style={{ fontSize: 10, color: C.faint, fontFamily: MONO }}>{n}</span>}</span>)}</div>}
                   </div>
@@ -178,6 +213,8 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
             })}
             {typing && <div className="flex justify-start"><div className="px-4 py-3 flex items-center gap-1.5" style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: "18px 18px 18px 5px" }}>{[0, 1, 2].map(i => <span key={i} className="rounded-full" style={{ width: 7, height: 7, background: C.faint, animation: "tdot 1.2s infinite", animationDelay: i * 0.18 + "s" }} />)}</div></div>}
             <div className="h-1" />
+          </div>
+          {!atBottom && <button onClick={() => { bottom(); setAtBottom(true); }} className="absolute right-4 z-10 rounded-full flex items-center justify-center active:scale-90" style={{ bottom: 16, width: 40, height: 40, background: C.surface, boxShadow: SH.card, color: C.accent, border: `1px solid ${C.line}` }} aria-label={t("chat.scrollToBottom")}><ChevronDown size={20} /></button>}
           </div>
 
           <input ref={photoInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const f = e.target.files && e.target.files[0]; if (f) sendPhoto(f); e.target.value = ""; }} />
@@ -280,12 +317,25 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
             ));
           })()}
         </div>
+        <div className="px-4 pt-3">
+          <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-full" style={{ background: C.surfaceMuted, border: `1px solid ${C.line}` }}>
+            <Search size={16} style={{ color: C.faint }} />
+            <input value={listQ} onChange={e => setListQ(e.target.value)} placeholder={t("chat.searchConvos")} className="flex-1 bg-transparent outline-none text-[14px]" style={{ color: C.ink }} />
+            {listQ && <button onClick={() => setListQ("")} style={{ color: C.faint }}><X size={16} /></button>}
+          </div>
+        </div>
       </div>
-      {convos.map(c => { const members = convMembers(c); const group = convIsGroup(c); const other = USERS[members[0]]; const last = c.messages[c.messages.length - 1]; return (
+      {convos.filter(c => {
+        if (!listQ.trim()) return true;
+        const q = listQ.trim().toLowerCase();
+        if (convIsGroup(c)) return (c.name || "").toLowerCase().includes(q);
+        const o = USERS[convMembers(c)[0]];
+        return !!o && ((o.name || "").toLowerCase().includes(q) || (o.handle || "").toLowerCase().includes(q));
+      }).map(c => { const members = convMembers(c); const group = convIsGroup(c); const other = USERS[members[0]]; const last = c.messages[c.messages.length - 1]; const muted = !!(mutedConvoIds && mutedConvoIds.includes(c.id)); return (
         <button key={c.id} onClick={() => setOpenId(c.id)} className="w-full flex items-center gap-3 px-4 py-3 transition hover:opacity-80" style={{ borderBottom: `1px solid ${C.lineSoft}` }}>
           {group ? <GroupAvatar ids={members} size={52} /> : <div className="relative"><Avatar id={other.id} size={52} />{other.online && <span className="absolute bottom-0.5 right-0.5"><Dot size={13} /></span>}</div>}
           <div className="min-w-0 flex-1 text-left">
-            <div className="flex items-center justify-between gap-2">{group ? <span className="font-bold truncate" style={{ color: C.ink }}>{c.name}</span> : <Name id={other.id} className="text-[15px]" />}<div className="flex items-center gap-1.5 shrink-0"><Mono style={{ color: C.faint, fontSize: 12 }}>{last ? last.time : ""}</Mono></div></div>
+            <div className="flex items-center justify-between gap-2"><div className="flex items-center gap-1.5 min-w-0">{group ? <span className="font-bold truncate" style={{ color: C.ink }}>{c.name}</span> : <Name id={other.id} className="text-[15px]" />}{muted && <VolumeX size={12} style={{ color: C.faint }} className="shrink-0" />}</div><div className="flex items-center gap-1.5 shrink-0"><Mono style={{ color: C.faint, fontSize: 12 }}>{last ? last.time : ""}</Mono></div></div>
             <div className="flex items-center gap-2"><span className="text-[14px] truncate flex-1" style={{ color: c.unread ? C.ink : C.muted, fontWeight: c.unread ? 600 : 400 }}>{group && last && last.from ? USERS[last.from].name.split(" ")[0] + ": " : ""}{msgPreview(last)}</span>{c.unread > 0 && <span className="rounded-full flex items-center justify-center shrink-0 text-white" style={{ minWidth: 19, height: 19, padding: "0 5px", backgroundImage: GBRAND, fontFamily: MONO, fontSize: 11, fontWeight: 700 }}>{c.unread}</span>}</div>
           </div>
         </button>

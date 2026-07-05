@@ -55,7 +55,7 @@ function PostImages({ images, pid }) {
 
 const _ogCache = {};
 const URL_RE = /(https?:\/\/[^\s]+)/i;
-function LinkPreview({ text }) {
+export function LinkPreview({ text, compact }) {
   const m = text && text.match(URL_RE);
   const url = m ? m[0].replace(/[.,!?]+$/, "") : null;
   const [data, setData] = useState(url && _ogCache[url] ? _ogCache[url] : null);
@@ -68,14 +68,15 @@ function LinkPreview({ text }) {
   if (!url) return null;
   let domain = ""; const dm = url.match(/^https?:\/\/([^\/?#]+)/i); if (dm) domain = dm[1].replace(/^www\./, "");
   const open = () => { try { window.open(url, "_blank", "noopener"); } catch (e) {} };
+  const wrap = compact ? "mt-1.5" : "mx-4 mb-3";
   if (data && (data.title || data.img)) return (
-    <button onClick={open} className="mx-4 mb-3 block w-full text-left rounded-2xl overflow-hidden active:opacity-90" style={{ border: `1px solid ${C.line}`, background: C.surfaceMuted }}>
+    <button onClick={open} className={wrap + " block w-full text-left rounded-2xl overflow-hidden active:opacity-90"} style={{ border: `1px solid ${C.line}`, background: C.surfaceMuted }}>
       {data.img && <div style={{ aspectRatio: "1.91/1" }}><img src={data.img} alt="" loading="lazy" className="w-full h-full object-cover" /></div>}
       <div className="px-3 py-2.5"><div className="text-[10.5px] uppercase tracking-wide" style={{ color: C.faint, fontFamily: MONO }}>{domain}</div><div className="text-[14px] font-bold mt-0.5 line-clamp-2" style={{ color: C.ink }}>{data.title || url}</div>{data.desc && <div className="text-[12.5px] mt-0.5 line-clamp-2" style={{ color: C.muted }}>{data.desc}</div>}</div>
     </button>
   );
   return (
-    <button onClick={open} className="mx-4 mb-3 flex items-center gap-2.5 w-full text-left rounded-xl px-3 py-2.5 active:opacity-80" style={{ border: `1px solid ${C.line}`, background: C.surfaceMuted }}>
+    <button onClick={open} className={wrap + " flex items-center gap-2.5 w-full text-left rounded-xl px-3 py-2.5 active:opacity-80"} style={{ border: `1px solid ${C.line}`, background: C.surfaceMuted }}>
       <img src={"https://www.google.com/s2/favicons?domain=" + domain + "&sz=64"} alt="" loading="lazy" style={{ width: 22, height: 22 }} className="rounded shrink-0" />
       <div className="min-w-0 flex-1"><div className="text-[13.5px] font-bold truncate" style={{ color: C.accent }}>{domain || t("link.word")}</div><div className="text-[11.5px] truncate" style={{ color: C.faint }}>{url}</div></div>
       <Link2 size={16} style={{ color: C.faint }} />
