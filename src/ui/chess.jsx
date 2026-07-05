@@ -28,6 +28,7 @@ export function ChessGame({ onExit }) {
   const [sel, setSel] = useState(null);
   const [legal, setLegal] = useState([]);
   const [flipped, setFlipped] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const [promo, setPromo] = useState(null);
 
   const [clock, setClock] = useState(null); // { w, b } seconds, or null (no clock)
@@ -345,43 +346,48 @@ export function ChessGame({ onExit }) {
         <button onClick={online ? backToMenu : leave} className="active:scale-90"><ArrowLeft size={22} style={{ color: C.ink }} /></button>
         <span className="font-bold text-[17px] flex-1 truncate" style={{ color: C.ink, fontFamily: DISPLAY }}>{online ? `ონლაინ · ${oppName}` : "ჭადრაკი"}</span>
         <button onClick={() => setFlipped((f) => !f)} className="px-3 py-1.5 rounded-full text-[12.5px] font-bold active:scale-95" style={{ background: C.surfaceMuted, color: C.ink2 }}>მოტრიალება</button>
+        <button onClick={() => setFullscreen((f) => !f)} className="px-3 py-1.5 rounded-full text-[12.5px] font-bold active:scale-95" style={{ background: C.surfaceMuted, color: C.ink2 }}>{fullscreen ? "დაკეცვა" : "გაშლა"}</button>
       </div>
 
-      {oppLeft && <div className="mx-4 mb-1 px-3 py-2 rounded-xl text-[12.5px] font-semibold text-center" style={{ background: C.like + "1a", color: C.like }}>მოწინააღმდეგემ დატოვა თამაში</div>}
-      {!ended && drawState === "declined" && <div className="mx-4 mb-1 px-3 py-2 rounded-xl text-[12.5px] font-semibold text-center" style={{ background: C.surfaceMuted, color: C.ink2 }}>ფრედს არ დათანხმდნენ</div>}
-      {!ended && drawState === "offered-by-opp" && mode === "bot" && (
+      {!fullscreen && oppLeft && <div className="mx-4 mb-1 px-3 py-2 rounded-xl text-[12.5px] font-semibold text-center" style={{ background: C.like + "1a", color: C.like }}>მოწინააღმდეგემ დატოვა თამაში</div>}
+      {!fullscreen && !ended && drawState === "declined" && <div className="mx-4 mb-1 px-3 py-2 rounded-xl text-[12.5px] font-semibold text-center" style={{ background: C.surfaceMuted, color: C.ink2 }}>ფრედს არ დათანხმდნენ</div>}
+      {!fullscreen && !ended && drawState === "offered-by-opp" && mode === "bot" && (
         <div className="mx-4 mb-1 px-3 py-2.5 rounded-xl text-center" style={{ background: C.accentSoft }}>
           <span className="text-[12.5px] font-bold" style={{ color: C.accentText }}>ბოტი ფიქრობს ფრედზე…</span>
         </div>
       )}
-      {!ended && drawState === "offered-by-opp" && online && (
+      {!fullscreen && !ended && drawState === "offered-by-opp" && online && (
         <div className="mx-4 mb-1 px-3 py-2.5 rounded-xl flex items-center gap-2.5 justify-between" style={{ background: C.accentSoft }}>
           <span className="text-[12.5px] font-bold" style={{ color: C.accentText }}>შემოგთავაზეს ფრედი</span>
           <div className="flex gap-1.5 shrink-0"><button onClick={() => respondDraw(true)} className="px-3 py-1.5 rounded-full text-[12px] font-bold text-white" style={{ backgroundImage: GBRAND }}>თანხმობა</button><button onClick={() => respondDraw(false)} className="px-3 py-1.5 rounded-full text-[12px] font-bold" style={{ background: C.surface, color: C.ink2 }}>უარი</button></div>
         </div>
       )}
-      {!ended && drawState === "offered-by-me" && <div className="mx-4 mb-1 px-3 py-2 rounded-xl text-[12.5px] font-semibold text-center" style={{ background: C.surfaceMuted, color: C.ink2 }}>ფრედის შეთავაზება გაიგზავნა…</div>}
+      {!fullscreen && !ended && drawState === "offered-by-me" && <div className="mx-4 mb-1 px-3 py-2 rounded-xl text-[12.5px] font-semibold text-center" style={{ background: C.surfaceMuted, color: C.ink2 }}>ფრედის შეთავაზება გაიგზავნა…</div>}
 
-      <div className="flex-1 min-h-0 flex flex-col items-center px-4 pb-6 overflow-y-auto">
-        <div className="w-full flex items-center justify-between mt-1 mb-2" style={{ maxWidth: 480, minHeight: 26 }}>
-          <div className="flex items-center gap-1 flex-wrap">{g.captured.b.map((p, i) => <span key={i} style={{ fontSize: 18 }}>{PIECE_GLYPH[p]}</span>)}</div>
-          {clockPill("b")}
-        </div>
+      <div className={fullscreen ? "flex-1 min-h-0 flex flex-col items-center justify-center px-2 pb-2" : "flex-1 min-h-0 flex flex-col items-center px-4 pb-6 overflow-y-auto"}>
+        {!fullscreen && (
+          <div className="w-full flex items-center justify-between mt-1 mb-2" style={{ maxWidth: 480, minHeight: 26 }}>
+            <div className="flex items-center gap-1 flex-wrap">{g.captured.b.map((p, i) => <span key={i} style={{ fontSize: 18 }}>{PIECE_GLYPH[p]}</span>)}</div>
+            {clockPill("b")}
+          </div>
+        )}
 
-        <div className="w-full rounded-3xl overflow-hidden shrink-0" style={{ maxWidth: 480, aspectRatio: "1", boxShadow: "0 14px 34px -10px rgba(0,0,0,.4)" }}>
+        <div className="w-full rounded-3xl overflow-hidden shrink-0" style={fullscreen ? { width: "min(96vw, 82vh)", aspectRatio: "1", boxShadow: "0 14px 34px -10px rgba(0,0,0,.4)" } : { maxWidth: 480, aspectRatio: "1", boxShadow: "0 14px 34px -10px rgba(0,0,0,.4)" }}>
           <Board3D game={g} selected={sel} legalTargets={legal} onSquareTap={select} flipped={flipped} disabled={ended || !!promo || (mySide != null && g.turn !== mySide)} />
         </div>
 
-        <div className="w-full flex items-center justify-between mt-2 mb-1" style={{ maxWidth: 480, minHeight: 26 }}>
-          <div className="flex items-center gap-1 flex-wrap">{g.captured.w.map((p, i) => <span key={i} style={{ fontSize: 18 }}>{PIECE_GLYPH[p]}</span>)}</div>
-          {clockPill("w")}
-        </div>
+        {!fullscreen && (
+          <div className="w-full flex items-center justify-between mt-2 mb-1" style={{ maxWidth: 480, minHeight: 26 }}>
+            <div className="flex items-center gap-1 flex-wrap">{g.captured.w.map((p, i) => <span key={i} style={{ fontSize: 18 }}>{PIECE_GLYPH[p]}</span>)}</div>
+            {clockPill("w")}
+          </div>
+        )}
 
-        <div className="w-full mt-2 py-3 rounded-2xl text-center font-bold text-[15px] shrink-0" style={{ maxWidth: 480, background: ended ? C.accentSoft : C.surface, color: ended ? C.accentText : C.ink, border: `1px solid ${C.line}`, fontFamily: DISPLAY }}>
+        <div className="w-full mt-2 py-3 rounded-2xl text-center font-bold text-[15px] shrink-0" style={{ maxWidth: fullscreen ? "min(96vw, 82vh)" : 480, background: ended ? C.accentSoft : C.surface, color: ended ? C.accentText : C.ink, border: `1px solid ${C.line}`, fontFamily: DISPLAY }}>
           {statusText}
         </div>
 
-        {g.history.length > 0 && (
+        {!fullscreen && g.history.length > 0 && (
           <div className="w-full mt-3 flex gap-1.5 flex-wrap" style={{ maxWidth: 480 }}>
             {g.history.map((h, i) => (
               <span key={i} className="px-2 py-1 rounded-lg text-[12px] font-bold" style={{ background: C.surfaceMuted, color: C.ink2, fontFamily: MONO }}>
@@ -392,14 +398,14 @@ export function ChessGame({ onExit }) {
         )}
 
         {!ended && (
-          <div className="w-full flex gap-2.5 mt-4 shrink-0" style={{ maxWidth: 480 }}>
+          <div className="w-full flex gap-2.5 mt-4 shrink-0" style={{ maxWidth: fullscreen ? "min(96vw, 82vh)" : 480 }}>
             <button onClick={() => setResignAsk(true)} className="flex-1 py-3 rounded-2xl text-[14px] font-bold active:scale-[.98]" style={{ background: C.surfaceMuted, color: "#e5484d" }}>დანებება</button>
             <button onClick={offerDraw} disabled={drawState === "offered-by-me"} className="flex-1 py-3 rounded-2xl text-[14px] font-bold active:scale-[.98]" style={{ background: C.surfaceMuted, color: C.ink2, opacity: drawState === "offered-by-me" ? 0.5 : 1 }}>ფრედის შეთავაზება</button>
           </div>
         )}
 
         {(ended && (!online || role === "host")) && (
-          <button onClick={resetGame} className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white active:scale-[.98] mt-3 shrink-0" style={{ maxWidth: 480, backgroundImage: GBRAND }}>ახალი თამაში</button>
+          <button onClick={resetGame} className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white active:scale-[.98] mt-3 shrink-0" style={{ maxWidth: fullscreen ? "min(96vw, 82vh)" : 480, backgroundImage: GBRAND }}>ახალი თამაში</button>
         )}
       </div>
 
