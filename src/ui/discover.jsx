@@ -1,5 +1,5 @@
 import {
-  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, Tilt, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, levelInfo, kfmt, getRsvpOpts, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, STORY_STICKERS, setTheme, setME, t, UploadProgress,
+  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, RefreshCw, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, Tilt, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, levelInfo, kfmt, getRsvpOpts, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, STORY_STICKERS, setTheme, setME, t, UploadProgress,
 } from "./core";
 import { PostCard } from "./feed";
 
@@ -147,8 +147,8 @@ function haversineKm(a, b) {
 }
 const LOCATION_STALE_MS = 60 * 60 * 1000;
 
-export function MapView({ onMessage, onMenu, onOpenProfile, sharing, myPos, myAccuracy, lastSharedAt, geoErr, setGeoErr, busy, onStartShare, onStopShare }) {
-  const mapRef = useRef(null); const mapObj = useRef(null); const markersRef = useRef([]); const accCircleRef = useRef(null);
+export function MapView({ onMessage, onMenu, onOpenProfile, sharing, myPos, myAccuracy, lastSharedAt, geoErr, setGeoErr, busy, onStartShare, onStopShare, onRefreshShare }) {
+  const mapRef = useRef(null); const mapObj = useRef(null); const markersRef = useRef([]); const accCircleRef = useRef(null); const clusterRef = useRef(null);
   const [sel, setSel] = useState(null);
   const [pins, setPins] = useState([]); const [loading, setLoading] = useState(true);
   const load = async () => {
@@ -175,6 +175,8 @@ export function MapView({ onMessage, onMenu, onOpenProfile, sharing, myPos, myAc
   useEffect(() => {
     const L = window.L; const map = mapObj.current; if (!L || !map) return;
     markersRef.current.forEach(m => { try { map.removeLayer(m); } catch (e) {} }); markersRef.current = [];
+    if (clusterRef.current) { try { map.removeLayer(clusterRef.current); } catch (e) {} clusterRef.current = null; }
+    const group = L.markerClusterGroup ? L.markerClusterGroup({ maxClusterRadius: 55, showCoverageOnHover: false, spiderfyOnMaxZoom: true }) : null;
     pins.forEach(p => {
       const u = USERS[p.user_id]; const isMe = p.user_id === ME; const g = GRADS[hashIdx(p.user_id, GRADS.length)];
       const inner = (u && u.avatar) ? `<img src="${u.avatar}" style="width:42px;height:42px;border-radius:50%;object-fit:cover;display:block"/>` : `<div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(140deg,${g[0]},${g[1]});color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px;font-family:sans-serif">${(((u && u.name) || "?").trim()[0]) || "?"}</div>`;
@@ -182,10 +184,12 @@ export function MapView({ onMessage, onMenu, onOpenProfile, sharing, myPos, myAc
       const tag = isMe ? `<div style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:#6d5efc;color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;white-space:nowrap;font-family:sans-serif">${t("map.youShort")}</div>` : "";
       const html = `<div style="position:relative"><div style="padding:3px;border-radius:50%;background:${ring};box-shadow:0 3px 8px rgba(0,0,0,.35)">${inner}</div>${tag}</div>`;
       const icon = L.divIcon({ html, className: "mz-pin", iconSize: [50, 50], iconAnchor: [25, 50] });
-      const marker = L.marker([p.lat, p.lng], { icon }).addTo(map);
+      const marker = L.marker([p.lat, p.lng], { icon });
       marker.on("click", () => setSel(p.user_id));
+      if (group) group.addLayer(marker); else marker.addTo(map);
       markersRef.current.push(marker);
     });
+    if (group) { group.addTo(map); clusterRef.current = group; }
     if (pins.length === 1) { try { map.setView([pins[0].lat, pins[0].lng], 14); } catch (e) {} }
     else if (pins.length > 1) { try { map.fitBounds(pins.map(p => [p.lat, p.lng]), { padding: [70, 70], maxZoom: 15 }); } catch (e) {} }
   }, [pins]);
@@ -232,6 +236,9 @@ export function MapView({ onMessage, onMenu, onOpenProfile, sharing, myPos, myAc
             </span>
             <span className="text-[12px] font-bold" style={{ color: C.ink }}>{t("map.liveActive")}</span>
             {lastSharedAt && <Mono style={{ fontSize: 11, color: C.faint }}>· {timeAgo(lastSharedAt)}</Mono>}
+            <button onClick={() => onRefreshShare && onRefreshShare()} disabled={busy} className="active:scale-90 rounded-full flex items-center justify-center shrink-0" style={{ width: 22, height: 22, color: C.accent }} aria-label={t("map.refreshNow")}>
+              <RefreshCw size={13} style={busy ? { animation: "spin 0.8s linear infinite" } : undefined} />
+            </button>
           </div>
         )}
         <button onClick={toggleShare} disabled={busy} className="flex items-center gap-2 px-5 py-3 rounded-full text-[14px] font-bold active:scale-95" style={sharing ? { background: C.surface, color: C.online, boxShadow: SH.card } : { backgroundImage: GBRAND, color: "#fff", boxShadow: SH.glow }}>

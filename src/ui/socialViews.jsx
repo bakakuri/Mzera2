@@ -578,7 +578,7 @@ export function Progress({ xp, posts, myFollowers, questData, onClaim }) {
 
 /* ─────────────────────────  SETTINGS  ───────────────────────── */
 
-export function SettingsView({ settings, setSettings, meProfile, setMeProfile, mode, setMode, onClose, flash, onSignOut, onUploadAvatar, pushState, onTogglePush, blockedIds, mutedIds, onUnblock, onUnmute, onOpenProfile, following, closeFriends, onToggleCloseFriend, onExportData, onDeleteAccount, birthday, onSetBirthday, showProfileVisits, onToggleShowProfileVisits, referralCode, invitedCount, invitedUsers, inviteLink, onCopyInviteLink }) {
+export function SettingsView({ settings, setSettings, meProfile, setMeProfile, mode, setMode, onClose, flash, onSignOut, onUploadAvatar, pushState, onTogglePush, blockedIds, mutedIds, onUnblock, onUnmute, onOpenProfile, following, closeFriends, onToggleCloseFriend, onExportData, onDeleteAccount, birthday, onSetBirthday, showProfileVisits, onToggleShowProfileVisits, referralCode, invitedCount, invitedUsers, inviteLink, onCopyInviteLink, locSharing, locBusy, locLastSharedAt, onStartLocationShare, onStopLocationShare }) {
   const set = (k, v) => setSettings(s => ({ ...s, [k]: v }));
   const [delMode, setDelMode] = useState(false); const [delTxt, setDelTxt] = useState("");
   const [avatarProgress, setAvatarProgress] = useState(null);
@@ -612,8 +612,17 @@ export function SettingsView({ settings, setSettings, meProfile, setMeProfile, m
           <SettingsSection title="კონფიდენციალურობა">
             <SettingsRow first label="დახურული ანგარიში" sub="მხოლოდ მიმდევრები ხედავენ შენს პოსტებს" on={settings.private} onToggle={() => tog("private")} />
             <SettingsRow label="აქტივობის სტატუსი" sub="აჩვენე როდის ხარ ონლაინ" on={settings.activity} onToggle={() => tog("activity")} />
-            <SettingsRow label="ლოკაციის გაზიარება" sub="რუკაზე მეგობრებისთვის ჩვენება" on={settings.showLocation} onToggle={() => tog("showLocation")} />
             <SettingsRow label={t("settings.showProfileVisits")} sub={t("settings.showProfileVisitsSub")} on={showProfileVisits} onToggle={() => onToggleShowProfileVisits && onToggleShowProfileVisits(!showProfileVisits)} />
+          </SettingsSection>
+          <SettingsSection title={t("map.settingsTitle")}>
+            <div className="px-4 py-3.5 flex items-center gap-3">
+              <div className="rounded-xl flex items-center justify-center shrink-0" style={{ width: 38, height: 38, background: locSharing ? C.accentSoft : C.surfaceMuted }}><Navigation size={19} style={{ color: locSharing ? C.accent : C.muted }} /></div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[14px] font-bold" style={{ color: C.ink }}>{locSharing ? t("map.settingsOn") : t("map.settingsOff")}</div>
+                {locSharing && locLastSharedAt && <div className="text-[12px]" style={{ color: C.faint }}>{t("map.lastUpdatedPre")}{timeAgo(locLastSharedAt)}</div>}
+              </div>
+              <button onClick={() => (locSharing ? onStopLocationShare && onStopLocationShare() : onStartLocationShare && onStartLocationShare())} disabled={locBusy} className="px-3.5 py-2 rounded-xl text-[13px] font-bold shrink-0 active:scale-95" style={locSharing ? { background: C.surfaceMuted, color: C.ink2 } : { backgroundImage: GBRAND, color: "#fff" }}>{locSharing ? "გამორთვა" : "ჩართვა"}</button>
+            </div>
           </SettingsSection>
           <SettingsSection title="შეტყობინებები">
             <div className="px-4 py-3.5 flex items-center gap-3" style={{ borderBottom: `1px solid ${C.lineSoft}` }}>
