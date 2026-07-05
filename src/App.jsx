@@ -380,6 +380,7 @@ export default function App() {
         @keyframes fadeOnly{from{opacity:0}to{opacity:1}}
         @keyframes slideIn{from{opacity:0;transform:translateX(22px)}to{opacity:1;transform:none}}
         @keyframes mzTicker{from{transform:translateX(100%)}to{transform:translateX(-100%)}}
+        @keyframes mzPullHint{0%,100%{transform:translateY(0)}50%{transform:translateY(4px)}}
         .fadein{animation:fadeOnly .35s ease both}
         .slidein{animation:slideIn .28s cubic-bezier(.2,.8,.2,1) both}
         .stagger>*{animation:up .5s cubic-bezier(.22,.61,.36,1) both}
