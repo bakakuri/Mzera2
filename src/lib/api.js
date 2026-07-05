@@ -508,8 +508,17 @@ export const chat = {
       .insert({ conversation_id: conversationId, sender_id: uid, ...payload })
       .select()
       .single();
-    if (error) throw error;
-    return data;
+    if (!error) return data;
+    // 42501 = RLS rejection. Usually a stale access token (e.g. a background
+    // refresh landed mid-request) rather than a real membership problem, so
+    // refresh the session once and retry before surfacing it to the user.
+    if (error.code !== "42501") throw error;
+    const { error: refreshErr } = await sb.auth.refreshSession();
+    if (refreshErr) throw error;
+    const uid2 = (await sb.auth.getUser()).data.user.id;
+    const retry = await sb.from("messages").insert({ conversation_id: conversationId, sender_id: uid2, ...payload }).select().single();
+    if (retry.error) throw retry.error;
+    return retry.data;
   },
   editMessage: async (messageId, text) => {
     const sb = need();

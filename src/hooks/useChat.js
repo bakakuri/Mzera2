@@ -73,7 +73,7 @@ export function useChat({ live, session, flash, dbErr, setDbError, setTab, onInc
     return () => { chanRef.current.forEach(ch => { try { ch.unsubscribe(); } catch (e) {} }); chanRef.current = []; };
   }, [live, convIdsKey]);
 
-  const onSendMsg = (cid, partial) => { chatApi.send(cid, toDbMsg(partial)).catch(dbErr("შეტყობინება")); };
+  const onSendMsg = (cid, partial) => { chatApi.send(cid, toDbMsg(partial)).catch((e) => { console.error("შეტყობინება", e); flash(t("toast.messageSendFailed")); }); };
   const onEditMsg = (cid, mid, text) => { setConvos(cs => cs.map(c => c.id === cid ? { ...c, messages: c.messages.map(m => m.id === mid ? { ...m, text, edited: true } : m) } : c)); chatApi.editMessage(mid, text).catch(dbErr("რედაქტირება")); };
   const onDeleteMsg = (cid, mid) => { setConvos(cs => cs.map(c => c.id === cid ? { ...c, messages: c.messages.filter(m => m.id !== mid) } : c)); chatApi.deleteMessage(mid).catch(dbErr("წაშლა")); };
   const onDeleteConvo = (cid) => { setOpenConvoId(null); setConvos(cs => cs.filter(c => c.id !== cid)); chatApi.deleteConversation(cid).then(() => flash(t("toast.convoDeleted"))).catch(dbErr("მიმოწერის წაშლა")); };

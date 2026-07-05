@@ -594,6 +594,7 @@ const DICT = {
   "chat.newChat": { ka: "ახალი ჩატი", en: "New chat", ru: "Новый чат" },
   "chat.participants": { ka: "მონაწილე", en: "participants", ru: "участников" },
   "toast.rateLimited": { ka: "ნელა 🐢 ცოტა ხანში სცადე", en: "Slow down 🐢 try again in a bit", ru: "Помедленнее 🐢 попробуй чуть позже" },
+  "toast.messageSendFailed": { ka: "შეტყობინება ვერ გაიგზავნა — სცადე თავიდან", en: "Message failed to send — try again", ru: "Не удалось отправить сообщение — попробуй снова" },
 
   "toast.requestSent": { ka: "მოთხოვნა გაიგზავნა — დაელოდე დადასტურებას ⏳", en: "Request sent — waiting for approval ⏳", ru: "Заявка отправлена — жди подтверждения ⏳" },
   "toast.joinedGroup": { ka: "ჯგუფს შეუერთდი 🎉 +20 XP", en: "Joined the group 🎉 +20 XP", ru: "Вступил(а) в группу 🎉 +20 XP" },
