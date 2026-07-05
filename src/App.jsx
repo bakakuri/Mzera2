@@ -1,7 +1,7 @@
 import {
   useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Gamepad2, Clapperboard, Music, Languages, MiniPlayer, HeaderTicker, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, filmsApi, musicApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, questsApi, xpApi, adminApi, pushApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, ProfileViewers, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, mapDbListing, mapDbReview, mapDbFilm, mapDbSong, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, levelInfo, kfmt, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, STORY_STICKERS, setTheme, setME, compressImage, POST_BGS, t, setLang} from "./ui/core";
 import { PostCard, StoryViewer, CreateSheet, Explore, StoryEditor, FeedPromoCard, FeedReelsRow } from "./ui/feed";
-import { Profile, Notifications, Admin, Drawer, PullMenu, OnlinePage, Progress, SettingsView, Leaderboard, SearchView, SuggestedPeople, Onboarding } from "./ui/social";
+import { Drawer, PullMenu } from "./ui/social";
 import { lazy, Suspense } from "react";
 
 import { useToast } from "./hooks/useToast";
@@ -41,6 +41,16 @@ const ChessGame = lazy(() => import("./ui/chess").then(m => ({ default: m.ChessG
 const Movies = lazy(() => import("./ui/movies").then(m => ({ default: m.Movies })));
 const MusicPage = lazy(() => import("./ui/music").then(m => ({ default: m.MusicPage })));
 const LanguagesPage = lazy(() => import("./ui/languages").then(m => ({ default: m.LanguagesPage })));
+const Profile = lazy(() => import("./ui/socialViews").then(m => ({ default: m.Profile })));
+const Notifications = lazy(() => import("./ui/socialViews").then(m => ({ default: m.Notifications })));
+const Admin = lazy(() => import("./ui/socialViews").then(m => ({ default: m.Admin })));
+const OnlinePage = lazy(() => import("./ui/socialViews").then(m => ({ default: m.OnlinePage })));
+const Progress = lazy(() => import("./ui/socialViews").then(m => ({ default: m.Progress })));
+const SettingsView = lazy(() => import("./ui/socialViews").then(m => ({ default: m.SettingsView })));
+const Leaderboard = lazy(() => import("./ui/socialViews").then(m => ({ default: m.Leaderboard })));
+const SearchView = lazy(() => import("./ui/socialViews").then(m => ({ default: m.SearchView })));
+const SuggestedPeople = lazy(() => import("./ui/socialViews").then(m => ({ default: m.SuggestedPeople })));
+const Onboarding = lazy(() => import("./ui/socialViews").then(m => ({ default: m.Onboarding })));
 
 const Sk = ({ w, h, r = 8, mb = 0 }) => <div style={{ width: w, height: h, borderRadius: r, background: C.surfaceMuted, marginBottom: mb, animation: "pulse 1.4s ease-in-out infinite" }} />;
 function PageSkeleton() {
@@ -495,7 +505,7 @@ export default function App() {
 
       <audio ref={music.audioElRef} onEnded={() => music.setIsPlaying(false)} style={{ display: "none" }} />
       {session && hasSupabase && <Suspense fallback={null}><CallLayer ref={chat.callRef} me={ME} enabled={true} /></Suspense>}
-      {showOnboarding && <Onboarding suggested={suggested} following={following} onToggleFollow={toggleFollow} onUploadAvatar={onChangeAvatar} onSaveProfile={onSaveOnboardProfile} onFinish={onFinishOnboarding} />}
+      {showOnboarding && <Suspense fallback={null}><Onboarding suggested={suggested} following={following} onToggleFollow={toggleFollow} onUploadAvatar={onChangeAvatar} onSaveProfile={onSaveOnboardProfile} onFinish={onFinishOnboarding} /></Suspense>}
       {games.buraOpen && <Suspense fallback={null}><BuraGame onExit={() => games.setBuraOpen(false)} /></Suspense>}
       {games.nardiOpen && <Suspense fallback={null}><NardiGame onExit={() => games.setNardiOpen(false)} /></Suspense>}
       {games.chessOpen && <Suspense fallback={null}><ChessGame onExit={() => games.setChessOpen(false)} /></Suspense>}
@@ -513,11 +523,11 @@ export default function App() {
         <div className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3" style={{ background: C.paper, borderBottom: `1px solid ${C.line}` }}><button onClick={() => { feed.setPostView(null); feed.setPostViewCommentId(null); }} className="active:scale-90"><ArrowLeft size={22} style={{ color: C.ink }} /></button><div className="font-bold text-[17px]" style={{ color: C.ink, fontFamily: DISPLAY }}>პოსტი</div></div>
         {p ? <div className="p-4"><PostCard post={p} {...feedProps} highlightCommentId={feed.postViewCommentId} /></div> : <Empty icon={MessageCircle} t="პოსტი მიუწვდომელია" s="შესაძლოა წაიშალა" />}
       </div>; })()}
-      {settingsOpen && <SettingsView settings={settings} setSettings={setSettings} meProfile={meProfile} setMeProfile={setMeProfile} mode={mode} setMode={setMode} onClose={() => setSettingsOpen(false)} flash={flash} onUploadAvatar={onChangeAvatar} pushState={pushState} onTogglePush={onTogglePush} blockedIds={blockedIds} mutedIds={mutedIds} onUnblock={onUnblock} onUnmute={onUnmute} onOpenProfile={openProfile} following={following} closeFriends={closeFriends} onToggleCloseFriend={onToggleCloseFriend} onExportData={onExportData} onDeleteAccount={onDeleteAccount} birthday={USERS[ME] ? USERS[ME].birthday : null} onSetBirthday={onSetBirthday} showProfileVisits={me.showProfileVisits !== false} onToggleShowProfileVisits={onToggleShowProfileVisits} onSignOut={() => { setSettingsOpen(false); authApi.signOut().catch(dbErr("გასვლა")); }} referralCode={referrals.referralCode} invitedCount={referrals.invitedCount} invitedUsers={referrals.invitedUsers} inviteLink={referrals.inviteLink} onCopyInviteLink={referrals.copyInviteLink} />}
+      {settingsOpen && <Suspense fallback={null}><SettingsView settings={settings} setSettings={setSettings} meProfile={meProfile} setMeProfile={setMeProfile} mode={mode} setMode={setMode} onClose={() => setSettingsOpen(false)} flash={flash} onUploadAvatar={onChangeAvatar} pushState={pushState} onTogglePush={onTogglePush} blockedIds={blockedIds} mutedIds={mutedIds} onUnblock={onUnblock} onUnmute={onUnmute} onOpenProfile={openProfile} following={following} closeFriends={closeFriends} onToggleCloseFriend={onToggleCloseFriend} onExportData={onExportData} onDeleteAccount={onDeleteAccount} birthday={USERS[ME] ? USERS[ME].birthday : null} onSetBirthday={onSetBirthday} showProfileVisits={me.showProfileVisits !== false} onToggleShowProfileVisits={onToggleShowProfileVisits} onSignOut={() => { setSettingsOpen(false); authApi.signOut().catch(dbErr("გასვლა")); }} referralCode={referrals.referralCode} invitedCount={referrals.invitedCount} invitedUsers={referrals.invitedUsers} inviteLink={referrals.inviteLink} onCopyInviteLink={referrals.copyInviteLink} /></Suspense>}
       {stories.storyEditorOpen && <StoryEditor onClose={() => stories.setStoryEditorOpen(false)} onShare={stories.onAddStory} live={live} onUpload={(f, onProgress) => uploadImage(f, "stories", onProgress)} />}
       {reelsHook.reelCreateOpen && <ReelCreate onClose={() => reelsHook.setReelCreateOpen(false)} onPublish={reelsHook.onPublishReel} onUpload={(f, onProgress) => storageApi.upload(f, "reels", onProgress)} onUploadThumb={(f) => uploadImage(f, "reels")} flash={flash} />}
       {reelsHook.reelComments && <ReelComments data={reelsHook.reelComments} onClose={() => reelsHook.setReelComments(null)} onAdd={reelsHook.addReelComment} />}
-      {searchOpen && <SearchView posts={feed.posts} onOpenProfile={openProfile} onTag={onTag} onClose={() => setSearchOpen(false)} runSearch={feed.runSearch} onOpenFilm={(f) => { onOpenSearchFilm(f); setSearchOpen(false); }} onOpenSong={(s) => { onOpenSearchSong(s); setSearchOpen(false); }} onOpenListing={(l) => { onOpenSearchListing(l); setSearchOpen(false); }} />}
+      {searchOpen && <Suspense fallback={null}><SearchView posts={feed.posts} onOpenProfile={openProfile} onTag={onTag} onClose={() => setSearchOpen(false)} runSearch={feed.runSearch} onOpenFilm={(f) => { onOpenSearchFilm(f); setSearchOpen(false); }} onOpenSong={(s) => { onOpenSearchSong(s); setSearchOpen(false); }} onOpenListing={(l) => { onOpenSearchListing(l); setSearchOpen(false); }} /></Suspense>}
       {toast && <div className="fixed left-1/2 z-[80] px-4 py-2.5 rounded-full text-sm font-bold text-white" style={{ bottom: 92, background: DARK ? C.surfaceMuted : C.ink, border: DARK ? `1px solid ${C.line}` : "none", boxShadow: SH.pop, animation: "pin .3s cubic-bezier(.22,.61,.36,1) both" }}>{toast}</div>}
     </div>
   );
