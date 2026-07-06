@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { renderText, Empty, IconBtn, Chips, ThemeToggle } from "./core";
+import { renderText, Empty, IconBtn, Chips, ThemeToggle, Avatar, FollowBtn, UploadProgress, UploadRing, NewThread, mergeProfile, t } from "./core";
 import { Bell } from "lucide-react";
 
 afterEach(cleanup);
@@ -103,5 +103,120 @@ describe("ThemeToggle", () => {
     expect(buttons).toHaveLength(2);
     fireEvent.click(buttons[1]);
     expect(setMode).toHaveBeenCalledWith("dark");
+  });
+});
+
+describe("Avatar", () => {
+  it("shows an initial-letter fallback for a user with no avatar", () => {
+    render(<Avatar id="avatar-unknown-user" />);
+    expect(screen.getByText("მ")).toBeInTheDocument(); // FALLBACK_USER.name = "მომხმარებელი"
+  });
+
+  it("renders the profile's avatar image when one is set", () => {
+    mergeProfile({ id: "avatar-1", name: "Nini", avatar_url: "https://x/av.jpg" });
+    const { container } = render(<Avatar id="avatar-1" />);
+    expect(container.querySelector("img")).toHaveAttribute("src", "https://x/av.jpg");
+  });
+
+  it("falls back to the initial letter once the image fails to load", () => {
+    mergeProfile({ id: "avatar-2", name: "Nini", avatar_url: "https://x/broken.jpg" });
+    const { container } = render(<Avatar id="avatar-2" />);
+    fireEvent.error(container.querySelector("img"));
+    expect(screen.getByText("N")).toBeInTheDocument();
+    expect(container.querySelector("img")).not.toBeInTheDocument();
+  });
+});
+
+describe("FollowBtn", () => {
+  it("shows the 'follow' label and calls onToggle when not yet following", () => {
+    const onToggle = vi.fn();
+    render(<FollowBtn id="u1" isFollowing={() => false} onToggle={onToggle} />);
+    expect(screen.getByText(t("follow.follow"))).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button"));
+    expect(onToggle).toHaveBeenCalledWith("u1");
+  });
+
+  it("shows the 'following' label when already following", () => {
+    render(<FollowBtn id="u1" isFollowing={() => true} onToggle={() => {}} />);
+    expect(screen.getByText(t("follow.following"))).toBeInTheDocument();
+  });
+
+  it("stops the click from bubbling to an ancestor handler", () => {
+    const parentClick = vi.fn();
+    render(<div onClick={parentClick}><FollowBtn id="u1" isFollowing={() => false} onToggle={() => {}} /></div>);
+    fireEvent.click(screen.getByRole("button"));
+    expect(parentClick).not.toHaveBeenCalled();
+  });
+});
+
+describe("UploadProgress", () => {
+  it("renders nothing when pct is null or undefined", () => {
+    const { container } = render(<UploadProgress pct={null} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("clamps above 100 down to 100%", () => {
+    render(<UploadProgress pct={150} />);
+    expect(screen.getByText("100%")).toBeInTheDocument();
+  });
+
+  it("clamps below 0 up to 0%", () => {
+    render(<UploadProgress pct={-20} />);
+    expect(screen.getByText("0%")).toBeInTheDocument();
+  });
+
+  it("rounds a fractional percentage", () => {
+    render(<UploadProgress pct={45.6} />);
+    expect(screen.getByText("46%")).toBeInTheDocument();
+  });
+});
+
+describe("UploadRing", () => {
+  it("renders nothing when pct is null or undefined", () => {
+    const { container } = render(<UploadRing pct={null} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("renders an svg ring for a valid percentage", () => {
+    const { container } = render(<UploadRing pct={40} />);
+    expect(container.querySelectorAll("circle")).toHaveLength(2);
+  });
+});
+
+describe("NewThread", () => {
+  it("disables submit until the title has non-whitespace content", () => {
+    render(<NewThread onClose={() => {}} onCreate={() => {}} />);
+    const publish = screen.getByText(t("action.publish"));
+    expect(publish).toBeDisabled();
+    fireEvent.change(screen.getByPlaceholderText(t("thread.titlePh")), { target: { value: "   " } });
+    expect(publish).toBeDisabled();
+    fireEvent.change(screen.getByPlaceholderText(t("thread.titlePh")), { target: { value: "სათაური" } });
+    expect(publish).not.toBeDisabled();
+  });
+
+  it("submits trimmed title/body and the selected category", () => {
+    const onCreate = vi.fn();
+    render(<NewThread onClose={() => {}} onCreate={onCreate} />);
+    fireEvent.change(screen.getByPlaceholderText(t("thread.titlePh")), { target: { value: "  სათაური  " } });
+    fireEvent.change(screen.getByPlaceholderText(t("thread.bodyPh")), { target: { value: "  ტექსტი  " } });
+    fireEvent.click(screen.getByText("დიზაინი"));
+    fireEvent.click(screen.getByText(t("action.publish")));
+    expect(onCreate).toHaveBeenCalledWith({ title: "სათაური", body: "ტექსტი", cat: "დიზაინი" });
+  });
+
+  it("closes on a backdrop click but not on a click inside the panel", () => {
+    const onClose = vi.fn();
+    const { container } = render(<NewThread onClose={onClose} onCreate={() => {}} />);
+    fireEvent.click(screen.getByPlaceholderText(t("thread.titlePh")));
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.click(container.firstChild);
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("pre-fills fields and shows edit labels when editing an existing thread", () => {
+    render(<NewThread onClose={() => {}} onCreate={() => {}} initial={{ title: "ძველი სათაური", body: "ძველი ტექსტი", cat: "დიზაინი" }} />);
+    expect(screen.getByDisplayValue("ძველი სათაური")).toBeInTheDocument();
+    expect(screen.getByText(t("thread.edit"))).toBeInTheDocument();
+    expect(screen.getByText(t("action.save"))).toBeInTheDocument();
   });
 });
