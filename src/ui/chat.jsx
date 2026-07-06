@@ -15,9 +15,9 @@ function applyReact(map, msgId, userId, emoji, removed) {
 const lsGet = (k, def) => { try { const v = typeof localStorage !== "undefined" && localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch (e) { return def; } };
 const lsSet = (k, v) => { try { if (typeof localStorage !== "undefined") localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
-export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg, onDeleteMsg, onDeleteConvo, onCreateConvo, onOpenProfile, live, onMenu, groups, onOpenGroup, onlineIds, onMessageUser, onStartCall, peerReadAt, initialReactions, onMarkRead, onReactMsg, mutedConvoIds, onToggleMuteConvo, onPinMessage, onUnpinMessage }) {
+export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg, onDeleteMsg, onDeleteConvo, onCreateConvo, onOpenProfile, live, onMenu, groups, onOpenGroup, onlineIds, onMessageUser, onStartCall, peerReads, initialReactions, onMarkRead, onReactMsg, mutedConvoIds, onToggleMuteConvo, onPinMessage, onUnpinMessage }) {
   const [draft, setDraft] = useState(""); const [typing, setTyping] = useState(false);
-  const [peerSeenTs, setPeerSeenTs] = useState(null);
+  const [peerSeenMap, setPeerSeenMap] = useState({});
   const [reactions, setReactions] = useState({});
   const [replyTo, setReplyTo] = useState(null); const [editing, setEditing] = useState(null); const [msgMenu, setMsgMenu] = useState(null); const [convMenu, setConvMenu] = useState(false); const [confirmDel, setConfirmDel] = useState(false);
   const lpRef = useRef(null); const inputRef = useRef(null); const lpFiredRef = useRef(false);
@@ -48,7 +48,7 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
     });
     ch.on("broadcast", { event: "seen" }, ({ payload }) => {
       if (!payload || payload.userId === ME || !payload.ts) return;
-      setPeerSeenTs(prev => (!prev || payload.ts > prev) ? payload.ts : prev);
+      setPeerSeenMap(prev => (!prev[payload.userId] || payload.ts > prev[payload.userId]) ? { ...prev, [payload.userId]: payload.ts } : prev);
     });
     ch.on("broadcast", { event: "react" }, ({ payload }) => {
       if (!payload || payload.userId === ME || !payload.messageId) return;
@@ -58,7 +58,11 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
     typingChanRef.current = ch;
     return () => { try { ch.unsubscribe(); } catch (e) {} typingChanRef.current = null; clearTimeout(typingTORef.current); };
   }, [openId, live]);
-  useEffect(() => { setPeerSeenTs(peerReadAt || null); }, [peerReadAt, openId]);
+  useEffect(() => {
+    const seed = {};
+    (peerReads || []).forEach(r => { if (r.last_read_at) seed[r.user_id] = r.last_read_at; });
+    setPeerSeenMap(seed);
+  }, [peerReads, openId]);
   useEffect(() => { setReactions(initialReactions || {}); }, [initialReactions, openId]);
   const toggleReact = (m, emoji) => {
     setMsgMenu(null);
@@ -74,6 +78,7 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
   const mediaRec = useRef(null); const chunks = useRef([]); const recStart = useRef(0);
   const [progress, setProgress] = useState(null);
   const [locBusy, setLocBusy] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState(null);
   const uploading = progress != null || locBusy;
   const cv = convos.find(c => c.id === openId);
   const bottom = () => requestAnimationFrame(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; });
@@ -124,7 +129,17 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
   const lpEnd = () => { if (lpRef.current) { clearTimeout(lpRef.current); lpRef.current = null; } };
   const openImg = (url) => { if (lpFiredRef.current) { lpFiredRef.current = false; return; } window.open(url, "_blank"); };
   const sendMedia = (p) => { onSend(cv.id, p); setAttach(null); afterSend(cv.id); };
-  const sendPhoto = async (file) => { if (!file) return; setAttach(null); setProgress(0); try { const url = await storageApi.upload(await compressImage(file), "chat", setProgress); onSend(cv.id, { type: "image", image: url }); } catch (e) {} setProgress(null); };
+  const pickPhoto = (file) => { if (!file) return; setAttach(null); setPhotoPreview({ file, url: URL.createObjectURL(file), caption: "" }); };
+  const cancelPhotoPreview = () => { if (photoPreview) { try { URL.revokeObjectURL(photoPreview.url); } catch (e) {} } setPhotoPreview(null); };
+  const sendPhotoPreview = async () => {
+    if (!photoPreview) return;
+    const { file, caption, url: previewUrl } = photoPreview;
+    setProgress(0);
+    try { const url = await storageApi.upload(await compressImage(file), "chat", setProgress); onSend(cv.id, { type: "image", image: url, caption: caption.trim() || undefined }); } catch (e) {}
+    setProgress(null);
+    try { URL.revokeObjectURL(previewUrl); } catch (e) {}
+    setPhotoPreview(null);
+  };
   const sendDoc = async (file) => { if (!file) return; setAttach(null); setProgress(0); try { const url = await storageApi.upload(file, "chat", setProgress); const kb = Math.round(file.size / 1024); const size = kb > 1024 ? (kb / 1024).toFixed(1) + " MB" : kb + " KB"; onSend(cv.id, { type: "doc", doc: { name: file.name, size, url } }); } catch (e) {} setProgress(null); };
   const sendLoc = () => { setAttach(null); if (!navigator.geolocation) { onSend(cv.id, { type: "location", place: t("chat.locationUnavailable") }); return; } setLocBusy(true); navigator.geolocation.getCurrentPosition((pos) => { const { latitude, longitude } = pos.coords; onSend(cv.id, { type: "location", place: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`, mapUrl: `https://maps.google.com/?q=${latitude},${longitude}` }); setLocBusy(false); }, () => { setLocBusy(false); onSend(cv.id, { type: "location", place: t("chat.locationUnavailable") }); }, { enableHighAccuracy: true, timeout: 8000 }); };
   const startRec = async () => {
@@ -167,7 +182,7 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
     const pinnedMsg = cv.pinnedMessageId ? cv.messages.find(m => m.id === cv.pinnedMessageId) : null;
     const galleryImages = cv.messages.filter(m => m.type === "image");
     const doForwardSend = () => {
-      const payload = { type: forwardMsg.type, text: forwardMsg.text, image: forwardMsg.image, audioUrl: forwardMsg.audioUrl, dur: forwardMsg.dur, doc: forwardMsg.doc, place: forwardMsg.place, mapUrl: forwardMsg.mapUrl };
+      const payload = { type: forwardMsg.type, text: forwardMsg.text, image: forwardMsg.image, caption: forwardMsg.caption, audioUrl: forwardMsg.audioUrl, dur: forwardMsg.dur, doc: forwardMsg.doc, place: forwardMsg.place, mapUrl: forwardMsg.mapUrl };
       forwardSel.forEach(cid2 => onSend(cid2, payload));
       setForwardMsg(null); setForwardSel([]);
     };
@@ -227,7 +242,7 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
             {cv.messages.length === 0 && <div className="flex flex-col items-center justify-center text-center py-12" style={{ color: C.faint }}><div className="rounded-2xl flex items-center justify-center mb-3" style={{ width: 56, height: 56, background: C.accentSoft }}><Send size={24} style={{ color: C.accent }} /></div><div className="text-[14px]">{t("chat.startConvo")}</div></div>}
             {cv.messages.map((m, i) => {
               const mine = m.fromMe; const prev = cv.messages[i - 1];
-              const read = mine && peerSeenTs && m._ts && new Date(m._ts) <= new Date(peerSeenTs);
+              const read = mine && m._ts && members.length > 0 && members.every(uid => peerSeenMap[uid] && new Date(peerSeenMap[uid]) >= new Date(m._ts));
               const rx = reactions[m.id];
               const rxList = rx ? Object.entries(Object.values(rx).reduce((a, e) => { a[e] = (a[e] || 0) + 1; return a; }, {})) : [];
               const showSender = group && !mine && m.from && (!prev || prev.from !== m.from || prev.fromMe);
@@ -243,7 +258,11 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
                     {showSender && <span className="text-[11px] font-bold mb-0.5 px-1" style={{ color: GRADS[hashIdx(m.from, GRADS.length)][0] }}>{USERS[m.from].name.split(" ")[0]}</span>}
                     {m.replyTo && (() => { const tgt = cv.messages.find(x => x.id === m.replyTo); if (!tgt) return null; const who = tgt.fromMe ? t("chat.you") : (USERS[tgt.from] ? USERS[tgt.from].name.split(" ")[0] : t("word.user")); const prev = tgt.type === "text" ? (tgt.text || "") : tgt.type === "image" ? t("msg.photo") : tgt.type === "voice" ? t("msg.voice") : tgt.type === "doc" ? t("chat.docWord") : tgt.type === "location" ? t("msg.location") : t("word.message"); return <div className="px-2.5 py-1 mb-1 rounded-lg" style={{ background: mine ? "rgba(255,255,255,.16)" : C.surfaceMuted, borderLeft: `3px solid ${mine ? "rgba(255,255,255,.65)" : C.accent}`, maxWidth: 230 }}><div className="text-[11px] font-bold truncate" style={{ color: mine ? "rgba(255,255,255,.92)" : C.accent }}>{who}</div><div className="text-[12px] truncate" style={{ color: mine ? "rgba(255,255,255,.8)" : C.muted }}>{prev}</div></div>; })()}
                     {m.type === "image" ? (
-                      <div className="relative" onClick={() => openImg(m.image)} style={{ cursor: "pointer" }}><Pic src={m.image} grad={GRADS[hashIdx(m.id, GRADS.length)]} round={16} style={{ width: 210, aspectRatio: "1" }} /><Mono className="block text-right mt-0.5" style={{ fontSize: 10, color: C.faint }}>{m.time}</Mono></div>
+                      <div style={{ width: 210 }}>
+                        <div className="relative" onClick={() => openImg(m.image)} style={{ cursor: "pointer" }}><Pic src={m.image} grad={GRADS[hashIdx(m.id, GRADS.length)]} round={16} style={{ width: 210, aspectRatio: "1" }} /></div>
+                        {m.caption && <div className="px-1 mt-1 text-[14px]" style={{ color: C.ink, lineHeight: 1.35 }}>{m.caption}</div>}
+                        <Mono className="block text-right mt-0.5" style={{ fontSize: 10, color: C.faint }}>{m.time}</Mono>
+                      </div>
                     ) : m.type === "location" ? (
                       <button onClick={() => m.mapUrl && window.open(m.mapUrl, "_blank")} className="p-2 active:scale-[.98] text-left" style={{ background: C.surface, border: `1px solid ${C.line}`, borderRadius: 16, width: 224 }}><MiniMap h={110} /><div className="flex items-center justify-between mt-1.5"><div className="flex items-center gap-1.5 text-[13px]" style={{ color: C.ink2 }}><MapPin size={14} style={{ color: C.accent }} /> {m.place}</div><Mono style={{ fontSize: 10, color: C.faint }}>{m.time}</Mono></div></button>
                     ) : (
@@ -266,7 +285,7 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
           {!atBottom && <button onClick={() => { bottom(); setAtBottom(true); }} className="absolute right-4 z-10 rounded-full flex items-center justify-center active:scale-90" style={{ bottom: 16, width: 40, height: 40, background: C.surface, boxShadow: SH.card, color: C.accent, border: `1px solid ${C.line}` }} aria-label={t("chat.scrollToBottom")}><ChevronDown size={20} /></button>}
           </div>
 
-          <input ref={photoInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const f = e.target.files && e.target.files[0]; if (f) sendPhoto(f); e.target.value = ""; }} />
+          <input ref={photoInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const f = e.target.files && e.target.files[0]; if (f) pickPhoto(f); e.target.value = ""; }} />
           <input ref={docInputRef} type="file" style={{ display: "none" }} onChange={e => { const f = e.target.files && e.target.files[0]; if (f) sendDoc(f); e.target.value = ""; }} />
           {attach === "menu" && !recording && (
             <div style={{ background: C.surface, borderTop: `1px solid ${C.line}` }}>
@@ -377,6 +396,20 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
               <div className="px-4 pt-3 shrink-0">
                 <button onClick={doForwardSend} disabled={!forwardSel.length} className="w-full py-3 rounded-2xl font-bold text-white active:scale-[.98]" style={{ backgroundImage: GBRAND, opacity: forwardSel.length ? 1 : 0.4 }}>{t("chat.sendForward")}{forwardSel.length ? ` (${forwardSel.length})` : ""}</button>
               </div>
+            </div>
+          </div>
+        )}
+        {photoPreview && (
+          <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "rgba(0,0,0,.92)" }}>
+            <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}>
+              <button onClick={cancelPhotoPreview} disabled={progress != null} className="active:scale-90" style={{ color: "#fff" }}><X size={24} /></button>
+            </div>
+            <div className="flex-1 flex items-center justify-center p-4 min-h-0">
+              <img src={photoPreview.url} alt="" className="max-w-full max-h-full object-contain" style={{ borderRadius: 16 }} />
+            </div>
+            <div className="flex items-center gap-2 px-3 py-3 shrink-0" style={{ background: "rgba(0,0,0,.5)", paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
+              <input autoFocus value={photoPreview.caption} onChange={e => setPhotoPreview(p => ({ ...p, caption: e.target.value }))} placeholder={t("chat.captionPh")} className="flex-1 px-4 py-2.5 rounded-full text-[15px] outline-none" style={{ background: "rgba(255,255,255,.15)", color: "#fff" }} />
+              <button onClick={sendPhotoPreview} disabled={progress != null} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 44, height: 44, backgroundImage: GBRAND, color: "#fff" }}>{progress != null ? <Mono style={{ fontSize: 11, color: "#fff" }}>{progress}%</Mono> : <Send size={19} />}</button>
             </div>
           </div>
         )}

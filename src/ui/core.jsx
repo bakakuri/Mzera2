@@ -576,7 +576,7 @@ export function mapDbMsg(row) {
   const mine = row.sender_id === ME;
   const m = { id: row.id, fromMe: mine, time: msgClock(row.created_at), type: row.type, _ts: row.created_at, replyTo: row.reply_to || null, edited: !!row.edited };
   if (!mine) m.from = row.sender_id;
-  if (row.type === "image") m.image = row.media_url;
+  if (row.type === "image") { m.image = row.media_url; if (row.text) m.caption = row.text; }
   else if (row.type === "voice") { m.dur = row.voice_dur; m.audioUrl = row.media_url || null; }
   else if (row.type === "doc") m.doc = { name: row.doc_name, size: row.doc_size, url: row.media_url || null };
   else if (row.type === "location") { m.place = row.place; m.mapUrl = row.media_url || null; }
@@ -586,7 +586,7 @@ export function mapDbMsg(row) {
 
 export function toDbMsg(p) {
   const o = { type: p.type };
-  if (p.type === "image") o.media_url = p.image;
+  if (p.type === "image") { o.media_url = p.image; if (p.caption) o.text = p.caption; }
   else if (p.type === "voice") { o.voice_dur = p.dur; if (p.audioUrl) o.media_url = p.audioUrl; }
   else if (p.type === "doc") { o.doc_name = p.doc.name; o.doc_size = p.doc.size; if (p.doc.url) o.media_url = p.doc.url; }
   else if (p.type === "location") { o.place = p.place; if (p.mapUrl) o.media_url = p.mapUrl; }

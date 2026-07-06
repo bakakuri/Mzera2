@@ -7,7 +7,7 @@ const lsSet = (k, v) => { try { if (typeof localStorage !== "undefined") localSt
 export function useChat({ live, session, flash, dbErr, setDbError, setTab, onIncoming }) {
   const [convos, setConvos] = useState([]);
   const [openConvoId, setOpenConvoId] = useState(null);
-  const [peerReadAt, setPeerReadAt] = useState(null);
+  const [peerReads, setPeerReads] = useState([]);
   const [chatReactions, setChatReactions] = useState({});
   const [mutedConvoIds, setMutedConvoIds] = useState(() => lsGet("mz_muted_convos", []));
   const openRef = useRef(openConvoId);
@@ -37,9 +37,9 @@ export function useChat({ live, session, flash, dbErr, setDbError, setTab, onInc
   useEffect(() => { openRef.current = openConvoId; }, [openConvoId]);
   useEffect(() => { if (openConvoId) setConvos(cs => cs.map(c => c.id === openConvoId ? { ...c, unread: 0 } : c)); }, [openConvoId]);
   useEffect(() => {
-    if (!openConvoId || !hasSupabase) { setPeerReadAt(null); setChatReactions({}); return; }
+    if (!openConvoId || !hasSupabase) { setPeerReads([]); setChatReactions({}); return; }
     let cancelled = false;
-    chatApi.peerRead(openConvoId).then(ts => { if (!cancelled) setPeerReadAt(ts); }).catch(() => {});
+    chatApi.peerRead(openConvoId).then(rows => { if (!cancelled) setPeerReads(rows); }).catch(() => {});
     const conv = convos.find(c => c.id === openConvoId);
     const ids = conv ? conv.messages.map(m => m.id).filter(Boolean) : [];
     if (ids.length) chatApi.reactionsFor(ids).then(rows => { if (cancelled) return; const map = {}; rows.forEach(r => { (map[r.message_id] = map[r.message_id] || {})[r.user_id] = r.emoji; }); setChatReactions(map); }).catch(() => {});
@@ -94,7 +94,7 @@ export function useChat({ live, session, flash, dbErr, setDbError, setTab, onInc
   const unreadMsgs = convos.reduce((a, c) => a + c.unread, 0);
 
   return {
-    convos, setConvos, openConvoId, setOpenConvoId, peerReadAt, chatReactions,
+    convos, setConvos, openConvoId, setOpenConvoId, peerReads, chatReactions,
     callRef, startCall, loadConvos, onMarkRead, onReactMsg,
     onSendMsg, onEditMsg, onDeleteMsg, onDeleteConvo, onReply, onCreateConvo, onMessageUser,
     onPinMessage, onUnpinMessage,

@@ -585,13 +585,14 @@ export const chat = {
     const { error } = await sb.from("conversation_members").update({ last_read_at: new Date().toISOString() }).eq("conversation_id", conversationId).eq("user_id", uid);
     if (error) throw error;
   },
+  // per-member last-read timestamps (not just the max) so group chats can
+  // require *everyone* to have read a message before showing it as read —
+  // a single max would show read-by-all as soon as just one member reads it.
   peerRead: async (conversationId) => {
     const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;
-    const { data, error } = await sb.from("conversation_members").select("last_read_at").eq("conversation_id", conversationId).neq("user_id", uid);
+    const { data, error } = await sb.from("conversation_members").select("user_id, last_read_at").eq("conversation_id", conversationId).neq("user_id", uid);
     if (error) throw error;
-    let max = null;
-    (data || []).forEach(r => { if (r.last_read_at && (!max || r.last_read_at > max)) max = r.last_read_at; });
-    return max;
+    return data || [];
   },
   react: async (messageId, emoji) => {
     const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;

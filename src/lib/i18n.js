@@ -583,6 +583,7 @@ const DICT = {
   "chat.viewMedia": { ka: "მედია", en: "Media", ru: "Медиа" },
   "chat.noMediaYet": { ka: "მედია ჯერ არ არის", en: "No media yet", ru: "Пока нет медиа" },
   "chat.searchInChat": { ka: "ძებნა საუბარში", en: "Search in chat", ru: "Поиск в переписке" },
+  "chat.captionPh": { ka: "დაწერე წარწერა...", en: "Add a caption...", ru: "Добавь подпись..." },
   "chat.startConvo": { ka: "დაიწყე საუბარი 👋", en: "Start a conversation 👋", ru: "Начни разговор 👋" },
   "chat.you": { ka: "შენ", en: "You", ru: "Ты" },
   "word.user": { ka: "მომხმარებელი", en: "User", ru: "Пользователь" },
