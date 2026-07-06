@@ -1,19 +1,38 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { getUser, refreshSession, from } = vi.hoisted(() => ({
+const { getUser, refreshSession, from, channel } = vi.hoisted(() => ({
   getUser: vi.fn(),
   refreshSession: vi.fn(),
   from: vi.fn(),
+  channel: vi.fn(),
 }));
 
 vi.mock("./supabase", () => ({
-  supabase: { auth: { getUser, refreshSession }, from },
+  supabase: { auth: { getUser, refreshSession }, from, channel },
   hasSupabase: true,
   supabaseUrl: "https://x.supabase.co",
   supabaseAnonKey: "a".repeat(30),
 }));
 
-import { chat as chatApi, films as filmsApi } from "./api";
+import { chat as chatApi, films as filmsApi, follows as followsApi } from "./api";
+
+function channelBuilder() {
+  const handlers = [];
+  const builder = {
+    on: (event, config, cb) => { handlers.push({ event, config, cb }); return builder; },
+    subscribe: () => builder,
+  };
+  builder.__handlers = handlers;
+  return builder;
+}
+
+function followsQueryBuilder({ existing = null, deleteResult = {}, insertResult = {} } = {}) {
+  return {
+    select: () => ({ eq: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: existing }) }) }) }),
+    delete: () => ({ eq: () => ({ eq: () => Promise.resolve(deleteResult) }) }),
+    insert: () => Promise.resolve(insertResult),
+  };
+}
 
 function insertChain(result) {
   return { insert: () => ({ select: () => ({ single: () => Promise.resolve(result) }) }) };
@@ -115,5 +134,42 @@ describe("films.page (filter/cursor building — representative of the app's pag
     const builder = queryBuilder({ data: null, error: { message: "boom" } });
     from.mockReturnValueOnce(builder);
     await expect(filmsApi.page(null, {}, 12)).rejects.toMatchObject({ message: "boom" });
+  });
+});
+
+describe("chat.subscribe", () => {
+  it("forwards message table changes to onChange as-is", () => {
+    const builder = channelBuilder();
+    channel.mockReturnValue(builder);
+    const onChange = vi.fn();
+    chatApi.subscribe("c1", onChange);
+    const msgHandler = builder.__handlers.find((h) => h.config.table === "messages");
+    expect(msgHandler.config.filter).toBe("conversation_id=eq.c1");
+    msgHandler.cb({ eventType: "INSERT", new: { id: "m1" }, old: null });
+    expect(onChange).toHaveBeenCalledWith("INSERT", { id: "m1" }, null);
+  });
+
+  it("relabels conversation UPDATEs as the synthetic CONV_UPDATE event", () => {
+    const builder = channelBuilder();
+    channel.mockReturnValue(builder);
+    const onChange = vi.fn();
+    chatApi.subscribe("c1", onChange);
+    const convHandler = builder.__handlers.find((h) => h.config.table === "conversations");
+    expect(convHandler.config.event).toBe("UPDATE");
+    expect(convHandler.config.filter).toBe("id=eq.c1");
+    convHandler.cb({ eventType: "UPDATE", new: { pinned_message_id: "m9" }, old: {} });
+    expect(onChange).toHaveBeenCalledWith("CONV_UPDATE", { pinned_message_id: "m9" }, {});
+  });
+});
+
+describe("follows.toggle", () => {
+  it("inserts a new follow and returns true when not already following", async () => {
+    from.mockReturnValue(followsQueryBuilder({ existing: null }));
+    await expect(followsApi.toggle("target-1")).resolves.toBe(true);
+  });
+
+  it("deletes the existing follow and returns false when already following", async () => {
+    from.mockReturnValue(followsQueryBuilder({ existing: { follower_id: "u1" } }));
+    await expect(followsApi.toggle("target-1")).resolves.toBe(false);
   });
 });
