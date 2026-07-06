@@ -3,6 +3,7 @@ import {
   mapDbMsg, toDbMsg, setME,
   fmtN, kfmt, timeAgo, catColor, hashIdx, levelInfo, waveOf, msgPreview,
   convMembers, convIsGroup, computeTrends, C,
+  mapDbPost, mapDbStories, resolveImg, tx,
 } from "./core";
 
 describe("mapDbMsg / toDbMsg", () => {
@@ -51,6 +52,29 @@ describe("mapDbMsg / toDbMsg", () => {
     const m = mapDbMsg(row);
     expect(m.dur).toBe(12);
     expect(m.audioUrl).toBe("https://x/a.ogg");
+  });
+
+  it("maps a doc message's name/size/url", () => {
+    const row = { id: "6", sender_id: "them-2", created_at: "2026-01-01T10:00:00Z", type: "doc", doc_name: "report.pdf", doc_size: 4096, media_url: "https://x/report.pdf" };
+    const m = mapDbMsg(row);
+    expect(m.doc).toEqual({ name: "report.pdf", size: 4096, url: "https://x/report.pdf" });
+  });
+
+  it("maps a location message's place and map url", () => {
+    const row = { id: "7", sender_id: "them-2", created_at: "2026-01-01T10:00:00Z", type: "location", place: "თბილისი", media_url: "https://maps/x" };
+    const m = mapDbMsg(row);
+    expect(m.place).toBe("თბილისი");
+    expect(m.mapUrl).toBe("https://maps/x");
+  });
+
+  it("round-trips a doc message through toDbMsg", () => {
+    const payload = toDbMsg({ type: "doc", doc: { name: "report.pdf", size: 4096, url: "https://x/report.pdf" } });
+    expect(payload).toEqual({ type: "doc", doc_name: "report.pdf", doc_size: 4096, media_url: "https://x/report.pdf" });
+  });
+
+  it("round-trips a location message through toDbMsg", () => {
+    const payload = toDbMsg({ type: "location", place: "თბილისი", mapUrl: "https://maps/x" });
+    expect(payload).toEqual({ type: "location", place: "თბილისი", media_url: "https://maps/x" });
   });
 });
 
@@ -195,5 +219,109 @@ describe("computeTrends", () => {
 
   it("returns an empty list when there are no hashtags", () => {
     expect(computeTrends([{ text: "no tags here" }])).toEqual([]);
+  });
+});
+
+describe("mapDbPost poll handling", () => {
+  beforeEach(() => setME("me-1"));
+
+  it("returns no poll when has_poll is false", () => {
+    const row = { id: "1", author_id: "u1", created_at: "2026-01-01T10:00:00Z", has_poll: false };
+    expect(mapDbPost(row).poll).toBeNull();
+  });
+
+  it("sorts options by idx and counts votes per option", () => {
+    const row = {
+      id: "2", author_id: "u1", created_at: "2026-01-01T10:00:00Z", has_poll: true,
+      poll_options: [{ idx: 1, text: "B" }, { idx: 0, text: "A" }],
+      poll_votes: [
+        { option_idx: 0, user_id: "me-1" },
+        { option_idx: 0, user_id: "u2" },
+        { option_idx: 1, user_id: "u3" },
+      ],
+    };
+    const poll = mapDbPost(row).poll;
+    expect(poll.options).toEqual([{ text: "A", votes: 2 }, { text: "B", votes: 1 }]);
+  });
+
+  it("marks which option the current user voted for, or null if none", () => {
+    const base = { id: "3", author_id: "u1", created_at: "2026-01-01T10:00:00Z", has_poll: true, poll_options: [{ idx: 0, text: "A" }, { idx: 1, text: "B" }] };
+    const voted = mapDbPost({ ...base, poll_votes: [{ option_idx: 1, user_id: "me-1" }] }).poll;
+    expect(voted.voted).toBe(1);
+    const notVoted = mapDbPost({ ...base, poll_votes: [{ option_idx: 1, user_id: "u2" }] }).poll;
+    expect(notVoted.voted).toBeNull();
+  });
+});
+
+describe("mapDbPost image fallback", () => {
+  it("falls back to the images array when image_url is absent", () => {
+    const row = { id: "4", author_id: "u1", created_at: "2026-01-01T10:00:00Z", images: ["https://x/a.jpg", "https://x/b.jpg"] };
+    const post = mapDbPost(row);
+    expect(post.image).toBe("https://x/a.jpg");
+    expect(post.images).toEqual(["https://x/a.jpg", "https://x/b.jpg"]);
+  });
+
+  it("wraps a single image_url into the images array when no images array is given", () => {
+    const row = { id: "5", author_id: "u1", created_at: "2026-01-01T10:00:00Z", image_url: "https://x/a.jpg" };
+    const post = mapDbPost(row);
+    expect(post.images).toEqual(["https://x/a.jpg"]);
+  });
+});
+
+describe("mapDbStories", () => {
+  it("groups stories by author", () => {
+    const rows = [
+      { id: "s1", author_id: "u1", image_url: "https://x/1.jpg" },
+      { id: "s2", author_id: "u1", image_url: "https://x/2.jpg" },
+      { id: "s3", author_id: "u2", image_url: "https://x/3.jpg" },
+    ];
+    const grouped = mapDbStories(rows);
+    expect(grouped).toHaveLength(2);
+    const u1 = grouped.find((g) => g.authorId === "u1");
+    expect(u1.items).toHaveLength(2);
+    expect(u1.id).toBe("su1");
+  });
+
+  it("marks a group as closeFriends if any of its stories is", () => {
+    const rows = [
+      { id: "s1", author_id: "u1", image_url: "https://x/1.jpg", close_friends: false },
+      { id: "s2", author_id: "u1", image_url: "https://x/2.jpg", close_friends: true },
+    ];
+    expect(mapDbStories(rows)[0].closeFriends).toBe(true);
+  });
+});
+
+describe("resolveImg", () => {
+  it("returns null for falsy input", () => {
+    expect(resolveImg(null)).toBeNull();
+    expect(resolveImg("")).toBeNull();
+  });
+
+  it("passes through a real URL unchanged", () => {
+    expect(resolveImg("https://example.com/a.jpg")).toBe("https://example.com/a.jpg");
+  });
+
+  it("generates a deterministic placeholder image for a non-URL seed", () => {
+    expect(resolveImg("user-42")).toBe("https://picsum.photos/seed/user-42/640/640");
+  });
+});
+
+describe("tx", () => {
+  it("leaves non-Supabase-storage URLs unchanged", () => {
+    expect(tx("https://picsum.photos/seed/x/640/640", 100)).toBe("https://picsum.photos/seed/x/640/640");
+  });
+
+  it("leaves falsy input unchanged", () => {
+    expect(tx(null, 100)).toBeNull();
+  });
+
+  it("rewrites a Supabase storage URL to the image-render endpoint with size/quality params", () => {
+    const url = "https://proj.supabase.co/storage/v1/object/public/avatars/abc.jpg";
+    expect(tx(url, 100)).toBe("https://proj.supabase.co/storage/v1/render/image/public/avatars/abc.jpg?width=100&quality=62&resize=cover");
+  });
+
+  it("appends params with & when the URL already has a query string", () => {
+    const url = "https://proj.supabase.co/storage/v1/object/public/avatars/abc.jpg?token=xyz";
+    expect(tx(url, 200, 80)).toBe("https://proj.supabase.co/storage/v1/render/image/public/avatars/abc.jpg?token=xyz&width=200&quality=80&resize=cover");
   });
 });
