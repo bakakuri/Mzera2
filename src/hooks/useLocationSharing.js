@@ -1,17 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { locationsApi, mergeProfile, USERS, ME, pushNotif, t } from "../ui/core";
+import { haversineKm } from "../lib/geo";
 
 export const LOCATION_REFRESH_MS = 30 * 60 * 1000; // re-share every 30 minutes
 export const LOCATION_STALE_MS = 60 * 60 * 1000; // hide a pin once it's this old
 const NEARBY_KM = 0.5; // notify once a mutual follower is within this radius
 const NEARBY_CLEAR_KM = 0.7; // hysteresis: re-arm the notification once they leave this radius
-
-function haversineKm(a, b) {
-  const R = 6371, toRad = (d) => (d * Math.PI) / 180;
-  const dLat = toRad(b[0] - a[0]), dLng = toRad(b[1] - a[1]);
-  const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a[0])) * Math.cos(toRad(b[0])) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(s));
-}
 
 // App-level (not screen-level) so the 30-minute refresh keeps running for as
 // long as the app itself is open, not just while the Map tab is on screen —

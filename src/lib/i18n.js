@@ -30,7 +30,7 @@ export function setLang(l) {
   try { if (typeof localStorage !== "undefined") localStorage.setItem("mz_lang", LANG); } catch (e) {}
 }
 
-const DICT = {
+export const DICT = {
   "nav.home": { ka: "მთავარი", en: "Home", ru: "Главная" },
   "nav.explore": { ka: "აღმოჩენა", en: "Explore", ru: "Обзор" },
   "nav.reels": { ka: "Reels", en: "Reels", ru: "Reels" },
