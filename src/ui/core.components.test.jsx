@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { renderText, Empty, IconBtn, Chips, ThemeToggle, Avatar, FollowBtn, UploadProgress, UploadRing, NewThread, Checkout, mergeProfile, t } from "./core";
+import { renderText, Empty, IconBtn, Chips, ThemeToggle, Avatar, FollowBtn, UploadProgress, UploadRing, NewThread, Checkout, EmojiPanel, GroupPost, NewListing, EMOJIS, setME, mergeProfile, t } from "./core";
 import { Bell } from "lucide-react";
 
 afterEach(cleanup);
@@ -258,5 +258,110 @@ describe("Checkout", () => {
     fireEvent.click(screen.getAllByRole("button")[5]); // confirm -> success screen
     fireEvent.click(screen.getByText(t("checkout.done")));
     expect(onDone).toHaveBeenCalled();
+  });
+});
+
+describe("EmojiPanel", () => {
+  it("renders every emoji and calls onPick with the clicked one", () => {
+    const onPick = vi.fn();
+    render(<EmojiPanel onPick={onPick} />);
+    expect(screen.getAllByRole("button")).toHaveLength(EMOJIS.length);
+    fireEvent.click(screen.getByText(EMOJIS[3]));
+    expect(onPick).toHaveBeenCalledWith(EMOJIS[3]);
+  });
+});
+
+describe("GroupPost", () => {
+  it("toggles a local like and increments the shown count", () => {
+    const p = { id: "p1", authorId: "u1", text: "hi", likes: 3, cc: 0, time: "1h" };
+    render(<GroupPost p={p} onOpenProfile={() => {}} />);
+    fireEvent.click(screen.getByText("3"));
+    expect(screen.getByText("4")).toBeInTheDocument();
+  });
+
+  it("shows an edit/delete menu only for the post's own author", () => {
+    setME("me-1");
+    const theirs = { id: "p2", authorId: "someone-else", text: "hi", likes: 0, cc: 0, time: "1h" };
+    render(<GroupPost p={theirs} onOpenProfile={() => {}} onEdit={() => {}} onDelete={() => {}} />);
+    expect(screen.getAllByRole("button")).toHaveLength(2); // avatar + like, no menu
+    cleanup();
+
+    const mine = { id: "p3", authorId: "me-1", text: "hi", likes: 0, cc: 0, time: "1h" };
+    render(<GroupPost p={mine} onOpenProfile={() => {}} onEdit={() => {}} onDelete={() => {}} />);
+    const buttons = screen.getAllByRole("button");
+    expect(buttons).toHaveLength(3); // avatar + menu + like
+    fireEvent.click(buttons[1]);
+    expect(screen.getByText("რედაქტირება")).toBeInTheDocument();
+    expect(screen.getByText("წაშლა")).toBeInTheDocument();
+  });
+
+  it("edits the post text through the menu, trimming whitespace", () => {
+    setME("me-1");
+    const onEdit = vi.fn();
+    const p = { id: "p4", authorId: "me-1", text: "ძველი", likes: 0, cc: 0, time: "1h" };
+    render(<GroupPost p={p} onOpenProfile={() => {}} onEdit={onEdit} onDelete={() => {}} />);
+    fireEvent.click(screen.getAllByRole("button")[1]); // menu
+    fireEvent.click(screen.getByText("რედაქტირება"));
+    fireEvent.change(screen.getByDisplayValue("ძველი"), { target: { value: "  ახალი  " } });
+    fireEvent.click(screen.getByText("შენახვა"));
+    expect(onEdit).toHaveBeenCalledWith("p4", "ახალი");
+  });
+
+  it("deletes the post through the menu", () => {
+    setME("me-1");
+    const onDelete = vi.fn();
+    const p = { id: "p5", authorId: "me-1", text: "x", likes: 0, cc: 0, time: "1h" };
+    render(<GroupPost p={p} onOpenProfile={() => {}} onEdit={() => {}} onDelete={onDelete} />);
+    fireEvent.click(screen.getAllByRole("button")[1]);
+    fireEvent.click(screen.getByText("წაშლა"));
+    expect(onDelete).toHaveBeenCalledWith("p5");
+  });
+});
+
+describe("NewListing", () => {
+  it("disables submit until both title and price are present", () => {
+    render(<NewListing onClose={() => {}} onCreate={() => {}} onUpload={() => Promise.resolve("")} />);
+    const submit = screen.getByText(t("action.publish"));
+    expect(submit).toBeDisabled();
+    fireEvent.change(screen.getByPlaceholderText(t("listing.whatSelling")), { target: { value: "მაგიდა" } });
+    expect(submit).toBeDisabled(); // price still missing
+    fireEvent.change(screen.getByPlaceholderText(t("listing.price")), { target: { value: "150" } });
+    expect(submit).not.toBeDisabled();
+  });
+
+  it("strips non-digit characters from the price field", () => {
+    render(<NewListing onClose={() => {}} onCreate={() => {}} onUpload={() => Promise.resolve("")} />);
+    const priceInput = screen.getByPlaceholderText(t("listing.price"));
+    fireEvent.change(priceInput, { target: { value: "1a5b0" } });
+    expect(priceInput.value).toBe("150");
+  });
+
+  it("submits a trimmed, numeric payload with the selected category", () => {
+    const onCreate = vi.fn();
+    render(<NewListing onClose={() => {}} onCreate={onCreate} onUpload={() => Promise.resolve("")} />);
+    fireEvent.change(screen.getByPlaceholderText(t("listing.whatSelling")), { target: { value: "  მაგიდა  " } });
+    fireEvent.change(screen.getByPlaceholderText(t("listing.price")), { target: { value: "150" } });
+    fireEvent.change(screen.getByPlaceholderText(t("listing.descPh")), { target: { value: "  კარგი  " } });
+    fireEvent.click(screen.getByText("ავეჯი")); // a MARKET_CATS option
+    fireEvent.click(screen.getByText(t("action.publish")));
+    expect(onCreate).toHaveBeenCalledWith({ title: "მაგიდა", price: 150, desc: "კარგი", cat: "ავეჯი", image: "", video: null });
+  });
+
+  it("uploads a picked image file and includes its resolved URL", async () => {
+    const onUpload = vi.fn().mockResolvedValue("https://x/img.jpg");
+    const { container } = render(<NewListing onClose={() => {}} onCreate={() => {}} onUpload={onUpload} />);
+    const file = new File(["x"], "photo.png", { type: "image/png" });
+    const input = container.querySelector('input[type="file"]');
+    fireEvent.change(input, { target: { files: [file] } });
+    await waitFor(() => expect(onUpload).toHaveBeenCalledWith(file, expect.any(Function)));
+    await waitFor(() => expect(container.querySelector("img")).toHaveAttribute("src", "https://x/img.jpg"));
+  });
+
+  it("pre-fills fields and shows edit labels when editing an existing listing", () => {
+    render(<NewListing onClose={() => {}} onCreate={() => {}} onUpload={() => Promise.resolve("")} initial={{ title: "ძველი", price: 99, desc: "აღწერა", cat: "ავეჯი", image: "https://x/a.jpg" }} />);
+    expect(screen.getByDisplayValue("ძველი")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("99")).toBeInTheDocument();
+    expect(screen.getByText(t("listing.edit"))).toBeInTheDocument();
+    expect(screen.getByText(t("action.save"))).toBeInTheDocument();
   });
 });

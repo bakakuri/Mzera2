@@ -5,6 +5,7 @@ import {
   convMembers, convIsGroup, computeTrends, C,
   mapDbPost, mapDbStories, resolveImg, tx,
   mapDbReel, mapDbThread, mapDbGroup, mapDbEvent,
+  mapDbListing, mapDbReview, mapDbFilm, mapDbSong, mapDbNotif, mapDbReport,
 } from "./core";
 
 describe("mapDbMsg / toDbMsg", () => {
@@ -440,5 +441,71 @@ describe("mapDbEvent", () => {
     expect(ev.day).toBe("—");
     expect(ev.mon).toBe("");
     expect(ev.time).toBe("");
+  });
+});
+
+describe("mapDbListing", () => {
+  it("casts price to a number and falls back category/description/location", () => {
+    const l = mapDbListing({ id: "l1", seller_id: "u1", title: "მაგიდა", price: "150" });
+    expect(l.price).toBe(150);
+    expect(l.cat).toBe("სხვა");
+    expect(l.desc).toBe("");
+    expect(l.location).toBe("თბილისი");
+  });
+
+  it("generates a deterministic placeholder image when none is given", () => {
+    const l = mapDbListing({ id: "l2", seller_id: "u1", title: "x", price: 10 });
+    expect(l.image).toBe("https://picsum.photos/seed/selll2/640/640");
+  });
+});
+
+describe("mapDbReview", () => {
+  it("maps rating/text/time and defaults text to empty", () => {
+    const r = mapDbReview({ id: "r1", author_id: "u1", rating: 5, created_at: new Date().toISOString() });
+    expect(r.rating).toBe(5);
+    expect(r.text).toBe("");
+  });
+});
+
+describe("mapDbFilm", () => {
+  it("falls back genre and generates a poster placeholder when none is given", () => {
+    const f = mapDbFilm({ id: "f1", author_id: "u1", title: "x" });
+    expect(f.genre).toBe("სხვა");
+    expect(f.year).toBeNull();
+    expect(f.poster).toBe("https://picsum.photos/seed/filmf1/480/720");
+  });
+});
+
+describe("mapDbSong", () => {
+  it("falls back artist/genre/plays and generates a cover placeholder", () => {
+    const s = mapDbSong({ id: "s1", author_id: "u1", title: "x", audio_url: "https://x/a.mp3" });
+    expect(s.artist).toBe("");
+    expect(s.genre).toBe("სხვა");
+    expect(s.plays).toBe(0);
+    expect(s.cover).toBe("https://picsum.photos/seed/songs1/480/480");
+  });
+});
+
+describe("mapDbNotif", () => {
+  it("carries through only the ids that are present, leaving the rest undefined", () => {
+    const n = mapDbNotif({ id: "n1", type: "liked", from_id: "u1", created_at: new Date().toISOString(), read: false, post_id: "p1" });
+    expect(n.postId).toBe("p1");
+    expect(n.threadId).toBeUndefined();
+    expect(n.read).toBe(false);
+  });
+
+  it("pulls postImage/postText from an embedded post when present", () => {
+    const n = mapDbNotif({ id: "n2", type: "liked", from_id: "u1", created_at: new Date().toISOString(), post: { image_url: "https://x/a.jpg", text: "hi" } });
+    expect(n.postImage).toBe("https://x/a.jpg");
+    expect(n.postText).toBe("hi");
+  });
+});
+
+describe("mapDbReport", () => {
+  it("maps a report row and defaults an empty reason", () => {
+    const r = mapDbReport({ id: "rp1", type: "post", target_id: "p1", reporter_id: "u1", created_at: new Date().toISOString(), status: "open" });
+    expect(r.reason).toBe("");
+    expect(r.status).toBe("open");
+    expect(r.targetId).toBe("p1");
   });
 });

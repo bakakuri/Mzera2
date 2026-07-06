@@ -1,6 +1,19 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { newGame, allLegalMoves, makeMove } from "./chess";
 import { evaluate, botAcceptsDraw, botMove } from "./chessBot";
+
+function emptyBoard() {
+  return Array.from({ length: 8 }, () => Array(8).fill(null));
+}
+
+function freeRookCaptureState() {
+  const board = emptyBoard();
+  board[7][0] = "wK"; // a1
+  board[0][7] = "bK"; // h8
+  board[4][3] = "wQ"; // d4, can capture the undefended rook on d8
+  board[0][3] = "bR"; // d8
+  return { board, turn: "w", castle: { wK: false, wQ: false, bK: false, bQ: false }, ep: null, captured: { w: [], b: [] }, history: [], status: "playing" };
+}
 
 describe("evaluate", () => {
   it("is exactly balanced in the starting position", () => {
@@ -52,5 +65,43 @@ describe("botMove", () => {
     g = makeMove(g, { r: 6, c: 6 }, { r: 4, c: 6 }); // 2. g4
     g = makeMove(g, { r: 0, c: 3 }, { r: 4, c: 7 }); // 2...Qh4# — white is checkmated
     expect(botMove(g, "w", "hard")).toBeNull();
+  });
+
+  it("defaults to 'normal' difficulty when none is given", () => {
+    const g = newGame();
+    const mv = botMove(g, "w");
+    expect(mv).toBeTruthy();
+    expect(allLegalMoves(g, "w").some((m) => m.from.r === mv.from.r && m.from.c === mv.from.c && m.to.r === mv.to.r && m.to.c === mv.to.c)).toBe(true);
+  });
+
+  it("finds a free capture at 'normal' and 'hard' difficulty", () => {
+    const state = freeRookCaptureState();
+    for (const difficulty of ["normal", "hard"]) {
+      const mv = botMove(state, "w", difficulty);
+      expect(mv.from).toEqual({ r: 4, c: 3 });
+      expect(mv.to).toEqual({ r: 0, c: 3 });
+    }
+  });
+
+  it("at 'easy' difficulty, sometimes plays a uniformly random legal move", () => {
+    const spy = vi.spyOn(Math, "random").mockReturnValue(0.1); // < 0.45 triggers the random branch
+    try {
+      const g = newGame();
+      const mv = botMove(g, "w", "easy");
+      expect(allLegalMoves(g, "w").some((m) => m.from.r === mv.from.r && m.from.c === mv.from.c && m.to.r === mv.to.r && m.to.c === mv.to.c)).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("at 'easy' difficulty, still finds a free capture when the random roll misses", () => {
+    const spy = vi.spyOn(Math, "random").mockReturnValue(0.9); // >= 0.45, skips the random branch
+    try {
+      const mv = botMove(freeRookCaptureState(), "w", "easy");
+      expect(mv.from).toEqual({ r: 4, c: 3 });
+      expect(mv.to).toEqual({ r: 0, c: 3 });
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
