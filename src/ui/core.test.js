@@ -4,6 +4,7 @@ import {
   fmtN, kfmt, timeAgo, catColor, hashIdx, levelInfo, waveOf, msgPreview,
   convMembers, convIsGroup, computeTrends, C,
   mapDbPost, mapDbStories, resolveImg, tx,
+  mapDbReel, mapDbThread, mapDbGroup, mapDbEvent,
 } from "./core";
 
 describe("mapDbMsg / toDbMsg", () => {
@@ -323,5 +324,121 @@ describe("tx", () => {
   it("appends params with & when the URL already has a query string", () => {
     const url = "https://proj.supabase.co/storage/v1/object/public/avatars/abc.jpg?token=xyz";
     expect(tx(url, 200, 80)).toBe("https://proj.supabase.co/storage/v1/render/image/public/avatars/abc.jpg?token=xyz&width=200&quality=80&resize=cover");
+  });
+});
+
+describe("mapDbReel", () => {
+  it("reads like/comment counts from the aggregate rows", () => {
+    const row = { id: "r1", author_id: "u1", reel_likes: [{ count: 5 }], reel_comments: [{ count: 2 }] };
+    const reel = mapDbReel(row);
+    expect(reel.likes).toBe(5);
+    expect(reel.comments).toBe(2);
+  });
+
+  it("defaults counts to 0 when the aggregate arrays are absent", () => {
+    const reel = mapDbReel({ id: "r2", author_id: "u1" });
+    expect(reel.likes).toBe(0);
+    expect(reel.comments).toBe(0);
+  });
+
+  it("derives likedByMe/savedByMe from the given sets", () => {
+    const row = { id: "r3", author_id: "u1" };
+    expect(mapDbReel(row, new Set(["r3"]), new Set()).likedByMe).toBe(true);
+    expect(mapDbReel(row, new Set(["r3"]), new Set()).savedByMe).toBe(false);
+    expect(mapDbReel(row, undefined, undefined).likedByMe).toBe(false);
+  });
+});
+
+describe("mapDbThread", () => {
+  it("sorts replies chronologically regardless of input order", () => {
+    const row = {
+      id: "t1", author_id: "u1", title: "სათაური",
+      thread_replies: [
+        { id: "r2", author_id: "u2", text: "მეორე", created_at: "2026-01-02T10:00:00Z" },
+        { id: "r1", author_id: "u3", text: "პირველი", created_at: "2026-01-01T10:00:00Z" },
+      ],
+    };
+    const thread = mapDbThread(row, "me-1");
+    expect(thread.replies.map((r) => r.id)).toEqual(["r1", "r2"]);
+  });
+
+  it("marks likedByMe true only when uid appears among the thread's votes", () => {
+    const row = { id: "t2", author_id: "u1", title: "x", thread_votes: [{ user_id: "me-1" }, { user_id: "u2" }] };
+    expect(mapDbThread(row, "me-1").likedByMe).toBe(true);
+    expect(mapDbThread(row, "u9").likedByMe).toBe(false);
+  });
+
+  it("counts votes and defaults category/body", () => {
+    const row = { id: "t3", author_id: "u1", title: "x", thread_votes: [{ user_id: "a" }, { user_id: "b" }] };
+    const thread = mapDbThread(row, "me-1");
+    expect(thread.votes).toBe(2);
+    expect(thread.cat).toBe("სხვა");
+    expect(thread.body).toBe("");
+  });
+});
+
+describe("mapDbGroup", () => {
+  const baseMembers = [
+    { user_id: "me-1", status: "approved" },
+    { user_id: "u2", status: "pending" },
+    { user_id: "u3", status: "approved" },
+  ];
+
+  it("reports joined true when the user's membership is approved", () => {
+    const g = mapDbGroup({ id: "g1", name: "x", created_by: "u9", group_members: baseMembers }, "me-1");
+    expect(g.joined).toBe(true);
+    expect(g.pending).toBe(false);
+  });
+
+  it("reports pending true when the user's membership is pending, not approved", () => {
+    const g = mapDbGroup({ id: "g2", name: "x", created_by: "u9", group_members: baseMembers }, "u2");
+    expect(g.joined).toBe(false);
+    expect(g.pending).toBe(true);
+  });
+
+  it("reports joined/pending false for a non-member", () => {
+    const g = mapDbGroup({ id: "g3", name: "x", created_by: "u9", group_members: baseMembers }, "stranger");
+    expect(g.joined).toBe(false);
+    expect(g.pending).toBe(false);
+  });
+
+  it("counts members excluding pending ones, and counts pending separately", () => {
+    const g = mapDbGroup({ id: "g4", name: "x", created_by: "u9", group_members: baseMembers }, "me-1");
+    expect(g.members).toBe(2);
+    expect(g.pendingCount).toBe(1);
+  });
+
+  it("flags owner when created_by matches uid", () => {
+    const g = mapDbGroup({ id: "g5", name: "x", created_by: "me-1", group_members: [] }, "me-1");
+    expect(g.owner).toBe(true);
+    expect(mapDbGroup({ id: "g6", name: "x", created_by: "u9", group_members: [] }, "me-1").owner).toBe(false);
+  });
+});
+
+describe("mapDbEvent", () => {
+  it("resolves the current user's rsvp status, or null if they haven't responded", () => {
+    const row = { id: "e1", title: "x", event_rsvps: [{ user_id: "me-1", status: "going" }, { user_id: "u2", status: "maybe" }] };
+    expect(mapDbEvent(row, "me-1").rsvp).toBe("going");
+    expect(mapDbEvent(row, "u2").rsvp).toBe("maybe");
+    expect(mapDbEvent(row, "stranger").rsvp).toBeNull();
+  });
+
+  it("counts only the 'going' rsvps", () => {
+    const row = { id: "e2", title: "x", event_rsvps: [{ user_id: "a", status: "going" }, { user_id: "b", status: "going" }, { user_id: "c", status: "maybe" }] };
+    expect(mapDbEvent(row, "a").going).toBe(2);
+  });
+
+  it("formats day/month/time from starts_at, in Georgian", () => {
+    const row = { id: "e3", title: "x", starts_at: "2026-03-15T12:00:00Z" };
+    const ev = mapDbEvent(row, "me-1");
+    expect(ev.day).toBe("15");
+    expect(ev.mon).toBe("მარ");
+  });
+
+  it("falls back to placeholder day/month/time when starts_at is missing", () => {
+    const ev = mapDbEvent({ id: "e4", title: "x" }, "me-1");
+    expect(ev.day).toBe("—");
+    expect(ev.mon).toBe("");
+    expect(ev.time).toBe("");
   });
 });
