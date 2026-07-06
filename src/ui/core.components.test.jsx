@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { renderText, Empty, IconBtn, Chips, ThemeToggle, Avatar, FollowBtn, UploadProgress, UploadRing, NewThread, mergeProfile, t } from "./core";
+import { renderText, Empty, IconBtn, Chips, ThemeToggle, Avatar, FollowBtn, UploadProgress, UploadRing, NewThread, Checkout, mergeProfile, t } from "./core";
 import { Bell } from "lucide-react";
 
 afterEach(cleanup);
@@ -218,5 +218,45 @@ describe("NewThread", () => {
     expect(screen.getByDisplayValue("ძველი სათაური")).toBeInTheDocument();
     expect(screen.getByText(t("thread.edit"))).toBeInTheDocument();
     expect(screen.getByText(t("action.save"))).toBeInTheDocument();
+  });
+});
+
+describe("Checkout", () => {
+  const item = { price: 100, image: "https://x/a.jpg", title: "მაგიდა", location: "თბილისი" };
+
+  it("defaults to shipping (a 5₾ fee) and totals price+fee", () => {
+    render(<Checkout item={item} onClose={() => {}} onDone={() => {}} onPlace={() => {}} />);
+    expect(screen.getByText("5₾")).toBeInTheDocument();
+    expect(screen.getByText("105₾")).toBeInTheDocument();
+  });
+
+  it("switching to pickup drops the fee to 0, hides the address field, and totals just the item price", () => {
+    const onPlace = vi.fn();
+    render(<Checkout item={item} onClose={() => {}} onDone={() => {}} onPlace={onPlace} />);
+    const buttons = screen.getAllByRole("button");
+    expect(screen.getByPlaceholderText(t("checkout.addressPh"))).toBeInTheDocument();
+    fireEvent.click(buttons[2]); // pickup option
+    expect(screen.getByText("0₾")).toBeInTheDocument(); // fee row
+    expect(screen.queryByPlaceholderText(t("checkout.addressPh"))).not.toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button")[5]); // confirm
+    expect(onPlace).toHaveBeenCalledWith({ delivery: "pickup", payment: "card", address: "", total: 100 });
+  });
+
+  it("confirming calls onPlace with the current delivery/payment/total, then shows the success screen", () => {
+    const onPlace = vi.fn();
+    render(<Checkout item={item} onClose={() => {}} onDone={() => {}} onPlace={onPlace} />);
+    const buttons = screen.getAllByRole("button");
+    fireEvent.click(buttons[4]); // cash payment
+    fireEvent.click(buttons[5]); // confirm
+    expect(onPlace).toHaveBeenCalledWith({ delivery: "ship", payment: "cash", address: "", total: 105 });
+    expect(screen.getByText(t("checkout.orderReceived"))).toBeInTheDocument();
+  });
+
+  it("the success screen's done button calls onDone", () => {
+    const onDone = vi.fn();
+    render(<Checkout item={item} onClose={() => {}} onDone={onDone} onPlace={() => {}} />);
+    fireEvent.click(screen.getAllByRole("button")[5]); // confirm -> success screen
+    fireEvent.click(screen.getByText(t("checkout.done")));
+    expect(onDone).toHaveBeenCalled();
   });
 });
