@@ -19,7 +19,7 @@ export function useMarket({ tab, flash, dbErr, setDbError }) {
       setListings(prev => { const seen = new Set(prev.map(l => l.id)); return [...prev, ...mapped.filter(l => !seen.has(l.id))]; });
       setListCursor(mapped[mapped.length - 1].createdAt);
       setListMore(rows.length >= 10);
-    } catch (e) {} finally { setListLoadingMore(false); }
+    } catch (e) { flash && flash(t("toast.listingsLoadMoreFailed")); } finally { setListLoadingMore(false); }
   };
   useEffect(() => {
     const el = listSentinelRef.current;

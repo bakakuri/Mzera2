@@ -23,7 +23,7 @@ export function useMovies({ tab, session, flash, dbErr }) {
       setFilms(prev => { const seen = new Set(prev.map(f => f.id)); return [...prev, ...mapped.filter(f => !seen.has(f.id))]; });
       setFilmCursor(mapped[mapped.length - 1].createdAt);
       setFilmMore(rows.length >= 12);
-    } catch (e) {} finally { setFilmLoadingMore(false); }
+    } catch (e) { flash && flash(t("toast.filmsLoadMoreFailed")); } finally { setFilmLoadingMore(false); }
   };
   useEffect(() => {
     const el = filmSentinelRef.current;

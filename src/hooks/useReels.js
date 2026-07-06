@@ -27,7 +27,7 @@ export function useReels({ tab, flash, dbErr, setDbError, gainXp }) {
       setReels(prev => { const seen = new Set(prev.map(r => r.id)); return [...prev, ...mapped.filter(r => !seen.has(r.id))]; });
       setReelsCursor(mapped[mapped.length - 1].createdAt);
       setReelsMore(rows.length >= 6);
-    } catch (e) {} finally { setReelsLoadingMore(false); }
+    } catch (e) { flash && flash(t("toast.reelsLoadMoreFailed")); } finally { setReelsLoadingMore(false); }
   };
   useEffect(() => {
     const el = reelsSentinelRef.current;

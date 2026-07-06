@@ -612,6 +612,9 @@ const DICT = {
   "toast.adminLoadFailed": { ka: "ადმინის მონაცემები ვერ ჩაიტვირთა — სცადე თავიდან", en: "Admin data failed to load — try again", ru: "Не удалось загрузить данные админки — попробуй снова" },
   "toast.groupPostsLoadFailed": { ka: "ჯგუფის პოსტები ვერ ჩაიტვირთა — სცადე თავიდან", en: "Couldn't load group posts — try again", ru: "Не удалось загрузить посты группы — попробуй снова" },
   "toast.songsLoadMoreFailed": { ka: "მეტი სიმღერა ვერ ჩაიტვირთა — სცადე თავიდან", en: "Couldn't load more songs — try again", ru: "Не удалось загрузить больше песен — попробуй снова" },
+  "toast.reelsLoadMoreFailed": { ka: "მეტი Reels ვერ ჩაიტვირთა — სცადე თავიდან", en: "Couldn't load more Reels — try again", ru: "Не удалось загрузить больше Reels — попробуй снова" },
+  "toast.listingsLoadMoreFailed": { ka: "მეტი განცხადება ვერ ჩაიტვირთა — სცადე თავიდან", en: "Couldn't load more listings — try again", ru: "Не удалось загрузить больше объявлений — попробуй снова" },
+  "toast.filmsLoadMoreFailed": { ka: "მეტი ფილმი ვერ ჩაიტვირთა — სცადე თავიდან", en: "Couldn't load more films — try again", ru: "Не удалось загрузить больше фильмов — попробуй снова" },
   "toast.messageSendFailed": { ka: "შეტყობინება ვერ გაიგზავნა — სცადე თავიდან", en: "Message failed to send — try again", ru: "Не удалось отправить сообщение — попробуй снова" },
 
   "toast.requestSent": { ka: "მოთხოვნა გაიგზავნა — დაელოდე დადასტურებას ⏳", en: "Request sent — waiting for approval ⏳", ru: "Заявка отправлена — жди подтверждения ⏳" },
