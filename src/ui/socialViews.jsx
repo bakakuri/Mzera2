@@ -3,6 +3,7 @@ import {
 } from "./core";
 import { PostCard, Lightbox } from "./feed";
 import { runSelfChecks } from "../lib/selfCheck";
+import { runBackendChecks } from "../lib/selfCheckBackend";
 
 export function Onboarding({ suggested, following, onToggleFollow, onUploadAvatar, onSaveProfile, onFinish }) {
   const me = USERS[ME] || {};
@@ -288,11 +289,36 @@ export function Notifications({ notifs, onOpenProfile, onOpenPost, onOpenForum, 
   );
 }
 
+function CheckList({ results }) {
+  return (
+    <div className="p-4" style={card()}>
+      <div className="flex items-center justify-between mb-3">
+        <span className="font-bold text-[14px]" style={{ color: C.ink }}>შედეგი</span>
+        <Mono className="font-bold" style={{ color: results.every(c => c.pass) ? C.online : C.like }}>{results.filter(c => c.pass).length}/{results.length}</Mono>
+      </div>
+      <div className="space-y-2.5">
+        {results.map((c, i) => (
+          <div key={i} className="flex items-start gap-2.5">
+            {c.pass ? <Check size={16} style={{ color: C.online, marginTop: 2 }} className="shrink-0" /> : <X size={16} style={{ color: C.like, marginTop: 2 }} className="shrink-0" />}
+            <div className="min-w-0 flex-1">
+              <div className="text-[13px] font-semibold" style={{ color: C.ink }}>{c.name}</div>
+              {!c.pass && c.error && <div className="text-[11.5px] mt-0.5" style={{ color: C.like }}>{c.error}</div>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ─────────────────────────  ADMIN  ───────────────────────── */
 
 export function Admin({ reports, posts, allUsers, userCount, postCount, online, stats, dailyTrends, onResolve, onRemovePost, onSetVerified, onSetAdmin, onOpenProfile, onBanUser, onGrantXp, onSetXp, onDeleteUser, onBroadcast, pendingPublic, onReviewPublic, listings, threads, reels, onDeleteListing, onDeleteThread, onDeleteReel, onEditListing, onEditThread, groups, events, films, songs, onEditGroup, onDeleteGroup, onEditEvent, onDeleteEvent, onEditFilm, onDeleteFilm, onEditSong, onDeleteSong, langEnabled, langProgress, onToggleLanguages }) {
   const [seg, setSeg] = useState("reports"); const [q, setQ] = useState(""); const [cseg, setCseg] = useState("listings"); const [confirm, setConfirm] = useState(null); const [bcast, setBcast] = useState(""); const [delUser, setDelUser] = useState(null);
   const [checks, setChecks] = useState(null);
+  const [bChecks, setBChecks] = useState(null);
+  const [bChecking, setBChecking] = useState(false);
+  const runBChecks = () => { setBChecking(true); runBackendChecks().then(setBChecks).finally(() => setBChecking(false)); };
   const open = reports.filter(r => r.status === "open");
   const S = stats || {};
   const statCards = stats ? [{ l: "მომხმარებელი", v: S.users, i: User, c: C.accent }, { l: "პოსტი", v: S.posts, i: ImageIcon, c: C.online }, { l: "Reels", v: S.reels, i: Film, c: C.cyan }, { l: "განცხადება", v: S.listings, i: ShoppingBag, c: C.accent }, { l: "კომენტარი", v: S.comments, i: MessageSquare, c: C.online }, { l: "მესიჯი", v: S.messages, i: Send, c: C.cyan }, { l: "ახალი დღეს", v: S.new_today, i: UserPlus, c: C.online }, { l: "ვერიფ.", v: S.verified, i: ShieldCheck, c: C.accent }, { l: "დაბანილი", v: S.banned, i: X, c: C.like }, { l: "ღია რეპორტი", v: S.open_reports, i: Flag, c: C.like }] : [{ l: "მომხმარებელი", v: userCount || 0, i: User, c: C.accent }, { l: "სულ პოსტი", v: postCount || 0, i: ImageIcon, c: C.online }, { l: "ღია რეპორტი", v: open.length, i: Flag, c: C.like }, { l: "ონლაინ ახლა", v: online || 0, i: Zap, c: C.cyan }];
@@ -368,30 +394,21 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
       {seg === "system" && <div className="px-4 space-y-3">
         <div className="p-4" style={card()}>
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 min-w-0"><Shield size={18} style={{ color: C.accent }} className="shrink-0" /><span className="font-bold text-[15px]" style={{ color: C.ink }}>სისტემის შემოწმება</span></div>
+            <div className="flex items-center gap-2 min-w-0"><Shield size={18} style={{ color: C.accent }} className="shrink-0" /><span className="font-bold text-[15px]" style={{ color: C.ink }}>ლოგიკის შემოწმება (frontend)</span></div>
             <button onClick={() => setChecks(runSelfChecks())} className="px-4 py-1.5 rounded-full text-sm font-bold text-white shrink-0 active:scale-95" style={{ backgroundImage: GBRAND }}>გაშვება</button>
           </div>
           <div className="text-[12.5px] mt-1.5" style={{ color: C.faint }}>ამოწმებს ჭადრაკის ძრავს, ბოტს, i18n ლექსიკონს და მონაცემთა mapper-ებს პირდაპირ ცოცხალ კოდზე — ბრაუზერში, სერვერზე მოთხოვნის გარეშე.</div>
         </div>
-        {checks && (
-          <div className="p-4" style={card()}>
-            <div className="flex items-center justify-between mb-3">
-              <span className="font-bold text-[14px]" style={{ color: C.ink }}>შედეგი</span>
-              <Mono className="font-bold" style={{ color: checks.every(c => c.pass) ? C.online : C.like }}>{checks.filter(c => c.pass).length}/{checks.length}</Mono>
-            </div>
-            <div className="space-y-2.5">
-              {checks.map((c, i) => (
-                <div key={i} className="flex items-start gap-2.5">
-                  {c.pass ? <Check size={16} style={{ color: C.online, marginTop: 2 }} className="shrink-0" /> : <X size={16} style={{ color: C.like, marginTop: 2 }} className="shrink-0" />}
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[13px] font-semibold" style={{ color: C.ink }}>{c.name}</div>
-                    {!c.pass && c.error && <div className="text-[11.5px] mt-0.5" style={{ color: C.like }}>{c.error}</div>}
-                  </div>
-                </div>
-              ))}
-            </div>
+        {checks && <CheckList results={checks} />}
+
+        <div className="p-4" style={card()}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0"><Shield size={18} style={{ color: C.accent }} className="shrink-0" /><span className="font-bold text-[15px]" style={{ color: C.ink }}>ბექენდის შემოწმება (Supabase)</span></div>
+            <button onClick={runBChecks} disabled={bChecking} className="px-4 py-1.5 rounded-full text-sm font-bold text-white shrink-0 active:scale-95" style={{ backgroundImage: GBRAND, opacity: bChecking ? 0.5 : 1 }}>{bChecking ? "მოწმდება…" : "გაშვება"}</button>
           </div>
-        )}
+          <div className="text-[12.5px] mt-1.5" style={{ color: C.faint }}>ამოწმებს რეალურ Supabase-კავშირს, ავტორიზაციის სესიას და აპლიკაციისთვის საჭირო ცხრილების/სვეტების არსებობას — ამჩნევს, თუ მიგრაცია მიწოდებულია მაგრამ ჯერ არ გაშვებულა.</div>
+        </div>
+        {bChecks && <CheckList results={bChecks} />}
       </div>}
 
       {seg === "pending" && <div className="px-4">
