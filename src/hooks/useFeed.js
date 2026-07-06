@@ -134,15 +134,26 @@ export function useFeed({ tab, session, flash, dbErr, setDbError, gainXp }) {
 
   const runSearch = async (term) => {
     const q = (term || "").trim();
-    const empty = { people: [], posts: [], films: [], songs: [], listings: [] };
+    const empty = { people: [], posts: [], films: [], songs: [], listings: [], failedCount: 0 };
     if (!q || !hasSupabase) return empty;
-    let people = [], foundPosts = [], foundFilms = [], foundSongs = [], foundListings = [];
-    try { const profs = await profilesApi.search(q, 20); profs.forEach(p => mergeProfile(p)); people = profs.filter(p => p.id !== ME).map(p => USERS[p.id]).filter(Boolean); } catch (e) {}
-    try { const rows = await postsApi.search(q, 20); foundPosts = rows.map(mapDbPost); } catch (e) {}
-    try { const rows = await filmsApi.page(null, { search: q }, 12); foundFilms = rows.map(mapDbFilm); } catch (e) {}
-    try { const rows = await musicApi.search(q, 12); foundSongs = rows.map(mapDbSong); } catch (e) {}
-    try { const rows = await marketApi.search(q, 12); foundListings = rows.map(mapDbListing); } catch (e) {}
-    return { people, posts: foundPosts, films: foundFilms, songs: foundSongs, listings: foundListings };
+    // run all five searches concurrently instead of one-after-another, and
+    // keep whichever succeed even if others fail — but track the failures so
+    // the UI can tell "no results" apart from "the search itself broke"
+    const [peopleR, postsR, filmsR, songsR, listingsR] = await Promise.allSettled([
+      profilesApi.search(q, 20),
+      postsApi.search(q, 20),
+      filmsApi.page(null, { search: q }, 12),
+      musicApi.search(q, 12),
+      marketApi.search(q, 12),
+    ]);
+    let people = [];
+    if (peopleR.status === "fulfilled") { peopleR.value.forEach(p => mergeProfile(p)); people = peopleR.value.filter(p => p.id !== ME).map(p => USERS[p.id]).filter(Boolean); }
+    const foundPosts = postsR.status === "fulfilled" ? postsR.value.map(mapDbPost) : [];
+    const foundFilms = filmsR.status === "fulfilled" ? filmsR.value.map(mapDbFilm) : [];
+    const foundSongs = songsR.status === "fulfilled" ? songsR.value.map(mapDbSong) : [];
+    const foundListings = listingsR.status === "fulfilled" ? listingsR.value.map(mapDbListing) : [];
+    const failedCount = [peopleR, postsR, filmsR, songsR, listingsR].filter(r => r.status === "rejected").length;
+    return { people, posts: foundPosts, films: foundFilms, songs: foundSongs, listings: foundListings, failedCount };
   };
 
   const onLike = (id) => setPosts(ps => ps.map(p => p.id === id ? { ...p, likedByMe: !p.likedByMe, likes: p.likes + (p.likedByMe ? -1 : 1) } : p));

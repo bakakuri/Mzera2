@@ -82,7 +82,7 @@ function NewSong({ onClose, onCreate, onUpload, onUploadAudio, initial }) {
 
 function getSongSorts() { return [["new", t("sort.newShort")], ["popular", t("sort.popularShort")]]; }
 
-export function MusicPage({ songs, nowPlaying, isPlaying, onPlay, onNew, onEdit, onDelete, onUpload, onUploadAudio }) {
+export function MusicPage({ songs, nowPlaying, isPlaying, onPlay, onNew, onEdit, onDelete, onUpload, onUploadAudio, sentinelRef, hasMore, loadingMore }) {
   const [genre, setGenre] = useState("ყველა");
   const [artistQ, setArtistQ] = useState("");
   const [sort, setSort] = useState("new");
@@ -129,6 +129,7 @@ export function MusicPage({ songs, nowPlaying, isPlaying, onPlay, onNew, onEdit,
       ) : (
         <Empty icon={Music} t={t("songs.notFound")} s={t("songs.addFirstOrFilter")} />
       )}
+      {hasMore && <div ref={sentinelRef} className="flex justify-center items-center" style={{ minHeight: 60, paddingTop: 8 }}><div style={{ width: 24, height: 24, border: `3px solid ${C.lineSoft}`, borderTopColor: C.accent, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} /></div>}
       {creating && <NewSong onClose={() => setCreating(false)} onUpload={onUpload} onUploadAudio={onUploadAudio} onCreate={(d) => { onNew(d); setCreating(false); }} />}
       {editing && <NewSong initial={editing} onClose={() => setEditing(null)} onUpload={onUpload} onUploadAudio={onUploadAudio} onCreate={(d) => { onEdit(editing.id, { title: d.title, artist: d.artist, genre: d.genre, cover_url: d.cover || null, audio_url: d.audio }); setEditing(null); }} />}
       {confirmDel && <ConfirmDialog title={t("song.deleteTitle")} msg={t("song.deleteMsg")} onCancel={() => setConfirmDel(null)} onConfirm={() => { onDelete(confirmDel.id); setConfirmDel(null); }} />}

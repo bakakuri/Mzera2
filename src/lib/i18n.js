@@ -255,7 +255,6 @@ const DICT = {
   "profile.mute": { ka: "გაჩუმება", en: "Mute", ru: "Отключить звук" },
   "profile.removeCloseFriend": { ka: "ახლო მეგობრებიდან ამოშლა", en: "Remove from close friends", ru: "Убрать из близких друзей" },
   "profile.addCloseFriend": { ka: "ახლო მეგობრად დამატება", en: "Add to close friends", ru: "Добавить в близкие друзья" },
-  "profile.reportSent": { ka: "რეპორტი გაიგზავნა 🚩", en: "Report sent 🚩", ru: "Жалоба отправлена 🚩" },
   "profile.unblock": { ka: "განბლოკვა", en: "Unblock", ru: "Разблокировать" },
   "profile.block": { ka: "დაბლოკვა", en: "Block", ru: "Заблокировать" },
   "profile.viewers": { ka: "ვიზიტორები", en: "Visitors", ru: "Посетители" },
@@ -295,6 +294,7 @@ const DICT = {
 
   "leaderboard.yourRank": { ka: "შენი ადგილი", en: "Your rank", ru: "Твоё место" },
   "search.placeholder": { ka: "ძებნა — ხალხი, პოსტი, ფილმი, მუსიკა, განცხადება", en: "Search — people, posts, films, music, listings", ru: "Поиск — люди, посты, фильмы, музыка, объявления" },
+  "search.failed": { ka: "ძებნა ვერ შესრულდა — შეამოწმე ინტერნეტი", en: "Search failed — check your connection", ru: "Поиск не удался — проверь соединение" },
   "music.unknownArtist": { ka: "უცნობი", en: "Unknown", ru: "Неизвестно" },
   "field.name": { ka: "სახელი", en: "Name", ru: "Имя" },
   "field.bio": { ka: "ბიო", en: "Bio", ru: "О себе" },
@@ -345,6 +345,7 @@ const DICT = {
   "post.deleteConfirm": { ka: "წავშალო ეს პოსტი?", en: "Delete this post?", ru: "Удалить этот пост?" },
   "action.delete": { ka: "წაშლა", en: "Delete", ru: "Удалить" },
   "action.cancel": { ka: "გაუქმება", en: "Cancel", ru: "Отмена" },
+  "action.retry": { ka: "თავიდან სცადე", en: "Retry", ru: "Повторить" },
   "post.unfavorite": { ka: "„ჯერ ეს“ მოხსნა", en: "Remove from favorites", ru: "Убрать из избранного" },
   "post.favorite": { ka: "ჯერ ეს მაჩვენე", en: "Show this first", ru: "Показывать первым" },
   "post.hide": { ka: "დამალვა", en: "Hide", ru: "Скрыть" },
@@ -608,6 +609,9 @@ const DICT = {
   "chat.newChat": { ka: "ახალი ჩატი", en: "New chat", ru: "Новый чат" },
   "chat.participants": { ka: "მონაწილე", en: "participants", ru: "участников" },
   "toast.rateLimited": { ka: "ნელა 🐢 ცოტა ხანში სცადე", en: "Slow down 🐢 try again in a bit", ru: "Помедленнее 🐢 попробуй чуть позже" },
+  "toast.adminLoadFailed": { ka: "ადმინის მონაცემები ვერ ჩაიტვირთა — სცადე თავიდან", en: "Admin data failed to load — try again", ru: "Не удалось загрузить данные админки — попробуй снова" },
+  "toast.groupPostsLoadFailed": { ka: "ჯგუფის პოსტები ვერ ჩაიტვირთა — სცადე თავიდან", en: "Couldn't load group posts — try again", ru: "Не удалось загрузить посты группы — попробуй снова" },
+  "toast.songsLoadMoreFailed": { ka: "მეტი სიმღერა ვერ ჩაიტვირთა — სცადე თავიდან", en: "Couldn't load more songs — try again", ru: "Не удалось загрузить больше песен — попробуй снова" },
   "toast.messageSendFailed": { ka: "შეტყობინება ვერ გაიგზავნა — სცადე თავიდან", en: "Message failed to send — try again", ru: "Не удалось отправить сообщение — попробуй снова" },
 
   "toast.requestSent": { ka: "მოთხოვნა გაიგზავნა — დაელოდე დადასტურებას ⏳", en: "Request sent — waiting for approval ⏳", ru: "Заявка отправлена — жди подтверждения ⏳" },

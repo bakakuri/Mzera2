@@ -13,7 +13,8 @@ export function Onboarding({ suggested, following, onToggleFollow, onUploadAvata
   const [avatarErr, setAvatarErr] = useState("");
   const pickAvatar = async (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; setAvatarProgress(0); setAvatarErr(""); try { await onUploadAvatar(f, setAvatarProgress); } catch (err) { setAvatarErr(t("onb.avatarUploadFailedPre") + (err && err.message ? err.message : t("error.unknown"))); } setAvatarProgress(null); e.target.value = ""; };
   const followedCount = suggested.filter(u => following.includes(u.id)).length;
-  const next = () => { if (step === 0) { onSaveProfile(name.trim(), bio.trim()); setStep(1); } else onFinish(); };
+  const nameEmpty = step === 0 && !name.trim();
+  const next = () => { if (step === 0) { if (!name.trim()) return; onSaveProfile(name.trim(), bio.trim()); setStep(1); } else onFinish(); };
   return (
     <div className="fixed inset-0 z-[90] flex flex-col" style={{ background: C.paper }}>
       <div className="flex items-center justify-center gap-2 pt-6 pb-2">{[0, 1].map(i => <span key={i} className="rounded-full transition-all" style={{ width: step === i ? 26 : 8, height: 8, background: step >= i ? C.accent : C.line }} />)}</div>
@@ -41,7 +42,7 @@ export function Onboarding({ suggested, following, onToggleFollow, onUploadAvata
         )}
       </div>
       <div className="px-6 pt-3" style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>
-        <button onClick={next} className="w-full py-3.5 rounded-2xl text-[16px] font-bold text-white active:scale-[.98]" style={{ backgroundImage: GBRAND }}>{step === 0 ? t("onb.continue") : (followedCount > 0 ? t("onb.finish") : t("onb.skip"))}</button>
+        <button onClick={next} disabled={nameEmpty} className="w-full py-3.5 rounded-2xl text-[16px] font-bold text-white active:scale-[.98]" style={{ backgroundImage: GBRAND, opacity: nameEmpty ? 0.5 : 1 }}>{step === 0 ? t("onb.continue") : (followedCount > 0 ? t("onb.finish") : t("onb.skip"))}</button>
         {step === 1 && <button onClick={onFinish} className="w-full py-2.5 mt-1 text-[13.5px] font-semibold" style={{ color: C.faint }}>{t("onb.later")}</button>}
       </div>
     </div>
@@ -140,7 +141,7 @@ export function Profile({ userId, posts, savedPosts, reels, xp, meProfile, follo
               <button onClick={() => { setMenuOpen(false); setQrOpen(true); }} className="w-full flex items-center gap-3 px-5 py-3.5 active:opacity-60" style={{ color: C.ink }}><Send size={20} style={{ color: C.muted }} /><span className="text-[15px] font-medium">{t("profile.qrCode")}</span></button>
               {!blocked && <button onClick={() => { setMenuOpen(false); (muted ? onUnmute : onMute)(userId); }} className="w-full flex items-center gap-3 px-5 py-3.5 active:opacity-60" style={{ color: C.ink }}>{muted ? <Volume2 size={20} style={{ color: C.muted }} /> : <VolumeX size={20} style={{ color: C.muted }} />}<span className="text-[15px] font-medium">{muted ? t("profile.unmute") : t("profile.mute")}</span></button>}
               {!blocked && <button onClick={() => { setMenuOpen(false); onToggleCloseFriend(userId); }} className="w-full flex items-center gap-3 px-5 py-3.5 active:opacity-60" style={{ color: C.ink }}><Star size={20} style={{ color: closeFriend ? "#1f8f4e" : C.muted }} fill={closeFriend ? "#1f8f4e" : "none"} /><span className="text-[15px] font-medium">{closeFriend ? t("profile.removeCloseFriend") : t("profile.addCloseFriend")}</span></button>}
-              <button onClick={() => { setMenuOpen(false); flash(t("profile.reportSent")); }} className="w-full flex items-center gap-3 px-5 py-3.5 active:opacity-60" style={{ color: C.ink }}><Flag size={20} style={{ color: C.muted }} /><span className="text-[15px] font-medium">{t("profile.report")}</span></button>
+              <button onClick={() => { setMenuOpen(false); onReport && onReport("user", userId); }} className="w-full flex items-center gap-3 px-5 py-3.5 active:opacity-60" style={{ color: C.ink }}><Flag size={20} style={{ color: C.muted }} /><span className="text-[15px] font-medium">{t("profile.report")}</span></button>
               <button onClick={() => { setMenuOpen(false); (blocked ? onUnblock : onBlock)(userId); }} className="w-full flex items-center gap-3 px-5 py-3.5 active:opacity-60" style={{ color: "#e05656" }}><Shield size={20} /><span className="text-[15px] font-semibold">{blocked ? t("profile.unblock") : t("profile.block")}</span></button>
             </div>
           </div>
@@ -755,23 +756,28 @@ export function SearchView({ posts, onOpenProfile, onTag, onClose, runSearch, on
   const [q, setQ] = useState(""); const ql = q.trim().toLowerCase();
   const [results, setResults] = useState(EMPTY_SEARCH);
   const [searching, setSearching] = useState(false);
+  const doSearch = async (term, activeRef) => {
+    try { const r = runSearch ? await runSearch(term) : EMPTY_SEARCH; if (!activeRef || activeRef.current) setResults(r || EMPTY_SEARCH); }
+    catch (e) { if (!activeRef || activeRef.current) setResults({ ...EMPTY_SEARCH, failedCount: 1 }); }
+    finally { if (!activeRef || activeRef.current) setSearching(false); }
+  };
   useEffect(() => {
     const term = q.trim();
     if (!term) { setResults(EMPTY_SEARCH); setSearching(false); return; }
     setSearching(true);
-    let active = true;
-    const h = setTimeout(async () => {
-      try { const r = runSearch ? await runSearch(term) : EMPTY_SEARCH; if (active) setResults(r || EMPTY_SEARCH); }
-      catch (e) {} finally { if (active) setSearching(false); }
-    }, 320);
-    return () => { active = false; clearTimeout(h); };
+    const activeRef = { current: true };
+    const h = setTimeout(() => doSearch(term, activeRef), 320);
+    return () => { activeRef.current = false; clearTimeout(h); };
   }, [q]);
+  const retrySearch = () => { const term = q.trim(); if (!term) return; setSearching(true); doSearch(term); };
   const people = results.people || [];
   const foundPosts = results.posts || [];
   const foundFilms = results.films || [];
   const foundSongs = results.songs || [];
   const foundListings = results.listings || [];
-  const noResults = ql && !searching && !people.length && !foundPosts.length && !foundFilms.length && !foundSongs.length && !foundListings.length;
+  const anyResults = people.length || foundPosts.length || foundFilms.length || foundSongs.length || foundListings.length;
+  const searchFailed = ql && !searching && !anyResults && (results.failedCount || 0) > 0;
+  const noResults = ql && !searching && !anyResults && !searchFailed;
   const tags = ql ? computeTrends(posts).filter(t => t.tag.toLowerCase().includes(ql)) : computeTrends(posts);
   const suggested = Object.values(USERS).filter(u => u.id !== ME).slice(0, 4);
   const goTag = (t) => { onTag(t); onClose(); };
@@ -792,6 +798,7 @@ export function SearchView({ posts, onOpenProfile, onTag, onClose, runSearch, on
           {ql && foundFilms.length > 0 && <div className="pt-2"><div className="px-4 py-1.5 text-[12px] font-bold uppercase" style={{ color: C.faint, fontFamily: MONO }}>{t("nav.movies")}</div><div className="px-3 space-y-2">{foundFilms.map(f => <button key={f.id} onClick={() => { onOpenFilm && onOpenFilm(f); }} className="w-full p-3 flex items-center gap-3 text-left" style={card()}><Pic src={f.poster} grad={GRADS[hashIdx(f.id, GRADS.length)]} round={10} style={{ width: 46, height: 46 }} className="shrink-0" /><div className="min-w-0 flex-1"><div className="font-bold text-[14px] truncate" style={{ color: C.ink }}>{f.title}</div><Mono style={{ fontSize: 12, color: C.faint }}>{[f.year, f.genre].filter(Boolean).join(" · ")}</Mono></div><Clapperboard size={18} style={{ color: C.faint }} /></button>)}</div></div>}
           {ql && foundSongs.length > 0 && <div className="pt-2"><div className="px-4 py-1.5 text-[12px] font-bold uppercase" style={{ color: C.faint, fontFamily: MONO }}>{t("nav.music")}</div><div className="px-3 space-y-2">{foundSongs.map(s => <button key={s.id} onClick={() => { onOpenSong && onOpenSong(s); }} className="w-full p-3 flex items-center gap-3 text-left" style={card()}><Pic src={s.cover} grad={GRADS[hashIdx(s.id, GRADS.length)]} round={10} style={{ width: 46, height: 46 }} className="shrink-0" /><div className="min-w-0 flex-1"><div className="font-bold text-[14px] truncate" style={{ color: C.ink }}>{s.title}</div><Mono style={{ fontSize: 12, color: C.faint }} className="truncate block">{s.artist || t("music.unknownArtist")}</Mono></div><Play size={18} style={{ color: C.faint }} /></button>)}</div></div>}
           {ql && foundListings.length > 0 && <div className="pt-2 pb-6"><div className="px-4 py-1.5 text-[12px] font-bold uppercase" style={{ color: C.faint, fontFamily: MONO }}>{t("search.listingsHeader")}</div><div className="px-3 space-y-2">{foundListings.map(l => <button key={l.id} onClick={() => { onOpenListing && onOpenListing(l); }} className="w-full p-3 flex items-center gap-3 text-left" style={card()}><Pic src={l.image} grad={GRADS[hashIdx(l.id, GRADS.length)]} round={10} style={{ width: 46, height: 46 }} className="shrink-0" /><div className="min-w-0 flex-1"><div className="font-bold text-[14px] truncate" style={{ color: C.ink }}>{l.title}</div><div className="text-[12px]" style={{ color: C.accent, fontWeight: 700 }}>{(l.price || 0).toLocaleString()}₾</div></div><ShoppingBag size={18} style={{ color: C.faint }} /></button>)}</div></div>}
+          {searchFailed && <div className="px-4 pt-6 pb-2 text-center"><Mono style={{ fontSize: 13, color: C.like }}>{t("search.failed")}</Mono><button onClick={retrySearch} className="mt-2 px-4 py-1.5 rounded-full text-[13px] font-bold" style={{ background: C.surfaceMuted, color: C.ink2 }}>{t("action.retry")}</button></div>}
           {noResults && <div className="px-4 pt-6 pb-2 text-center"><Mono style={{ fontSize: 13, color: C.faint }}>არაფერი მოიძებნა — სცადე ჰეშთეგი ზემოთ</Mono></div>}
           {ql && <div className="pb-6" />}
         </div>

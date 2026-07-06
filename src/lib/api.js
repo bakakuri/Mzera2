@@ -1245,6 +1245,23 @@ export const quests = {
 };
 
 /* ───────────── ADMIN ───────────── */
+export const reports = {
+  create: async (type, targetId, reason) => {
+    const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;
+    const { error } = await sb.from("reports").insert({ type, target_id: targetId, reason: reason || null, reporter_id: uid });
+    if (error) throw error;
+  },
+  list: async () => {
+    const { data, error } = await need().from("reports").select("*, reporter:profiles!reports_reporter_id_fkey(*)").order("created_at", { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+  resolve: async (id) => {
+    const { error } = await need().from("reports").update({ status: "resolved" }).eq("id", id);
+    if (error) throw error;
+  },
+};
+
 export const admin = {
   setBanned: async (id, v) => { const { error } = await need().from("profiles").update({ banned: v }).eq("id", id); if (error) throw error; },
   grantXp: async (id, amount) => { const { error } = await need().rpc("add_xp", { uid: id, amount }); if (error) throw error; },

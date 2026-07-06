@@ -91,6 +91,13 @@ export function Market({ listings, onSave, onNew, onMessage, onOpenProfile, flas
   useEffect(() => { if (pendingOpen) { setOpenId(pendingOpen); clearPending && clearPending(); } }, [pendingOpen]);
   const [reviews, setReviews] = useState({}); const [writing, setWriting] = useState(false); const [rStars, setRStars] = useState(5); const [rText, setRText] = useState("");
   useEffect(() => { if (!openId) return; const it2 = listings.find(l => l.id === openId); if (!it2 || !getReviews) return; const sid = it2.sellerId; getReviews(sid).then(list => setReviews(rv => ({ ...rv, [sid]: list }))).catch(() => {}); }, [openId]);
+  // batch-fetch every seller's reviews as listings load, so the grid's star
+  // rating isn't blank until that specific listing has been opened once
+  useEffect(() => {
+    if (!getReviews) return;
+    const sellerIds = [...new Set(listings.map(l => l.sellerId))].filter(sid => !(sid in reviews));
+    sellerIds.forEach(sid => { getReviews(sid).then(list => setReviews(rv => ({ ...rv, [sid]: list }))).catch(() => {}); });
+  }, [listings]);
   const it = listings.find(l => l.id === openId);
   const addReview = (sellerId) => { if (!rText.trim()) return; const txt = rText.trim(); setReviews(rv => ({ ...rv, [sellerId]: [{ id: "rv" + Date.now(), authorId: ME, rating: rStars, text: txt, time: t("time.now") }, ...(rv[sellerId] || [])] })); if (onAddReview) onAddReview(sellerId, rStars, txt).catch(() => {}); setRText(""); setRStars(5); setWriting(false); flash && flash(t("review.added")); };
   if (it) {

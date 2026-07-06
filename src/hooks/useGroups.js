@@ -22,7 +22,7 @@ export function useGroups({ session, flash, dbErr, setDbError, gainXp, hydrateMe
   const onCreateGroup = (d) => { gainXp(10); groupsApi.create(d).then(loadGroups).then(() => flash(t("toast.groupCreated"))).catch(dbErr("ჯგუფის შექმნა")); };
   const onCreateEvent = (d) => { gainXp(10); eventsApi.create(d).then(loadEvents).then(() => flash(t("toast.eventCreated"))).catch(dbErr("ივენთის შექმნა")); };
 
-  const mergeGroupPosts = async (gid) => { try { const rows = await postsApi.forGroup(gid); await hydrateMerge(rows.map(mapDbPost)); } catch (e) {} };
+  const mergeGroupPosts = async (gid) => { try { const rows = await postsApi.forGroup(gid); await hydrateMerge(rows.map(mapDbPost)); } catch (e) { flash && flash(t("toast.groupPostsLoadFailed")); } };
   const onGroupPost = (gid, payload) => { gainXp(8); flash(t("toast.publishedInGroup")); postsApi.create({ text: payload.text, images: payload.images || (payload.imageUrl ? [payload.imageUrl] : null), poll: payload.poll, group_id: gid, video_url: payload.video || null, bg: payload.bg || null, feeling: payload.feeling || null, location: payload.location || null, tagged: payload.tagged || null }).then(() => mergeGroupPosts(gid)).catch(dbErr("ჯგუფის პოსტი")); };
   const onApproveMember = (gid, uid2) => { groupsApi.approve(gid, uid2).then(() => { flash(t("toast.memberAdded")); loadGroups(); }).catch(dbErr("დადასტურება")); };
   const onKickMember = (gid, uid2) => { groupsApi.kick(gid, uid2).then(() => { flash(t("toast.memberRemoved")); loadGroups(); }).catch(dbErr("ამოშლა")); };

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { profilesApi, postsApi, adminApi, languagesApi, mapDbPost, mergeProfile, hasSupabase, ME, USERS, t } from "../ui/core";
+import { profilesApi, postsApi, adminApi, reportsApi, languagesApi, mapDbPost, mapDbReport, mergeProfile, hasSupabase, ME, USERS, t } from "../ui/core";
 
 // Moderation queue (reports) + admin-only user/content management.
 export function useAdmin({ tab, session, flash, dbErr, setXp, setPosts }) {
@@ -15,11 +15,19 @@ export function useAdmin({ tab, session, flash, dbErr, setXp, setPosts }) {
 
   useEffect(() => {
     if (tab === "admin" && USERS[ME] && USERS[ME].admin && hasSupabase) {
-      adminApi.stats().then(setAdminStats).catch(() => {});
-      adminApi.dailyTrends().then(setDailyTrends).catch(() => {});
-      adminApi.pendingPublic().then(rows => { rows.forEach(r => { if (r.author) mergeProfile(r.author); }); setPendingPublic(rows.map(mapDbPost)); }).catch(() => {});
+      adminApi.stats().then(setAdminStats).catch(() => flash && flash(t("toast.adminLoadFailed")));
+      adminApi.dailyTrends().then(setDailyTrends).catch(() => flash && flash(t("toast.adminLoadFailed")));
+      adminApi.pendingPublic().then(rows => { rows.forEach(r => { if (r.author) mergeProfile(r.author); }); setPendingPublic(rows.map(mapDbPost)); }).catch(() => flash && flash(t("toast.adminLoadFailed")));
+      // benign: just leaves the languages toggle at its existing default, not worth alarming the admin over
       languagesApi.getSetting("languages_enabled").then(v => { if (v === false) setLangEnabled(false); }).catch(() => {});
-      languagesApi.adminProgress().then(rows => { rows.forEach(r => { if (!USERS[r.user_id]) profilesApi.byIds([r.user_id]).then(ps => ps.forEach(mergeProfile)).catch(() => {}); }); setLangProgress(rows); }).catch(() => {});
+      languagesApi.adminProgress().then(rows => { rows.forEach(r => { if (!USERS[r.user_id]) profilesApi.byIds([r.user_id]).then(ps => ps.forEach(mergeProfile)).catch(() => {}); }); setLangProgress(rows); }).catch(() => flash && flash(t("toast.adminLoadFailed")));
+      reportsApi.list().then(rows => {
+        const mapped = rows.map(mapDbReport);
+        const missing = [...new Set(mapped.filter(r => r.type === "user" && (!USERS[r.targetId] || USERS[r.targetId].id !== r.targetId)).map(r => r.targetId))];
+        const finish = () => setReports(mapped);
+        if (missing.length) profilesApi.byIds(missing).then(ps => { ps.forEach(mergeProfile); finish(); }).catch(finish);
+        else finish();
+      }).catch(() => flash && flash(t("toast.adminLoadFailed")));
     }
   }, [tab]);
 
@@ -32,8 +40,8 @@ export function useAdmin({ tab, session, flash, dbErr, setXp, setPosts }) {
     })();
   }, [session]);
 
-  const onReport = (id) => { setReports(r => [{ id: "r" + Date.now(), type: "post", targetId: id, reason: t("report.userReport"), reporterId: ME, time: t("time.now"), status: "open" }, ...r]); flash(t("toast.sentToModerationQueue")); };
-  const onResolve = (id) => setReports(r => r.map(x => x.id === id ? { ...x, status: "resolved" } : x));
+  const onReport = (type, targetId, reason) => { reportsApi.create(type, targetId, reason || t("report.userReport")).then(() => flash(t("toast.sentToModerationQueue"))).catch(dbErr("რეპორტი")); };
+  const onResolve = (id) => { setReports(r => r.map(x => x.id === id ? { ...x, status: "resolved" } : x)); reportsApi.resolve(id).catch(dbErr("რეპორტის დახურვა")); };
   const onSetVerified = (id, v) => { setAllUsers(us => us.map(u => u.id === id ? { ...u, verified: v } : u)); if (USERS[id].id === id) USERS[id] = { ...USERS[id], verified: v }; profilesApi.update(id, { verified: v }).then(() => flash(v ? t("toast.verified") : t("toast.unverified"))).catch(dbErr("ვერიფიკაცია")); };
   const onSetAdmin = (id, v) => { setAllUsers(us => us.map(u => u.id === id ? { ...u, is_admin: v } : u)); if (USERS[id].id === id) USERS[id] = { ...USERS[id], admin: v }; profilesApi.update(id, { is_admin: v }).then(() => flash(v ? t("toast.adminGranted") : t("toast.adminRevoked"))).catch(dbErr("admin")); };
   const onBanUser = (id, v) => { setAllUsers(us => us.map(u => u.id === id ? { ...u, banned: v } : u)); adminApi.setBanned(id, v).then(() => flash(v ? t("toast.userBanned") : t("toast.userUnbanned"))).catch(dbErr("ბლოკი")); };
