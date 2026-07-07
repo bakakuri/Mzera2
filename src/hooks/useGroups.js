@@ -8,6 +8,9 @@ export function useGroups({ session, flash, dbErr, setDbError, gainXp, hydrateMe
   const [groups, setGroups] = useState([]);
   const [events, setEvents] = useState([]);
   const [pendingGroup, setPendingGroup] = useState(null);
+  // opening a group from search may reference one not yet in the loaded
+  // list — splice it in so the detail view (matched by id) can find it
+  const ensureGroupLoaded = (group) => setGroups(gs => gs.some(g => g.id === group.id) ? gs : [group, ...gs]);
 
   const loadGroups = async () => { if (!hasSupabase || !session) return; try { const rows = await groupsApi.list(); setGroups(rows.map(r => mapDbGroup(r, session.user.id))); } catch (e) { console.error("groups:", e); setDbError("groups: " + (e.message || JSON.stringify(e)) + (e.hint ? " · hint: " + e.hint : "") + (e.code ? " · code: " + e.code : "")); } };
   const loadEvents = async () => { if (!hasSupabase || !session) return; try { const rows = await eventsApi.list(); setEvents(rows.map(r => mapDbEvent(r, session.user.id))); } catch (e) { console.error("events:", e); setDbError("events: " + (e.message || JSON.stringify(e)) + (e.hint ? " · hint: " + e.hint : "") + (e.code ? " · code: " + e.code : "")); } };
@@ -43,7 +46,7 @@ export function useGroups({ session, flash, dbErr, setDbError, gainXp, hydrateMe
   const onDeleteEvent = (id) => { setEvents(es => es.filter(e => e.id !== id)); eventsApi.remove(id).then(loadEvents).then(() => flash(t("toast.eventDeleted"))).catch(dbErr("წაშლა")); };
 
   return {
-    groups, events, pendingGroup, setPendingGroup,
+    groups, events, pendingGroup, setPendingGroup, ensureGroupLoaded,
     loadGroups, loadEvents, onJoinGroup, onRsvp, onCreateGroup, onCreateEvent,
     mergeGroupPosts, onGroupPost, onApproveMember, onKickMember, onBanMember, onUnbanMember, onTransferOwnership, onSetGroupPrivate,
     onEditGroupPost, onDeleteGroupPost, onEditGroup, onDeleteGroup, onEditEvent, onDeleteEvent,

@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import {
   postsApi, reactionsApi, commentsApi, profilesApi, pollsApi,
-  filmsApi, musicApi, marketApi,
-  mapDbPost, mapDbFilm, mapDbSong, mapDbListing, mergeProfile, timeAgo, ME, USERS, hasSupabase, resolveImg, t,
+  filmsApi, musicApi, marketApi, groupsApi, forumApi,
+  mapDbPost, mapDbFilm, mapDbSong, mapDbListing, mapDbGroup, mapDbThread, mergeProfile, timeAgo, ME, USERS, hasSupabase, resolveImg, t,
 } from "../ui/core";
 
 const lsGet = (k, def) => { try { const v = typeof localStorage !== "undefined" && localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch (e) { return def; } };
@@ -134,17 +134,19 @@ export function useFeed({ tab, session, flash, dbErr, setDbError, gainXp }) {
 
   const runSearch = async (term) => {
     const q = (term || "").trim();
-    const empty = { people: [], posts: [], films: [], songs: [], listings: [], failedCount: 0 };
+    const empty = { people: [], posts: [], films: [], songs: [], listings: [], groups: [], threads: [], failedCount: 0 };
     if (!q || !hasSupabase) return empty;
-    // run all five searches concurrently instead of one-after-another, and
+    // run all seven searches concurrently instead of one-after-another, and
     // keep whichever succeed even if others fail — but track the failures so
     // the UI can tell "no results" apart from "the search itself broke"
-    const [peopleR, postsR, filmsR, songsR, listingsR] = await Promise.allSettled([
+    const [peopleR, postsR, filmsR, songsR, listingsR, groupsR, threadsR] = await Promise.allSettled([
       profilesApi.search(q, 20),
       postsApi.search(q, 20),
       filmsApi.page(null, { search: q }, 12),
       musicApi.search(q, 12),
       marketApi.search(q, 12),
+      groupsApi.search(q, 12),
+      forumApi.search(q, 12),
     ]);
     let people = [];
     if (peopleR.status === "fulfilled") { peopleR.value.forEach(p => mergeProfile(p)); people = peopleR.value.filter(p => p.id !== ME).map(p => USERS[p.id]).filter(Boolean); }
@@ -152,8 +154,10 @@ export function useFeed({ tab, session, flash, dbErr, setDbError, gainXp }) {
     const foundFilms = filmsR.status === "fulfilled" ? filmsR.value.map(mapDbFilm) : [];
     const foundSongs = songsR.status === "fulfilled" ? songsR.value.map(mapDbSong) : [];
     const foundListings = listingsR.status === "fulfilled" ? listingsR.value.map(mapDbListing) : [];
-    const failedCount = [peopleR, postsR, filmsR, songsR, listingsR].filter(r => r.status === "rejected").length;
-    return { people, posts: foundPosts, films: foundFilms, songs: foundSongs, listings: foundListings, failedCount };
+    const foundGroups = groupsR.status === "fulfilled" ? groupsR.value.map(r => mapDbGroup(r, ME)) : [];
+    const foundThreads = threadsR.status === "fulfilled" ? threadsR.value.map(r => mapDbThread(r, ME)) : [];
+    const failedCount = [peopleR, postsR, filmsR, songsR, listingsR, groupsR, threadsR].filter(r => r.status === "rejected").length;
+    return { people, posts: foundPosts, films: foundFilms, songs: foundSongs, listings: foundListings, groups: foundGroups, threads: foundThreads, failedCount };
   };
 
   const onLike = (id) => setPosts(ps => ps.map(p => p.id === id ? { ...p, likedByMe: !p.likedByMe, likes: p.likes + (p.likedByMe ? -1 : 1) } : p));

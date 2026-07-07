@@ -1016,6 +1016,12 @@ export const reels = {
 export const groups = {
   update: async (id, patch) => { const { error } = await need().from("groups").update(patch).eq("id", id); if (error) throw error; },
   remove: async (id) => { const { error } = await need().from("groups").delete().eq("id", id); if (error) throw error; },
+  search: async (q, limit = 20) => {
+    const term = "%" + String(q).replace(/[%,()]/g, "") + "%";
+    const { data, error } = await need().from("groups").select("*, group_members(user_id, status, role)").ilike("name", term).order("created_at", { ascending: false }).limit(limit);
+    if (error) throw error;
+    return data || [];
+  },
   updatePost: async (id, patch) => { const { error } = await need().from("group_posts").update(patch).eq("id", id); if (error) throw error; },
   removePost: async (id) => { const { error } = await need().from("group_posts").delete().eq("id", id); if (error) throw error; },
   list: async () => {
@@ -1117,6 +1123,12 @@ export const events = {
 export const forum = {
   update: async (id, patch) => { const { error } = await need().from("threads").update(patch).eq("id", id); if (error) throw error; },
   remove: async (id) => { const { error } = await need().from("threads").delete().eq("id", id); if (error) throw error; },
+  search: async (q, limit = 20) => {
+    const term = "%" + String(q).replace(/[%,()]/g, "") + "%";
+    const { data, error } = await need().from("threads").select("*, author:profiles!threads_author_id_fkey(*), thread_replies(*, author:profiles!thread_replies_author_id_fkey(*), thread_reply_votes(user_id)), thread_votes(user_id, value)").ilike("title", term).order("created_at", { ascending: false }).limit(limit);
+    if (error) throw error;
+    return data || [];
+  },
   list: async () => {
     const { data, error } = await need()
       .from("threads")
