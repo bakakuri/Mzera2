@@ -226,6 +226,10 @@ create table if not exists public.group_members (
 -- have read and written these for a while (private-group join requests need
 -- a pending state), never checked into this file — same class of gap as
 -- comments.parent_id/posts.tagged elsewhere in this file.
+-- status: pending | approved | banned (banned keeps the row instead of
+-- deleting it, so requestJoin can refuse re-entry — see groups.ban/unban).
+-- role: member | owner (exactly one owner row per group, set at creation
+-- time and on groups.transferOwnership).
 alter table public.group_members add column if not exists status text not null default 'approved';
 alter table public.group_members add column if not exists role text not null default 'member';
 

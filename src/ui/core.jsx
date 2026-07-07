@@ -130,6 +130,8 @@ export const MARKET_CATS = ["ყველა", "ელექტრონიკ�
 
 export const FORUM_CATS = ["ყველა", "ტექ", "დიზაინი", "კითხვა", "ბაზარი", "ცხოვრება"];
 
+export const GROUP_CATS = ["ყველა", "ტექ", "სპორტი", "ხელოვნება", "თამაშები", "მოგზაურობა", "საკვები", "სხვა"];
+
 export const FILM_GENRES = ["ყველა", "დრამა", "კომედია", "სათავგადასავლო", "საშინელება", "თრილერი", "ფანტასტიკა", "ანიმაცია", "დოკუმენტური", "რომანტიკული", "სხვა"];
 
 export const MUSIC_GENRES = ["ყველა", "პოპ", "რეპი", "როკი", "ელექტრონული", "ჯაზი", "ხალხური", "კლასიკური", "R&B", "სხვა"];
@@ -699,7 +701,7 @@ export function HeaderTicker({ text }) {
 export function mapDbGroup(row, uid) {
   const mem = row.group_members || [];
   const mine = mem.find(m => m.user_id === uid);
-  return { id: row.id, name: row.name, cover: row.cover_url || img("grp" + row.id, 600, 300), cat: row.category || "", members: mem.filter(m => m.status !== "pending").length, joined: !!(mine && mine.status === "approved"), pending: !!(mine && mine.status === "pending"), isPrivate: !!row.is_private, owner: row.created_by === uid, pendingCount: mem.filter(m => m.status === "pending").length, about: row.about || "", posts: [], createdBy: row.created_by };
+  return { id: row.id, name: row.name, cover: row.cover_url || img("grp" + row.id, 600, 300), cat: row.category || "", members: mem.filter(m => m.status === "approved").length, joined: !!(mine && mine.status === "approved"), pending: !!(mine && mine.status === "pending"), isPrivate: !!row.is_private, owner: row.created_by === uid, pendingCount: mem.filter(m => m.status === "pending").length, about: row.about || "", posts: [], createdBy: row.created_by };
 }
 
 export function mapDbEvent(row, uid) {

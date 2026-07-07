@@ -1033,6 +1033,8 @@ export const groups = {
   },
   requestJoin: async (groupId, isPrivate) => {
     const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;
+    const { data: existing } = await sb.from("group_members").select("status").eq("group_id", groupId).eq("user_id", uid).maybeSingle();
+    if (existing && existing.status === "banned") throw new Error("banned_from_group");
     const status = isPrivate ? "pending" : "approved";
     const { error } = await sb.from("group_members").insert({ group_id: groupId, user_id: uid, status });
     if (error) throw error;
@@ -1041,6 +1043,23 @@ export const groups = {
   leave: async (groupId) => { const sb = need(); const uid = (await sb.auth.getUser()).data.user.id; const { error } = await sb.from("group_members").delete().eq("group_id", groupId).eq("user_id", uid); if (error) throw error; },
   approve: async (groupId, userId) => { const sb = need(); const { error } = await sb.from("group_members").update({ status: "approved" }).eq("group_id", groupId).eq("user_id", userId); if (error) throw error; try { await sb.rpc("notify_group_event", { target: userId, gid: groupId, kind: "group_approved" }); } catch (e) {} },
   kick: async (groupId, userId) => { const { error } = await need().from("group_members").delete().eq("group_id", groupId).eq("user_id", userId); if (error) throw error; },
+  // ban keeps the group_members row (status: "banned") instead of deleting it,
+  // so requestJoin above can refuse re-entry — a plain kick lets them rejoin.
+  ban: async (groupId, userId) => { const { error } = await need().from("group_members").update({ status: "banned" }).eq("group_id", groupId).eq("user_id", userId); if (error) throw error; },
+  unban: async (groupId, userId) => { const { error } = await need().from("group_members").delete().eq("group_id", groupId).eq("user_id", userId).eq("status", "banned"); if (error) throw error; },
+  // the role flips happen before the created_by handoff, while the caller is
+  // still the group's owner — group_members' RLS update policy checks
+  // groups.created_by, so reordering this would lock the caller out mid-way.
+  transferOwnership: async (groupId, newOwnerId) => {
+    const sb = need();
+    const uid = (await sb.auth.getUser()).data.user.id;
+    const { error: e1 } = await sb.from("group_members").update({ role: "owner" }).eq("group_id", groupId).eq("user_id", newOwnerId);
+    if (e1) throw e1;
+    const { error: e2 } = await sb.from("group_members").update({ role: "member" }).eq("group_id", groupId).eq("user_id", uid);
+    if (e2) throw e2;
+    const { error: e3 } = await sb.from("groups").update({ created_by: newOwnerId }).eq("id", groupId);
+    if (e3) throw e3;
+  },
   setPrivate: async (groupId, val) => { const { error } = await need().from("groups").update({ is_private: val }).eq("id", groupId); if (error) throw error; },
   toggleJoin: async (groupId) => {
     const sb = need();
@@ -1062,7 +1081,7 @@ export const groups = {
     const uid = (await sb.auth.getUser()).data.user.id;
     const { data, error } = await sb.from("groups").insert({ name, about, category, cover_url: coverUrl, created_by: uid }).select("*, group_members(user_id), group_posts(*, author:profiles!group_posts_author_id_fkey(*))").single();
     if (error) throw error;
-    await sb.from("group_members").insert({ group_id: data.id, user_id: uid });
+    await sb.from("group_members").insert({ group_id: data.id, user_id: uid, role: "owner" });
     return data;
   },
 };
