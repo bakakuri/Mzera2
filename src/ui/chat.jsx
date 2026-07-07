@@ -1,6 +1,6 @@
 import { createPortal } from "react-dom";
 import {
-  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, ChevronDown, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Pin, Forward, ChevronUp, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, levelInfo, kfmt, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, STORY_STICKERS, setTheme, setME, compressImage, Phone, Video, t, UploadProgress,
+  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, ChevronDown, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Pin, Forward, ChevronUp, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, levelInfo, kfmt, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, STORY_STICKERS, setTheme, setME, compressImage, Phone, Video, t, UploadProgress, useModalA11y,
 } from "./core";
 import { LinkPreview } from "./feed";
 
@@ -14,6 +14,27 @@ function applyReact(map, msgId, userId, emoji, removed) {
 
 const lsGet = (k, def) => { try { const v = typeof localStorage !== "undefined" && localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch (e) { return def; } };
 const lsSet = (k, v) => { try { if (typeof localStorage !== "undefined") localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+
+// its own component (not an inline `{confirmDel && (...)}` block inside
+// Messages) so useModalA11y mounts/unmounts with the dialog itself — Messages
+// is always mounted for the whole chat tab, so a hook call at its top level
+// would never re-fire its once-only mount effect when this dialog opens.
+function DeleteConvoConfirm({ onCancel, onConfirm }) {
+  const modalRef = useModalA11y(onCancel);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-6" style={{ background: "rgba(0,0,0,.5)" }} onClick={onCancel}>
+      <div ref={modalRef} tabIndex={-1} role="dialog" aria-modal="true" className="w-full rounded-3xl p-6" style={{ background: C.paper, maxWidth: 360, animation: "up .2s ease both", outline: "none" }} onClick={e => e.stopPropagation()}>
+        <div className="rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ width: 56, height: 56, background: C.likeSoft }}><Trash2 size={26} style={{ color: C.like }} /></div>
+        <div className="text-center text-[17px] font-bold mb-1" style={{ color: C.ink, fontFamily: DISPLAY }}>{t("chat.deleteConvoTitle")}</div>
+        <div className="text-center text-[14px] mb-5" style={{ color: C.muted }}>{t("chat.deleteConvoMsg")}</div>
+        <div className="flex gap-3">
+          <button onClick={onCancel} className="flex-1 py-3 rounded-2xl font-semibold active:scale-95" style={{ background: C.surfaceMuted, color: C.ink2 }}>{t("action.cancel")}</button>
+          <button onClick={onConfirm} className="flex-1 py-3 rounded-2xl font-semibold text-white active:scale-95" style={{ background: C.like }}>{t("action.delete")}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg, onDeleteMsg, onDeleteConvo, onCreateConvo, onOpenProfile, live, onMenu, groups, onOpenGroup, onlineIds, onMessageUser, onStartCall, peerReads, initialReactions, onMarkRead, onReactMsg, mutedConvoIds, onToggleMuteConvo, onPinMessage, onUnpinMessage }) {
   const [draft, setDraft] = useState(""); const [typing, setTyping] = useState(false);
@@ -198,14 +219,14 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
       <div className="fixed left-0 right-0 z-40 flex flex-col" style={{ background: C.paper, top: "var(--mz-hdr, 56px)", bottom: "var(--mz-nav, 60px)" }}>
         <div className="flex-1 min-h-0 flex flex-col w-full" style={{ maxWidth: 600, margin: "0 auto", background: C.paper, borderLeft: `1px solid ${C.line}`, borderRight: `1px solid ${C.line}` }}>
           <div className="flex items-center gap-3 px-3 py-2.5 shrink-0" style={{ background: C.surface + "f2", backdropFilter: "blur(14px)", borderBottom: `1px solid ${C.line}` }}>
-            <button onClick={() => setOpenId(null)} className="active:scale-90" style={{ color: C.ink2 }}><ArrowLeft size={22} /></button>
+            <button onClick={() => setOpenId(null)} aria-label={t("a11y.back")} className="active:scale-90" style={{ color: C.ink2 }}><ArrowLeft size={22} /></button>
             {group ? <GroupAvatar ids={members} size={40} /> : <button onClick={() => onOpenProfile(other.id)} className="relative active:scale-90"><Avatar id={other.id} size={38} />{other.online && <span className="absolute bottom-0 right-0"><Dot size={11} /></span>}</button>}
             <div className="leading-tight min-w-0 flex-1 overflow-hidden"><div className="flex items-center gap-1.5">{group ? <div className="font-bold truncate" style={{ color: C.ink }}>{cv.name}</div> : <div className="min-w-0"><Name id={other.id} className="text-[15px] max-w-full" /></div>}{isMuted && <VolumeX size={13} style={{ color: C.faint }} className="shrink-0" />}</div><div className="text-[12px] truncate" style={{ color: typing ? C.accent : group ? C.muted : (other.online ? C.online : C.faint) }}>{typing ? t("chat.typing") : group ? `${members.length + 1} ${t("chat.participants")}` : (other.online ? t("chat.online") : t("chat.lastSeenPre") + "2" + t("time.hour") + t("chat.hoursAgoSuffix"))}</div></div>
             <div className="flex items-center gap-0.5 shrink-0">
-              {!group && onStartCall && other && (<><button onClick={() => onStartCall(other.id, false)} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 36, height: 36, color: C.ink2 }}><Phone size={19} /></button><button onClick={() => onStartCall(other.id, true)} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 36, height: 36, color: C.ink2 }}><Video size={20} /></button></>)}
+              {!group && onStartCall && other && (<><button onClick={() => onStartCall(other.id, false)} aria-label={t("a11y.call")} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 36, height: 36, color: C.ink2 }}><Phone size={19} /></button><button onClick={() => onStartCall(other.id, true)} aria-label={t("a11y.videoCall")} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 36, height: 36, color: C.ink2 }}><Video size={20} /></button></>)}
               <button onClick={() => setChatSearchOpen(v => !v)} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 36, height: 36, color: chatSearchOpen ? C.accent : C.ink2 }} aria-label={t("chat.searchInChat")}><Search size={19} /></button>
               <div className="relative">
-                <button onClick={() => setConvMenu(v => !v)} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 36, height: 36, color: C.ink2 }}><MoreHorizontal size={22} /></button>
+                <button onClick={() => setConvMenu(v => !v)} aria-label={t("a11y.moreOptions")} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 36, height: 36, color: C.ink2 }}><MoreHorizontal size={22} /></button>
                 {convMenu && <><div className="fixed inset-0" style={{ zIndex: 10 }} onClick={() => setConvMenu(false)} /><div className="absolute right-0 z-20 rounded-xl overflow-hidden" style={{ top: "100%", marginTop: 4, background: C.surface, border: `1px solid ${C.line}`, boxShadow: "0 8px 24px rgba(0,0,0,.16)", minWidth: 200 }}><button onClick={() => { setConvMenu(false); setPicker("add"); }} className="w-full flex items-center gap-2.5 px-4 py-3 text-[14px] font-medium active:opacity-70" style={{ color: C.ink }}><UserPlus size={17} /> {t("chat.addPeople")}</button><button onClick={() => { setConvMenu(false); setGalleryOpen(true); }} className="w-full flex items-center gap-2.5 px-4 py-3 text-[14px] font-medium active:opacity-70" style={{ color: C.ink, borderTop: `1px solid ${C.line}` }}><ImageIcon size={17} /> {t("chat.viewMedia")}</button><button onClick={() => { setConvMenu(false); onToggleMuteConvo && onToggleMuteConvo(cv.id); }} className="w-full flex items-center gap-2.5 px-4 py-3 text-[14px] font-medium active:opacity-70" style={{ color: C.ink, borderTop: `1px solid ${C.line}` }}>{isMuted ? <Volume2 size={17} /> : <VolumeX size={17} />} {isMuted ? t("chat.unmute") : t("chat.mute")}</button><button onClick={() => { setConvMenu(false); setConfirmDel(true); }} className="w-full flex items-center gap-2.5 px-4 py-3 text-[14px] font-medium active:opacity-70" style={{ color: C.like, borderTop: `1px solid ${C.line}` }}><Trash2 size={17} /> {t("chat.deleteConvo")}</button></div></>}
               </div>
             </div>
@@ -221,8 +242,8 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
                 if (matches.length) requestAnimationFrame(() => scrollToMsg(matches[0].id));
               }} placeholder={t("chat.searchInChat")} className="flex-1 bg-transparent outline-none text-[14px]" style={{ color: C.ink }} />
               {searchQ.trim() && <Mono style={{ fontSize: 12, color: C.faint }}>{searchMatches.length ? (searchIdx + 1) + "/" + searchMatches.length : "0"}</Mono>}
-              <button onClick={() => goMatch(-1)} disabled={!searchMatches.length} className="active:scale-90" style={{ color: searchMatches.length ? C.ink2 : C.faint }}><ChevronUp size={18} /></button>
-              <button onClick={() => goMatch(1)} disabled={!searchMatches.length} className="active:scale-90" style={{ color: searchMatches.length ? C.ink2 : C.faint }}><ChevronDown size={18} /></button>
+              <button onClick={() => goMatch(-1)} disabled={!searchMatches.length} aria-label={t("a11y.previous")} className="active:scale-90" style={{ color: searchMatches.length ? C.ink2 : C.faint }}><ChevronUp size={18} /></button>
+              <button onClick={() => goMatch(1)} disabled={!searchMatches.length} aria-label={t("a11y.next")} className="active:scale-90" style={{ color: searchMatches.length ? C.ink2 : C.faint }}><ChevronDown size={18} /></button>
               <button onClick={() => { setChatSearchOpen(false); setSearchQ(""); }} aria-label={t("a11y.close")} className="active:scale-90" style={{ color: C.faint }}><X size={18} /></button>
             </div>
           )}
@@ -311,16 +332,16 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
           <div className="flex items-center gap-2 px-2.5 py-2.5 shrink-0" style={{ background: C.surface, borderTop: `1px solid ${C.line}`, paddingBottom: "0.625rem" }}>
             {recording ? (
               <>
-                <button onClick={cancelRec} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 40, height: 40, color: C.like }}><Trash2 size={20} /></button>
+                <button onClick={cancelRec} aria-label={t("action.cancel")} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 40, height: 40, color: C.like }}><Trash2 size={20} /></button>
                 <div className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-full" style={{ background: C.likeSoft }}><span className="rounded-full" style={{ width: 10, height: 10, background: C.like, animation: "tdot 1.2s infinite" }} /><Mono className="font-bold" style={{ color: C.like }}>{Math.floor(recSecs / 60)}:{String(recSecs % 60).padStart(2, "0")}</Mono><span className="text-[13px]" style={{ color: C.like }}>{t("chat.recordingPh")}</span></div>
-                <button onClick={sendVoice} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 42, height: 42, backgroundImage: GBRAND, color: "#fff", boxShadow: SH.glow }}><Send size={19} /></button>
+                <button onClick={sendVoice} aria-label={t("a11y.send")} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 42, height: 42, backgroundImage: GBRAND, color: "#fff", boxShadow: SH.glow }}><Send size={19} /></button>
               </>
             ) : (
               <>
-                <button onClick={() => { setAttach(a => a ? null : "menu"); setEmoji(false); }} className="rounded-full flex items-center justify-center active:scale-90 transition" style={{ width: 40, height: 40, color: attach ? C.accent : C.ink2, transform: attach ? "rotate(45deg)" : "none" }}><Plus size={24} /></button>
-                <button onClick={() => { setEmoji(e => !e); setAttach(null); }} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 38, height: 38, color: emoji ? C.accent : C.ink2 }}><Smile size={23} /></button>
+                <button onClick={() => { setAttach(a => a ? null : "menu"); setEmoji(false); }} aria-label={t("a11y.attach")} className="rounded-full flex items-center justify-center active:scale-90 transition" style={{ width: 40, height: 40, color: attach ? C.accent : C.ink2, transform: attach ? "rotate(45deg)" : "none" }}><Plus size={24} /></button>
+                <button onClick={() => { setEmoji(e => !e); setAttach(null); }} aria-label={t("a11y.emoji")} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 38, height: 38, color: emoji ? C.accent : C.ink2 }}><Smile size={23} /></button>
                 <input ref={inputRef} value={draft} onChange={e => { setDraft(e.target.value); sendTyping(); }} onKeyDown={e => { if (e.key === "Enter") sendText(); }} onFocus={() => { setEmoji(false); setAttach(null); }} placeholder={editing ? t("chat.editMsgPh") : t("chat.msgPh")} className="flex-1 px-4 py-2.5 rounded-full text-[15px] outline-none" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
-                {draft.trim() ? <button onClick={sendText} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 42, height: 42, backgroundImage: GBRAND, color: "#fff", boxShadow: SH.glow }}><Send size={19} /></button> : <button onClick={startRec} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 42, height: 42, background: C.surfaceMuted, color: C.accent }}><Mic size={20} /></button>}
+                {draft.trim() ? <button onClick={sendText} aria-label={t("a11y.send")} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 42, height: 42, backgroundImage: GBRAND, color: "#fff", boxShadow: SH.glow }}><Send size={19} /></button> : <button onClick={startRec} aria-label={t("a11y.voiceRecord")} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 42, height: 42, background: C.surfaceMuted, color: C.accent }}><Mic size={20} /></button>}
               </>
             )}
           </div>
@@ -343,23 +364,11 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
             </div>
           </div>
         )}
-        {confirmDel && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6" style={{ background: "rgba(0,0,0,.5)" }} onClick={() => setConfirmDel(false)}>
-            <div className="w-full rounded-3xl p-6" style={{ background: C.paper, maxWidth: 360, animation: "up .2s ease both" }} onClick={e => e.stopPropagation()}>
-              <div className="rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ width: 56, height: 56, background: C.likeSoft }}><Trash2 size={26} style={{ color: C.like }} /></div>
-              <div className="text-center text-[17px] font-bold mb-1" style={{ color: C.ink, fontFamily: DISPLAY }}>{t("chat.deleteConvoTitle")}</div>
-              <div className="text-center text-[14px] mb-5" style={{ color: C.muted }}>{t("chat.deleteConvoMsg")}</div>
-              <div className="flex gap-3">
-                <button onClick={() => setConfirmDel(false)} className="flex-1 py-3 rounded-2xl font-semibold active:scale-95" style={{ background: C.surfaceMuted, color: C.ink2 }}>{t("action.cancel")}</button>
-                <button onClick={() => { setConfirmDel(false); onDeleteConvo(cv.id); }} className="flex-1 py-3 rounded-2xl font-semibold text-white active:scale-95" style={{ background: C.like }}>{t("action.delete")}</button>
-              </div>
-            </div>
-          </div>
-        )}
+        {confirmDel && <DeleteConvoConfirm onCancel={() => setConfirmDel(false)} onConfirm={() => { setConfirmDel(false); onDeleteConvo(cv.id); }} />}
         {galleryOpen && (
           <div className="fixed inset-0 z-50 flex flex-col" style={{ background: C.paper }}>
             <div className="flex items-center gap-3 px-4 py-3 shrink-0" style={{ background: C.surface, borderBottom: `1px solid ${C.line}`, paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}>
-              <button onClick={() => setGalleryOpen(false)} className="active:scale-90" style={{ color: C.ink2 }}><ArrowLeft size={22} /></button>
+              <button onClick={() => setGalleryOpen(false)} aria-label={t("a11y.back")} className="active:scale-90" style={{ color: C.ink2 }}><ArrowLeft size={22} /></button>
               <span className="font-bold text-[16px]" style={{ color: C.ink, fontFamily: DISPLAY }}>{t("chat.viewMedia")}</span>
             </div>
             {galleryImages.length === 0 ? (
@@ -367,7 +376,7 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
             ) : (
               <div className="flex-1 overflow-y-auto p-1 grid grid-cols-3 gap-1 content-start">
                 {galleryImages.map(gm => (
-                  <button key={gm.id} onClick={() => window.open(gm.image, "_blank")} className="relative overflow-hidden active:opacity-80" style={{ aspectRatio: "1" }}>
+                  <button key={gm.id} onClick={() => window.open(gm.image, "_blank")} aria-label={t("a11y.viewPhoto")} className="relative overflow-hidden active:opacity-80" style={{ aspectRatio: "1" }}>
                     <Pic src={gm.image} grad={GRADS[hashIdx(gm.id, GRADS.length)]} style={{ aspectRatio: "1" }} />
                   </button>
                 ))}

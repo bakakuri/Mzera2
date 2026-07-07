@@ -35,7 +35,7 @@ function ActionTile({ icon: I, label, onClick }) {
 function SubHeader({ title, onBack }) {
   return (
     <div className="flex items-center gap-3 px-4 pt-5 pb-3">
-      <button onClick={onBack} className="active:scale-90"><ArrowLeft size={22} style={{ color: C.ink }} /></button>
+      <button onClick={onBack} aria-label={t("a11y.back")} className="active:scale-90"><ArrowLeft size={22} style={{ color: C.ink }} /></button>
       <span className="text-[18px] font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{title}</span>
     </div>
   );

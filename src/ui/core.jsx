@@ -251,7 +251,7 @@ export const ThemeToggle = ({ mode, setMode, full }) => full ? (
   <div className="flex gap-1 p-1 rounded-2xl" style={{ background: C.surfaceMuted }}>
     {[["light", t("theme.light"), Sun], ["dark", t("theme.dark"), Moon]].map(([m, l, Ic]) => <button key={m} onClick={() => setMode(m)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-bold transition" style={mode === m ? { background: C.surface, color: C.accent, boxShadow: SH.card } : { color: C.muted }}><Ic size={16} />{l}</button>)}
   </div>
-) : <button onClick={() => setMode(mode === "dark" ? "light" : "dark")} className="rounded-full active:scale-90 flex items-center justify-center transition" style={{ width: 40, height: 40, color: C.ink2 }}>{mode === "dark" ? <Sun size={22} /> : <Moon size={22} />}</button>;
+) : <button onClick={() => setMode(mode === "dark" ? "light" : "dark")} aria-label={t("a11y.themeToggle")} className="rounded-full active:scale-90 flex items-center justify-center transition" style={{ width: 40, height: 40, color: C.ink2 }}>{mode === "dark" ? <Sun size={22} /> : <Moon size={22} />}</button>;
 
 /* ─────────────────────────  POST CARD  ───────────────────────── */
 
@@ -272,10 +272,11 @@ export const MiniPost = ({ post, onOpenProfile }) => <div className="p-3.5 flex 
 
 export function NewThread({ onClose, onCreate, initial }) {
   const [title, setTitle] = useState(initial ? initial.title : ""); const [body, setBody] = useState(initial ? initial.body : ""); const [cat, setCat] = useState(initial ? initial.cat : "ტექ");
+  const modalRef = useModalA11y(onClose);
   return (
     <div className="fixed inset-0 z-[60] flex sm:items-center justify-center items-end" style={{ background: "rgba(6,7,12,.55)", backdropFilter: "blur(4px)" }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} className="w-full sm:max-w-[520px] sm:rounded-3xl rounded-t-3xl" style={{ background: C.surface, boxShadow: SH.pop }}>
-        <div className="flex items-center justify-between px-4 py-3.5" style={{ borderBottom: `1px solid ${C.lineSoft}` }}><button onClick={onClose} style={{ color: C.muted }}><X size={22} /></button><span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{initial ? t("thread.edit") : t("thread.new")}</span><button disabled={!title.trim()} onClick={() => onCreate({ title: title.trim(), body: body.trim(), cat })} className="px-4 py-1.5 rounded-full text-sm font-bold" style={{ backgroundImage: GBRAND, color: "#fff", opacity: title.trim() ? 1 : 0.4 }}>{initial ? t("action.save") : t("action.publish")}</button></div>
+      <div ref={modalRef} tabIndex={-1} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} className="w-full sm:max-w-[520px] sm:rounded-3xl rounded-t-3xl" style={{ background: C.surface, boxShadow: SH.pop, outline: "none" }}>
+        <div className="flex items-center justify-between px-4 py-3.5" style={{ borderBottom: `1px solid ${C.lineSoft}` }}><button onClick={onClose} aria-label={t("a11y.close")} style={{ color: C.muted }}><X size={22} /></button><span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{initial ? t("thread.edit") : t("thread.new")}</span><button disabled={!title.trim()} onClick={() => onCreate({ title: title.trim(), body: body.trim(), cat })} className="px-4 py-1.5 rounded-full text-sm font-bold" style={{ backgroundImage: GBRAND, color: "#fff", opacity: title.trim() ? 1 : 0.4 }}>{initial ? t("action.save") : t("action.publish")}</button></div>
         <div className="p-4 space-y-3" style={{ paddingBottom: "calc(var(--mz-nav, 64px) + 1.25rem)" }}>
           <div className="flex gap-1.5 flex-wrap">{FORUM_CATS.slice(1).map(c => <button key={c} onClick={() => setCat(c)} className="px-3 py-1.5 rounded-full text-sm font-semibold transition" style={cat === c ? { background: catColor(c) + "1f", color: catColor(c) } : { background: C.surfaceMuted, color: C.muted }}>{c}</button>)}</div>
           <input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder={t("thread.titlePh")} className="w-full bg-transparent outline-none text-[18px] font-bold" style={{ color: C.ink, fontFamily: DISPLAY }} />
@@ -291,12 +292,15 @@ export function NewThread({ onClose, onCreate, initial }) {
 export const Stars = ({ n, size = 14 }) => <div className="flex items-center gap-0.5">{[1, 2, 3, 4, 5].map(i => <Star key={i} size={size} style={{ color: C.star }} fill={i <= n ? C.star : "none"} />)}</div>;
 
 
-export function Checkout({ item, onClose, onDone, onPlace }) {
-  const [delivery, setDelivery] = useState("ship"); const [pay, setPay] = useState("card"); const [addr, setAddr] = useState(""); const [placed, setPlaced] = useState(false);
-  const fee = delivery === "ship" ? 5 : 0; const total = item.price + fee;
-  if (placed) return (
+// separate component (not an inline `if (placed)` branch inside Checkout) so
+// its own useModalA11y mounts fresh with onDone — otherwise the single
+// mount-time effect in Checkout would stay bound to whichever of onClose/
+// onDone was current when Checkout FIRST mounted, not after `placed` flips.
+function OrderConfirmed({ item, delivery, pay, total, onDone }) {
+  const modalRef = useModalA11y(onDone);
+  return (
     <div className="fixed inset-0 z-[61] flex items-center justify-center p-6" style={{ background: "rgba(6,7,12,.6)", backdropFilter: "blur(4px)" }} onClick={onDone}>
-      <div onClick={e => e.stopPropagation()} className="w-full max-w-[400px] rounded-3xl p-7 text-center" style={{ background: C.surface, boxShadow: SH.pop }}>
+      <div ref={modalRef} tabIndex={-1} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} className="w-full max-w-[400px] rounded-3xl p-7 text-center" style={{ background: C.surface, boxShadow: SH.pop, outline: "none" }}>
         <div className="rounded-full flex items-center justify-center mx-auto mb-4" style={{ width: 72, height: 72, background: C.online + "22" }}><Check size={38} style={{ color: C.online }} /></div>
         <div className="text-[20px] font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{t("checkout.orderReceived")}</div>
         <div className="text-[14px] mt-1.5" style={{ color: C.muted }}>{t("checkout.orderConfirmedPre")}<Mono className="font-bold" style={{ color: C.ink }}>#{Math.floor(Math.random() * 9000 + 1000)}</Mono>{t("checkout.orderConfirmedPost")}</div>
@@ -305,10 +309,17 @@ export function Checkout({ item, onClose, onDone, onPlace }) {
       </div>
     </div>
   );
+}
+
+export function Checkout({ item, onClose, onDone, onPlace }) {
+  const [delivery, setDelivery] = useState("ship"); const [pay, setPay] = useState("card"); const [addr, setAddr] = useState(""); const [placed, setPlaced] = useState(false);
+  const fee = delivery === "ship" ? 5 : 0; const total = item.price + fee;
+  const modalRef = useModalA11y(onClose);
+  if (placed) return <OrderConfirmed item={item} delivery={delivery} pay={pay} total={total} onDone={onDone} />;
   return (
     <div className="fixed inset-0 z-[61] flex sm:items-center justify-center items-end" style={{ background: "rgba(6,7,12,.55)", backdropFilter: "blur(4px)" }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} className="w-full sm:max-w-[460px] sm:rounded-3xl rounded-t-3xl max-h-[90vh] overflow-y-auto" style={{ background: C.surface, boxShadow: SH.pop }}>
-        <div className="flex items-center justify-between px-4 py-3.5 sticky top-0" style={{ background: C.surface, borderBottom: `1px solid ${C.lineSoft}` }}><button onClick={onClose} style={{ color: C.muted }}><X size={22} /></button><span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{t("checkout.pay")}</span><div style={{ width: 22 }} /></div>
+      <div ref={modalRef} tabIndex={-1} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} className="w-full sm:max-w-[460px] sm:rounded-3xl rounded-t-3xl max-h-[90vh] overflow-y-auto" style={{ background: C.surface, boxShadow: SH.pop, outline: "none" }}>
+        <div className="flex items-center justify-between px-4 py-3.5 sticky top-0" style={{ background: C.surface, borderBottom: `1px solid ${C.lineSoft}` }}><button onClick={onClose} aria-label={t("a11y.close")} style={{ color: C.muted }}><X size={22} /></button><span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{t("checkout.pay")}</span><div style={{ width: 22 }} /></div>
         <div className="p-4 flex items-center gap-3" style={{ borderBottom: `1px solid ${C.lineSoft}` }}><Pic src={item.image} round={12} style={{ width: 60, height: 60 }} /><div className="flex-1 min-w-0"><div className="text-[15px] font-bold truncate" style={{ color: C.ink }}>{item.title}</div><div className="text-[13px]" style={{ color: C.muted }}>{item.location}</div></div><div className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY, fontSize: 18 }}>{item.price}₾</div></div>
         <div className="p-4">
           <div className="text-[13px] font-bold mb-2" style={{ color: C.muted }}>{t("checkout.delivery")}</div>
@@ -339,17 +350,18 @@ export function NewListing({ onClose, onCreate, live, onUpload, initial }) {
   useEffect(() => { const vv = window.visualViewport; if (!vv) return; const onR = () => setVph(vv.height); onR(); vv.addEventListener("resize", onR); vv.addEventListener("scroll", onR); return () => { vv.removeEventListener("resize", onR); vv.removeEventListener("scroll", onR); }; }, []);
   const pickFile = async (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; const isVid = f.type.startsWith("video"); setProgress(0); setUploadErr(""); try { const url = await onUpload(f, setProgress); if (isVid) setPickedVideo(url); else setPicked(url); } catch (err) { setUploadErr(t("listing.uploadFailedPre") + (err && err.message ? err.message : t("error.unknown"))); } setProgress(null); e.target.value = ""; };
   const ok = title.trim() && price;
+  const modalRef = useModalA11y(onClose);
   return (
     <div className="fixed inset-0 z-[60] flex sm:items-center justify-center items-end" style={{ background: "rgba(6,7,12,.55)", backdropFilter: "blur(4px)", height: vph ? vph + "px" : "100dvh" }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} className="w-full sm:max-w-[520px] sm:rounded-3xl rounded-t-3xl overflow-y-auto" style={{ background: C.surface, boxShadow: SH.pop, maxHeight: vph ? vph + "px" : "88vh" }}>
-        <div className="flex items-center justify-between px-4 py-3.5 sticky top-0" style={{ background: C.surface, borderBottom: `1px solid ${C.lineSoft}` }}><button onClick={onClose} style={{ color: C.muted }}><X size={22} /></button><span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{initial ? t("listing.edit") : t("listing.sell")}</span><button disabled={!ok} onClick={() => onCreate({ title: title.trim(), price: Number(price), desc: desc.trim(), cat, image: picked && picked.startsWith("http") ? picked : "", video: pickedVideo })} className="px-4 py-1.5 rounded-full text-sm font-bold" style={{ backgroundImage: GBRAND, color: "#fff", opacity: ok ? 1 : 0.4 }}>{initial ? t("action.save") : t("action.publish")}</button></div>
+      <div ref={modalRef} tabIndex={-1} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} className="w-full sm:max-w-[520px] sm:rounded-3xl rounded-t-3xl overflow-y-auto" style={{ background: C.surface, boxShadow: SH.pop, maxHeight: vph ? vph + "px" : "88vh", outline: "none" }}>
+        <div className="flex items-center justify-between px-4 py-3.5 sticky top-0" style={{ background: C.surface, borderBottom: `1px solid ${C.lineSoft}` }}><button onClick={onClose} aria-label={t("a11y.close")} style={{ color: C.muted }}><X size={22} /></button><span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{initial ? t("listing.edit") : t("listing.sell")}</span><button disabled={!ok} onClick={() => onCreate({ title: title.trim(), price: Number(price), desc: desc.trim(), cat, image: picked && picked.startsWith("http") ? picked : "", video: pickedVideo })} className="px-4 py-1.5 rounded-full text-sm font-bold" style={{ backgroundImage: GBRAND, color: "#fff", opacity: ok ? 1 : 0.4 }}>{initial ? t("action.save") : t("action.publish")}</button></div>
         <div className="p-4 space-y-3.5" style={{ paddingBottom: "calc(var(--mz-nav, 64px) + 1.25rem)" }}>
           {uploadErr && <div className="px-3 py-2 rounded-xl text-[12.5px] font-semibold" style={{ background: C.like + "1a", color: C.like }}>{uploadErr}</div>}
           <div className="flex gap-2 items-center flex-wrap">
             <input ref={fileRef} type="file" accept="image/*,video/*" hidden onChange={pickFile} />
             <button onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading} className="rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95" style={{ width: 72, height: 72, background: C.accentSoft, color: C.accentText }}>{uploading ? <span className="text-[13px] font-bold">{progress}%</span> : <><Upload size={20} /><span className="text-[10px] font-bold mt-0.5">{t("listing.addMedia")}</span></>}</button>
-            {picked && picked.startsWith("http") && <div className="rounded-xl overflow-hidden shrink-0 relative" style={{ width: 72, height: 72, outline: `2.5px solid ${C.accent}`, outlineOffset: 2 }}><Pic src={picked} className="w-full h-full" /><button onClick={() => setPicked("")} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div>}
-            {pickedVideo && <div className="rounded-xl overflow-hidden shrink-0 relative" style={{ width: 72, height: 72, outline: `2.5px solid ${C.accent}`, outlineOffset: 2 }}><video src={pickedVideo} muted playsInline className="w-full h-full" style={{ objectFit: "cover" }} /><div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,.25)" }}><Play size={18} color="#fff" fill="#fff" /></div><button onClick={() => setPickedVideo(null)} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div>}
+            {picked && picked.startsWith("http") && <div className="rounded-xl overflow-hidden shrink-0 relative" style={{ width: 72, height: 72, outline: `2.5px solid ${C.accent}`, outlineOffset: 2 }}><Pic src={picked} className="w-full h-full" /><button onClick={() => setPicked("")} aria-label={t("a11y.remove")} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div>}
+            {pickedVideo && <div className="rounded-xl overflow-hidden shrink-0 relative" style={{ width: 72, height: 72, outline: `2.5px solid ${C.accent}`, outlineOffset: 2 }}><video src={pickedVideo} muted playsInline className="w-full h-full" style={{ objectFit: "cover" }} /><div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,.25)" }}><Play size={18} color="#fff" fill="#fff" /></div><button onClick={() => setPickedVideo(null)} aria-label={t("a11y.remove")} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div>}
             {!picked && !pickedVideo && !uploading && <span className="text-[12px]" style={{ color: C.faint }}>{t("listing.addMediaHint")}</span>}
           </div>
           {uploading && <UploadProgress pct={progress} />}
@@ -395,7 +407,7 @@ export function VoiceMsg({ id, dur, mine, url }) {
   return (
     <div className="flex items-center gap-2.5" style={{ minWidth: 168 }}>
       {url && <audio ref={audioRef} src={url} preload="none" onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => { setPlaying(false); setProg(0); }} onTimeUpdate={(e) => { const a = e.target; if (a.duration && isFinite(a.duration)) setProg((a.currentTime / a.duration) * 100); }} />}
-      <button onClick={toggle} className="rounded-full flex items-center justify-center shrink-0 active:scale-90" style={{ width: 34, height: 34, background: mine ? "rgba(255,255,255,.22)" : C.accentSoft, color: mine ? "#fff" : C.accent }}>{playing ? <Pause size={15} fill="currentColor" /> : <Play size={15} fill="currentColor" />}</button>
+      <button onClick={toggle} aria-label={playing ? t("a11y.pause") : t("a11y.play")} className="rounded-full flex items-center justify-center shrink-0 active:scale-90" style={{ width: 34, height: 34, background: mine ? "rgba(255,255,255,.22)" : C.accentSoft, color: mine ? "#fff" : C.accent }}>{playing ? <Pause size={15} fill="currentColor" /> : <Play size={15} fill="currentColor" />}</button>
       <div className="flex items-center gap-[2px] flex-1" style={{ height: 26 }}>{wave.map((h, i) => <div key={i} className="rounded-full" style={{ width: 3, height: h, background: (i / wave.length) * 100 <= prog ? col : sub }} />)}</div>
       <Mono style={{ fontSize: 11, color: mine ? "rgba(255,255,255,.8)" : C.faint }}>{Math.floor(dur / 60)}:{String(dur % 60).padStart(2, "0")}</Mono>
     </div>
@@ -432,12 +444,13 @@ export function PeoplePicker({ title, cta, exclude = [], onClose, onConfirm, liv
   const localAvail = Object.values(USERS).filter(u => u.id !== ME && !exclude.includes(u.id) && (!ql || u.name.toLowerCase().includes(ql) || u.handle.toLowerCase().includes(ql)));
   const avail = results ? [...new Set([...results, ...localAvail.map(u => u.id)])].map(id => USERS[id]).filter(Boolean) : localAvail;
   const toggle = (id) => setSel(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
+  const modalRef = useModalA11y(onClose);
   return (
     <div className="fixed inset-0 z-[60] flex sm:items-center justify-center items-end" style={{ background: "rgba(6,7,12,.55)", backdropFilter: "blur(4px)", paddingBottom: "var(--mz-nav, 64px)" }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} className="w-full sm:max-w-[480px] sm:rounded-3xl rounded-t-3xl flex flex-col" style={{ background: C.surface, boxShadow: SH.pop, maxHeight: "calc(100dvh - var(--mz-nav, 64px) - 14px)" }}>
-        <div className="flex items-center justify-between px-4 py-3.5 shrink-0" style={{ borderBottom: `1px solid ${C.lineSoft}` }}><button onClick={onClose} style={{ color: C.muted }}><X size={22} /></button><span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{title}</span><button disabled={!sel.length} onClick={() => onConfirm(sel)} className="px-4 py-1.5 rounded-full text-sm font-bold" style={{ backgroundImage: GBRAND, color: "#fff", opacity: sel.length ? 1 : 0.4 }}>{cta}{sel.length ? ` (${sel.length})` : ""}</button></div>
+      <div ref={modalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title} onClick={e => e.stopPropagation()} className="w-full sm:max-w-[480px] sm:rounded-3xl rounded-t-3xl flex flex-col" style={{ background: C.surface, boxShadow: SH.pop, maxHeight: "calc(100dvh - var(--mz-nav, 64px) - 14px)", outline: "none" }}>
+        <div className="flex items-center justify-between px-4 py-3.5 shrink-0" style={{ borderBottom: `1px solid ${C.lineSoft}` }}><button onClick={onClose} aria-label={t("a11y.close")} style={{ color: C.muted }}><X size={22} /></button><span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{title}</span><button disabled={!sel.length} onClick={() => onConfirm(sel)} className="px-4 py-1.5 rounded-full text-sm font-bold" style={{ backgroundImage: GBRAND, color: "#fff", opacity: sel.length ? 1 : 0.4 }}>{cta}{sel.length ? ` (${sel.length})` : ""}</button></div>
         <div className="px-3 py-2.5 shrink-0" style={{ borderBottom: `1px solid ${C.lineSoft}` }}><div className="flex items-center gap-2 px-3 py-2 rounded-full" style={{ background: C.surfaceMuted }}><Search size={16} style={{ color: C.faint }} /><input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder={t("picker.searchPeoplePh")} className="flex-1 bg-transparent text-[14px] outline-none" style={{ color: C.ink }} />{searching && <Mono style={{ fontSize: 11, color: C.faint }}>…</Mono>}</div></div>
-        {sel.length > 0 && <div className="flex gap-2 overflow-x-auto no-scrollbar px-4 py-3 shrink-0" style={{ borderBottom: `1px solid ${C.lineSoft}` }}>{sel.map(id => <div key={id} className="flex flex-col items-center gap-1 shrink-0"><div className="relative"><Avatar id={id} size={44} /><button onClick={() => toggle(id)} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div><span className="text-[11px]" style={{ color: C.muted }}>{USERS[id].name.split(" ")[0]}</span></div>)}</div>}
+        {sel.length > 0 && <div className="flex gap-2 overflow-x-auto no-scrollbar px-4 py-3 shrink-0" style={{ borderBottom: `1px solid ${C.lineSoft}` }}>{sel.map(id => <div key={id} className="flex flex-col items-center gap-1 shrink-0"><div className="relative"><Avatar id={id} size={44} /><button onClick={() => toggle(id)} aria-label={t("a11y.remove")} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div><span className="text-[11px]" style={{ color: C.muted }}>{USERS[id].name.split(" ")[0]}</span></div>)}</div>}
         <div className="overflow-y-auto p-2 flex-1" style={{ minHeight: 0 }}>{avail.map(u => { const on = sel.includes(u.id); return (
           <button key={u.id} onClick={() => toggle(u.id)} className="w-full flex items-center gap-3 px-2 py-2.5 rounded-xl transition" style={{ background: on ? C.accentSoft : "transparent" }}>
             <div className="relative"><Avatar id={u.id} size={44} />{u.online && <span className="absolute bottom-0 right-0"><Dot size={11} /></span>}</div>
@@ -488,11 +501,12 @@ export function FollowList({ view, following, onToggleFollow, onOpenProfile, onC
     })();
     return () => { cancel = true; };
   }, [type, view.userId]);
+  const modalRef = useModalA11y(onClose);
   return (
     <div className="fixed inset-0 z-[58] flex justify-center" style={{ background: C.paper }}>
-      <div className="w-full max-w-[600px] flex flex-col" style={{ height: "100dvh", borderLeft: `1px solid ${C.line}`, borderRight: `1px solid ${C.line}` }}>
+      <div ref={modalRef} tabIndex={-1} className="w-full max-w-[600px] flex flex-col" style={{ height: "100dvh", borderLeft: `1px solid ${C.line}`, borderRight: `1px solid ${C.line}`, outline: "none" }}>
         <div className="flex items-center gap-3 px-3 py-3 shrink-0" style={{ background: C.surface, borderBottom: `1px solid ${C.line}` }}>
-          <button onClick={onClose} className="active:scale-90" style={{ color: C.ink2 }}><ArrowLeft size={22} /></button>
+          <button onClick={onClose} aria-label={t("a11y.back")} className="active:scale-90" style={{ color: C.ink2 }}><ArrowLeft size={22} /></button>
           <Mono className="font-bold text-[15px]" style={{ color: C.ink }}>@{u.handle}</Mono>
         </div>
         <div className="flex shrink-0" style={{ background: C.surface, borderBottom: `1px solid ${C.line}` }}>{[["followers", t("follow.followers")], ["following", t("follow.followingTab")]].map(([k, l]) => <button key={k} onClick={() => setType(k)} className="flex-1 py-3 text-sm font-bold transition" style={{ color: type === k ? C.accent : C.faint, borderBottom: type === k ? `2px solid ${C.accent}` : "2px solid transparent" }}>{l}</button>)}</div>
@@ -518,11 +532,12 @@ export function ProfileViewers({ onOpenProfile, onClose }) {
     profilesApi.viewers().then(rs => { rs.forEach(mergeProfile); if (!cancel) setRows(rs); }).catch(() => { if (!cancel) setRows([]); }).then(() => { if (!cancel) setLoading(false); });
     return () => { cancel = true; };
   }, []);
+  const modalRef = useModalA11y(onClose);
   return (
     <div className="fixed inset-0 z-[58] flex justify-center" style={{ background: C.paper }}>
-      <div className="w-full max-w-[600px] flex flex-col" style={{ height: "100dvh", borderLeft: `1px solid ${C.line}`, borderRight: `1px solid ${C.line}` }}>
+      <div ref={modalRef} tabIndex={-1} className="w-full max-w-[600px] flex flex-col" style={{ height: "100dvh", borderLeft: `1px solid ${C.line}`, borderRight: `1px solid ${C.line}`, outline: "none" }}>
         <div className="flex items-center gap-3 px-3 py-3 shrink-0" style={{ background: C.surface, borderBottom: `1px solid ${C.line}` }}>
-          <button onClick={onClose} className="active:scale-90" style={{ color: C.ink2 }}><ArrowLeft size={22} /></button>
+          <button onClick={onClose} aria-label={t("a11y.back")} className="active:scale-90" style={{ color: C.ink2 }}><ArrowLeft size={22} /></button>
           <span className="font-bold text-[15px]" style={{ color: C.ink }}>{t("profile.viewers")}</span>
         </div>
         <div className="flex-1 overflow-y-auto p-2">
@@ -700,8 +715,8 @@ export function MiniPlayer({ song, playing, onToggle, onStop }) {
     <div className="flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full min-w-0" style={{ background: C.surfaceMuted, border: `1px solid ${C.line}`, maxWidth: 168 }}>
       <div className="rounded-full overflow-hidden shrink-0" style={{ width: 24, height: 24 }}><Pic src={song.cover} grad={GRADS[hashIdx(song.id, GRADS.length)]} className="w-full h-full" /></div>
       <span className="text-[11.5px] font-semibold truncate flex-1 min-w-0" style={{ color: C.ink }}>{song.title}</span>
-      <button onClick={onToggle} className="active:scale-90 shrink-0 flex items-center justify-center" style={{ color: C.accent, width: 20, height: 20 }}>{playing ? <Pause size={15} fill={C.accent} /> : <Play size={15} fill={C.accent} />}</button>
-      <button onClick={onStop} className="active:scale-90 shrink-0 flex items-center justify-center" style={{ color: C.faint, width: 18, height: 18 }}><X size={14} /></button>
+      <button onClick={onToggle} aria-label={playing ? t("a11y.pause") : t("a11y.play")} className="active:scale-90 shrink-0 flex items-center justify-center" style={{ color: C.accent, width: 20, height: 20 }}>{playing ? <Pause size={15} fill={C.accent} /> : <Play size={15} fill={C.accent} />}</button>
+      <button onClick={onStop} aria-label={t("a11y.close")} className="active:scale-90 shrink-0 flex items-center justify-center" style={{ color: C.faint, width: 18, height: 18 }}><X size={14} /></button>
     </div>
   );
 }
@@ -897,13 +912,14 @@ export function HighlightCreate({ onClose, onCreated, flash }) {
 
 
 export function HighlightView({ hl, isMe, onClose, onDelete }) {
+  const modalRef = useModalA11y(onClose);
   return (
     <div className="fixed inset-0 z-[210] flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,.92)" }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} className="relative w-full" style={{ maxWidth: 440, aspectRatio: "9/16", maxHeight: "86vh" }}>
+      <div ref={modalRef} tabIndex={-1} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} className="relative w-full" style={{ maxWidth: 440, aspectRatio: "9/16", maxHeight: "86vh", outline: "none" }}>
         {hl.cover_url ? <img src={hl.cover_url} alt="" className="w-full h-full" style={{ objectFit: "cover", borderRadius: 18 }} /> : <div className="w-full h-full flex items-center justify-center" style={{ borderRadius: 18, backgroundImage: GBRAND }}><span style={{ color: "#fff", fontFamily: DISPLAY, fontSize: 30, fontWeight: 800 }}>{hl.title}</span></div>}
         <div className="absolute inset-x-0 top-0 p-4 flex items-start justify-between" style={{ background: "linear-gradient(180deg, rgba(0,0,0,.5), transparent)", borderRadius: "18px 18px 0 0" }}>
           <span className="text-white font-bold text-[16px]" style={{ fontFamily: DISPLAY, textShadow: "0 1px 4px rgba(0,0,0,.6)" }}>{hl.title}</span>
-          <div className="flex gap-2">{isMe && <button onClick={() => onDelete(hl)} className="rounded-full flex items-center justify-center" style={{ width: 34, height: 34, background: "rgba(0,0,0,.5)", color: "#fff" }}><Trash2 size={17} /></button>}<button onClick={onClose} className="rounded-full flex items-center justify-center" style={{ width: 34, height: 34, background: "rgba(0,0,0,.5)", color: "#fff" }}><X size={18} /></button></div>
+          <div className="flex gap-2">{isMe && <button onClick={() => onDelete(hl)} aria-label={t("action.delete")} className="rounded-full flex items-center justify-center" style={{ width: 34, height: 34, background: "rgba(0,0,0,.5)", color: "#fff" }}><Trash2 size={17} /></button>}<button onClick={onClose} aria-label={t("a11y.close")} className="rounded-full flex items-center justify-center" style={{ width: 34, height: 34, background: "rgba(0,0,0,.5)", color: "#fff" }}><X size={18} /></button></div>
         </div>
       </div>
     </div>
@@ -915,13 +931,14 @@ export function ReelComments({ data, onClose, onAdd }) {
   const [text, setText] = useState("");
   const list = data.list;
   const send = () => { const t = text.trim(); if (!t) return; onAdd(t); setText(""); };
+  const modalRef = useModalA11y(onClose);
   return (
     <div className="fixed inset-0 z-[200] flex flex-col justify-end" onClick={onClose} style={{ background: "rgba(0,0,0,.5)" }}>
-      <div onClick={e => e.stopPropagation()} className="rounded-t-3xl flex flex-col" style={{ background: C.paper, maxHeight: "72vh", minHeight: "46vh" }}>
+      <div ref={modalRef} tabIndex={-1} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} className="rounded-t-3xl flex flex-col" style={{ background: C.paper, maxHeight: "72vh", minHeight: "46vh", outline: "none" }}>
         <div className="flex justify-center pt-2.5 pb-1"><div style={{ width: 38, height: 4, borderRadius: 2, background: C.line }} /></div>
         <div className="px-4 py-2.5 flex items-center justify-between" style={{ borderBottom: `1px solid ${C.lineSoft}` }}>
           <span style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 15, color: C.ink }}>კომენტარები{list ? ` · ${list.length}` : ""}</span>
-          <button onClick={onClose} style={{ color: C.muted }}><X size={20} /></button>
+          <button onClick={onClose} aria-label={t("a11y.close")} style={{ color: C.muted }}><X size={20} /></button>
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-3" style={{ minHeight: 120 }}>
           {list === null ? <div className="text-center py-8" style={{ color: C.faint }}><Mono style={{ fontSize: 12 }}>იტვირთება…</Mono></div>
@@ -938,7 +955,7 @@ export function ReelComments({ data, onClose, onAdd }) {
         </div>
         <div className="px-3 py-2.5 flex items-center gap-2" style={{ borderTop: `1px solid ${C.lineSoft}`, paddingBottom: "max(10px, env(safe-area-inset-bottom))" }}>
           <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} placeholder={t("reelcomments.addPh")} className="flex-1 rounded-full px-4 py-2.5 text-[14px] outline-none" style={{ background: C.surfaceMuted, color: C.ink }} />
-          <button onClick={send} disabled={!text.trim()} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 40, height: 40, backgroundImage: GBRAND, color: "#fff", opacity: text.trim() ? 1 : 0.5 }}><Send size={18} /></button>
+          <button onClick={send} disabled={!text.trim()} aria-label={t("a11y.send")} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 40, height: 40, backgroundImage: GBRAND, color: "#fff", opacity: text.trim() ? 1 : 0.5 }}><Send size={18} /></button>
         </div>
       </div>
     </div>
@@ -1021,17 +1038,17 @@ export function ReelCard({ r, onLike, onSave, onOpenProfile, flash, onComments, 
   return (
     <div ref={rootRef} className="relative w-full" style={{ height: "100dvh", scrollSnapAlign: "start" }}>
       {r.video ? <video ref={videoRef} src={priority ? r.video : undefined} data-src={r.video} className="absolute inset-0 w-full h-full" style={{ objectFit: "cover" }} loop muted={muted} playsInline autoPlay preload={priority ? "auto" : "none"} onTimeUpdate={(e) => { const v = e.currentTarget; if (v.duration) setProgress(v.currentTime / v.duration); }} onWaiting={() => setBuffering(true)} onPlaying={() => { setBuffering(false); setPaused(false); }} onPause={() => setPaused(true)} onPlay={() => setPaused(false)} onCanPlay={() => setBuffering(false)} /> : <Pic src={r.image} grad={GRADS[hashIdx(r.id, GRADS.length)]} className="absolute inset-0 w-full h-full" />}
-      <button className="absolute inset-0" onClick={onMedia} />
+      <button className="absolute inset-0" onClick={onMedia} aria-label={t("a11y.reelMediaToggle")} />
       {r.video && buffering && <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div style={{ width: 40, height: 40, border: "3px solid rgba(255,255,255,.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} /></div>}
       {r.video && paused && !buffering && <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="rounded-full flex items-center justify-center" style={{ width: 64, height: 64, background: "rgba(0,0,0,.4)", backdropFilter: "blur(4px)" }}><Play size={30} fill="#fff" color="#fff" /></div></div>}
-      {r.video && <button onClick={(e) => { e.stopPropagation(); onToggleMute && onToggleMute(); }} className="absolute z-10 rounded-full flex items-center justify-center active:scale-90" style={{ top: 72, right: 12, width: 40, height: 40, background: "rgba(0,0,0,.45)", color: "#fff", backdropFilter: "blur(4px)" }}>{muted ? <VolumeX size={20} /> : <Volume2 size={20} />}</button>}
+      {r.video && <button onClick={(e) => { e.stopPropagation(); onToggleMute && onToggleMute(); }} aria-label={muted ? t("a11y.unmute") : t("a11y.mute")} className="absolute z-10 rounded-full flex items-center justify-center active:scale-90" style={{ top: 72, right: 12, width: 40, height: 40, background: "rgba(0,0,0,.45)", color: "#fff", backdropFilter: "blur(4px)" }}>{muted ? <VolumeX size={20} /> : <Volume2 size={20} />}</button>}
       <div className="absolute inset-x-0 top-0 h-28 pointer-events-none" style={{ background: "linear-gradient(180deg, rgba(0,0,0,.5), transparent)" }} />
       <div className="absolute inset-x-0 bottom-0 pointer-events-none" style={{ height: "45%", background: "linear-gradient(0deg, rgba(0,0,0,.75), transparent)" }} />
       <div className="absolute right-3 flex flex-col items-center gap-5" style={{ bottom: 110 }}>
         <button onClick={() => onOpenProfile(u.id)} className="mb-1"><div className="rounded-full p-[2px]" style={{ backgroundImage: GBRAND }}><div className="rounded-full p-[2px]" style={{ background: "#000" }}><Avatar id={u.id} size={42} /></div></div></button>
         <button onClick={like} className="flex flex-col items-center gap-1 active:scale-90" style={{ color: "#fff" }}><Heart size={34} fill={r.likedByMe ? C.like : "none"} color={r.likedByMe ? C.like : "#fff"} style={{ transform: pop ? "scale(1.3)" : "scale(1)", transition: "transform .3s cubic-bezier(.34,1.56,.64,1)", filter: "drop-shadow(0 2px 6px rgba(0,0,0,.4))" }} /><Mono className="text-xs font-bold" style={{ textShadow: "0 1px 3px rgba(0,0,0,.6)" }}>{kfmt(r.likes + (r.likedByMe ? 1 : 0))}</Mono></button>
         <button onClick={() => onComments && onComments(r)} className="flex flex-col items-center gap-1 active:scale-90" style={{ color: "#fff" }}><MessageCircle size={32} style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,.4))" }} /><Mono className="text-xs font-bold" style={{ textShadow: "0 1px 3px rgba(0,0,0,.6)" }}>{r.comments}</Mono></button>
-        <button onClick={() => onSave(r.id)} className="flex flex-col items-center gap-1 active:scale-90" style={{ color: r.savedByMe ? C.star : "#fff" }}><Bookmark size={31} fill={r.savedByMe ? C.star : "none"} style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,.4))" }} /></button>
+        <button onClick={() => onSave(r.id)} aria-label={r.savedByMe ? t("a11y.unsave") : t("a11y.save")} className="flex flex-col items-center gap-1 active:scale-90" style={{ color: r.savedByMe ? C.star : "#fff" }}><Bookmark size={31} fill={r.savedByMe ? C.star : "none"} style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,.4))" }} /></button>
         <button onClick={() => { const url = typeof location !== "undefined" ? location.origin : "https://mzera2.vercel.app"; if (navigator.share) { navigator.share({ title: "mzera", text: r.caption || t("reel.shareText"), url }).catch(() => {}); } else if (navigator.clipboard) { navigator.clipboard.writeText(url).then(() => flash && flash(t("link.copied"))).catch(() => flash && flash(t("link.prefix") + url)); } else { flash && flash(t("link.prefix") + url); } }} className="flex flex-col items-center gap-1 active:scale-90" style={{ color: "#fff" }}><Send size={31} style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,.4))" }} /><Mono className="text-xs font-bold" style={{ textShadow: "0 1px 3px rgba(0,0,0,.6)" }}>{r.shares}</Mono></button>
         {onReport && r.authorId !== ME && <button onClick={() => { if (window.confirm(t("reel.reportConfirm"))) onReport("reel", r.id); }} aria-label={t("post.report")} className="flex flex-col items-center gap-1 active:scale-90" style={{ color: "#fff" }}><Flag size={28} style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,.4))" }} /></button>}
       </div>
@@ -1070,14 +1087,15 @@ export function ReelCreate({ onClose, onPublish, onUpload, onUploadThumb, flash 
     } catch (err) { flash && flash(t("video.uploadFailedPre") + (err && err.message ? err.message : t("video.tryAgain"))); }
     setProgress(null); setThumbBusy(false); e.target.value = "";
   };
+  const modalRef = useModalA11y(onClose);
   return (
     <div className="fixed inset-0 z-[60] flex sm:items-center justify-center items-end" style={{ background: "rgba(6,7,12,.6)", backdropFilter: "blur(4px)" }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} className="w-full sm:max-w-[460px] sm:rounded-3xl rounded-t-3xl max-h-[92vh] overflow-y-auto" style={{ background: C.surface, boxShadow: SH.pop }}>
-        <div className="flex items-center justify-between px-4 py-3.5 sticky top-0 z-10" style={{ background: C.surface, borderBottom: `1px solid ${C.lineSoft}` }}><button onClick={onClose} style={{ color: C.muted }}><X size={22} /></button><span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>ახალი Reel</span><button disabled={!vid} onClick={() => onPublish({ video: vid, thumb, caption: caption.trim(), audio: sound })} className="px-4 py-1.5 rounded-full text-sm font-bold" style={{ backgroundImage: GBRAND, color: "#fff", opacity: vid ? 1 : 0.4 }}>გამოქვეყნება</button></div>
+      <div ref={modalRef} tabIndex={-1} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} className="w-full sm:max-w-[460px] sm:rounded-3xl rounded-t-3xl max-h-[92vh] overflow-y-auto" style={{ background: C.surface, boxShadow: SH.pop, outline: "none" }}>
+        <div className="flex items-center justify-between px-4 py-3.5 sticky top-0 z-10" style={{ background: C.surface, borderBottom: `1px solid ${C.lineSoft}` }}><button onClick={onClose} aria-label={t("a11y.close")} style={{ color: C.muted }}><X size={22} /></button><span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>ახალი Reel</span><button disabled={!vid} onClick={() => onPublish({ video: vid, thumb, caption: caption.trim(), audio: sound })} className="px-4 py-1.5 rounded-full text-sm font-bold" style={{ backgroundImage: GBRAND, color: "#fff", opacity: vid ? 1 : 0.4 }}>გამოქვეყნება</button></div>
         <div className="p-4 space-y-3.5">
           <input ref={fileRef} type="file" accept="video/*" hidden onChange={pick} />
           {vid ? (
-            <div className="relative rounded-2xl overflow-hidden mx-auto" style={{ background: "#000", aspectRatio: "9/16", maxHeight: 340 }}><video src={vid} poster={thumb || undefined} className="w-full h-full" style={{ objectFit: "contain" }} autoPlay loop muted playsInline /><button onClick={() => { setVid(null); setThumb(null); setDur(null); }} className="absolute top-2 right-2 rounded-full p-1.5" style={{ background: "rgba(0,0,0,.55)", color: "#fff" }}><X size={16} /></button>{dur != null && <span className="absolute bottom-2 left-2 rounded-md px-2 py-0.5 text-[11px] font-bold" style={{ background: "rgba(0,0,0,.6)", color: "#fff" }}>{dur}წმ{thumb ? " · thumbnail ✓" : ""}</span>}</div>
+            <div className="relative rounded-2xl overflow-hidden mx-auto" style={{ background: "#000", aspectRatio: "9/16", maxHeight: 340 }}><video src={vid} poster={thumb || undefined} className="w-full h-full" style={{ objectFit: "contain" }} autoPlay loop muted playsInline /><button onClick={() => { setVid(null); setThumb(null); setDur(null); }} aria-label={t("a11y.remove")} className="absolute top-2 right-2 rounded-full p-1.5" style={{ background: "rgba(0,0,0,.55)", color: "#fff" }}><X size={16} /></button>{dur != null && <span className="absolute bottom-2 left-2 rounded-md px-2 py-0.5 text-[11px] font-bold" style={{ background: "rgba(0,0,0,.6)", color: "#fff" }}>{dur}წმ{thumb ? " · thumbnail ✓" : ""}</span>}</div>
           ) : (
             <button onClick={() => fileRef.current && fileRef.current.click()} disabled={up} className="w-full flex flex-col items-center justify-center gap-2 rounded-2xl mx-auto" style={{ aspectRatio: "9/16", maxHeight: 300, background: C.surfaceMuted, border: `2px dashed ${C.line}`, color: C.muted }}>{up ? <div className="flex flex-col items-center gap-2 px-6 text-center w-full">{progress != null ? <><div style={{ width: "100%", maxWidth: 180 }}><UploadProgress pct={progress} /></div><span className="text-[11px]" style={{ color: C.faint }}>{upSize}</span></> : <><div className="rounded-full" style={{ width: 30, height: 30, border: `3px solid ${C.accentSoft}`, borderTopColor: C.accent, animation: "spin 0.8s linear infinite" }} /><span className="text-sm font-bold" style={{ color: C.ink2 }}>thumbnail მზადდება, დაელოდე</span></>}</div> : <><div className="rounded-full flex items-center justify-center" style={{ width: 56, height: 56, background: C.accentSoft }}><Film size={26} style={{ color: C.accent }} /></div><span className="text-sm font-bold" style={{ color: C.ink2 }}>აირჩიე ვიდეო</span><span className="text-[12px]">MP4 / MOV · მაქს. 3 წუთი</span></>}</button>
           )}
@@ -1100,7 +1118,7 @@ export function GroupPost({ p, onOpenProfile, onEdit, onDelete }) {
   const mine = p.authorId === ME;
   return (
     <div className="p-3.5" style={card()}>
-      <div className="flex items-center gap-2.5 mb-2"><button onClick={() => onOpenProfile(u.id)}><Avatar id={u.id} size={36} /></button><div className="leading-tight flex-1 min-w-0"><Name id={u.id} className="text-[14px]" /><div><Handle h={u.handle} t={p.time} /></div></div>{mine && (onEdit || onDelete) && <div className="relative"><button onClick={() => setMenu(m => !m)} className="active:scale-90 p-1" style={{ color: C.faint }}><MoreHorizontal size={20} /></button>{menu && <><div className="fixed inset-0" style={{ zIndex: 30 }} onClick={() => setMenu(false)} /><div className="absolute right-0 z-40 rounded-xl overflow-hidden" style={{ top: "100%", background: C.surface, border: `1px solid ${C.line}`, boxShadow: SH.pop, minWidth: 150 }}>{onEdit && <button onClick={() => { setMenu(false); setEditing(true); setTxt(p.text || ""); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[14px] font-medium active:opacity-70" style={{ color: C.ink }}><Pencil size={16} /> რედაქტირება</button>}{onDelete && <button onClick={() => { setMenu(false); onDelete(p.id); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[14px] font-medium active:opacity-70" style={{ color: C.like, borderTop: `1px solid ${C.lineSoft}` }}><Trash2 size={16} /> წაშლა</button>}</div></>}</div>}</div>
+      <div className="flex items-center gap-2.5 mb-2"><button onClick={() => onOpenProfile(u.id)}><Avatar id={u.id} size={36} /></button><div className="leading-tight flex-1 min-w-0"><Name id={u.id} className="text-[14px]" /><div><Handle h={u.handle} t={p.time} /></div></div>{mine && (onEdit || onDelete) && <div className="relative"><button onClick={() => setMenu(m => !m)} aria-label={t("a11y.moreOptions")} className="active:scale-90 p-1" style={{ color: C.faint }}><MoreHorizontal size={20} /></button>{menu && <><div className="fixed inset-0" style={{ zIndex: 30 }} onClick={() => setMenu(false)} /><div className="absolute right-0 z-40 rounded-xl overflow-hidden" style={{ top: "100%", background: C.surface, border: `1px solid ${C.line}`, boxShadow: SH.pop, minWidth: 150 }}>{onEdit && <button onClick={() => { setMenu(false); setEditing(true); setTxt(p.text || ""); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[14px] font-medium active:opacity-70" style={{ color: C.ink }}><Pencil size={16} /> რედაქტირება</button>}{onDelete && <button onClick={() => { setMenu(false); onDelete(p.id); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[14px] font-medium active:opacity-70" style={{ color: C.like, borderTop: `1px solid ${C.lineSoft}` }}><Trash2 size={16} /> წაშლა</button>}</div></>}</div>}</div>
       {editing ? <div className="mb-2"><textarea value={txt} onChange={e => setTxt(e.target.value)} rows={2} className="w-full resize-none px-3 py-2 rounded-xl outline-none text-[14px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} autoFocus /><div className="flex gap-2 mt-1.5 justify-end"><button onClick={() => { setEditing(false); setTxt(p.text || ""); }} className="px-3 py-1.5 rounded-lg text-[13px] font-bold" style={{ background: C.surfaceMuted, color: C.muted }}>გაუქმება</button><button onClick={() => { if (txt.trim()) { onEdit(p.id, txt.trim()); setEditing(false); } }} className="px-3 py-1.5 rounded-lg text-[13px] font-bold text-white" style={{ backgroundImage: GBRAND }}>შენახვა</button></div></div> : (p.text && <div className="text-[14px] mb-2" style={{ color: C.ink2, lineHeight: 1.5 }}>{p.text}</div>)}
       {p.image && <Pic src={p.image} grad={GRADS[hashIdx(p.id, GRADS.length)]} round={12} style={{ aspectRatio: "16/10" }} className="mb-2" />}
       <div className="flex items-center gap-4 text-[13px]" style={{ color: C.faint }}>

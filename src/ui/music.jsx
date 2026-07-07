@@ -48,11 +48,12 @@ function NewSong({ onClose, onCreate, onUpload, onUploadAudio, initial }) {
     setAudioProgress(null); e.target.value = "";
   };
   const ok = title.trim().length > 0 && !!audio;
+  const modalRef = useModalA11y(onClose);
   return (
     <div className="fixed inset-0 z-[60] flex sm:items-center justify-center items-end" style={{ background: "rgba(6,7,12,.55)", backdropFilter: "blur(4px)", height: vph ? vph + "px" : "100dvh" }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="w-full sm:max-w-[520px] sm:rounded-3xl rounded-t-3xl overflow-y-auto" style={{ background: C.surface, boxShadow: SH.pop, maxHeight: vph ? vph + "px" : "88vh" }}>
+      <div ref={modalRef} tabIndex={-1} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="w-full sm:max-w-[520px] sm:rounded-3xl rounded-t-3xl overflow-y-auto" style={{ background: C.surface, boxShadow: SH.pop, maxHeight: vph ? vph + "px" : "88vh", outline: "none" }}>
         <div className="flex items-center justify-between px-4 py-3.5 sticky top-0" style={{ background: C.surface, borderBottom: `1px solid ${C.lineSoft}` }}>
-          <button onClick={onClose} style={{ color: C.muted }}><X size={22} /></button>
+          <button onClick={onClose} aria-label={t("a11y.close")} style={{ color: C.muted }}><X size={22} /></button>
           <span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{initial ? t("song.editTitle") : t("song.addTitle")}</span>
           <button disabled={!ok} onClick={() => onCreate({ title: title.trim(), artist: artist.trim(), genre, cover, audio })} className="px-4 py-1.5 rounded-full text-sm font-bold" style={{ backgroundImage: GBRAND, color: "#fff", opacity: ok ? 1 : 0.4 }}>{initial ? t("action.save") : t("action.add")}</button>
         </div>
@@ -61,14 +62,14 @@ function NewSong({ onClose, onCreate, onUpload, onUploadAudio, initial }) {
           <div className="flex gap-2 items-center flex-wrap">
             <input ref={coverRef} type="file" accept="image/*" hidden onChange={pickCover} />
             <button onClick={() => coverRef.current && coverRef.current.click()} disabled={uploadingCover} className="rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95" style={{ width: 72, height: 72, background: C.accentSoft, color: C.accentText }}>{uploadingCover ? <span className="text-[11px] font-bold">{coverProgress}%</span> : <><Upload size={20} /><span className="text-[10px] font-bold mt-0.5 text-center">{t("song.coverWord")}</span></>}</button>
-            {cover && <div className="rounded-xl overflow-hidden shrink-0 relative" style={{ width: 72, height: 72, outline: `2.5px solid ${C.accent}`, outlineOffset: 2 }}><Pic src={cover} className="w-full h-full" /><button onClick={() => setCover("")} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div>}
+            {cover && <div className="rounded-xl overflow-hidden shrink-0 relative" style={{ width: 72, height: 72, outline: `2.5px solid ${C.accent}`, outlineOffset: 2 }}><Pic src={cover} className="w-full h-full" /><button onClick={() => setCover("")} aria-label={t("a11y.remove")} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div>}
             {!cover && !uploadingCover && <span className="text-[12px]" style={{ color: C.faint }}>{t("song.addCoverHint")}</span>}
           </div>
           {uploadingCover && <UploadProgress pct={coverProgress} label={t("song.coverWord")} />}
           <div className="flex gap-2 items-center flex-wrap">
             <input ref={audioRef} type="file" accept="audio/*" hidden onChange={pickAudio} />
             <button onClick={() => audioRef.current && audioRef.current.click()} disabled={uploadingAudio} className="rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95" style={{ width: 72, height: 72, background: C.accentSoft, color: C.accentText }}>{uploadingAudio ? <span className="text-[11px] font-bold">{audioProgress}%</span> : <><Upload size={20} /><span className="text-[10px] font-bold mt-0.5 text-center">{t("song.audioWord")}</span></>}</button>
-            {audio && <div className="rounded-xl overflow-hidden shrink-0 relative flex items-center justify-center" style={{ width: 72, height: 72, background: "#000", outline: `2.5px solid ${C.accent}`, outlineOffset: 2 }}><Play size={22} color="#fff" fill="#fff" /><button onClick={() => setAudio("")} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div>}
+            {audio && <div className="rounded-xl overflow-hidden shrink-0 relative flex items-center justify-center" style={{ width: 72, height: 72, background: "#000", outline: `2.5px solid ${C.accent}`, outlineOffset: 2 }}><Play size={22} color="#fff" fill="#fff" /><button onClick={() => setAudio("")} aria-label={t("a11y.remove")} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div>}
             {!audio && !uploadingAudio && <span className="text-[12px]" style={{ color: C.faint }}>{t("song.uploadAudioHint")}</span>}
           </div>
           {uploadingAudio && <UploadProgress pct={audioProgress} label={t("song.audioWord")} />}
@@ -120,9 +121,9 @@ export function MusicPage({ songs, nowPlaying, isPlaying, onPlay, onNew, onEdit,
                   <div className="text-[12.5px] truncate" style={{ color: C.muted }}>{s.artist || t("song.unknownArtist")}</div>
                   <div className="flex items-center gap-1.5 mt-0.5 text-[11px]" style={{ color: C.faint }}><span className="rounded px-1.5 py-0.5" style={{ background: C.accentSoft, color: C.accentText, fontSize: 10, fontWeight: 700 }}>{s.genre}</span><Mono>{s.plays} {t("song.playsSuffix")}</Mono></div>
                 </div>
-                {own && <button onClick={() => setEditing(s)} className="shrink-0 active:scale-90" style={{ color: C.ink2 }}><Pencil size={17} /></button>}
-                {own && <button onClick={() => setConfirmDel(s)} className="shrink-0 active:scale-90" style={{ color: C.like }}><Trash2 size={17} /></button>}
-                <button onClick={() => onPlay(s)} className="shrink-0 rounded-full flex items-center justify-center active:scale-90" style={{ width: 40, height: 40, backgroundImage: GBRAND, color: "#fff", boxShadow: SH.glow }}>{playingThis ? <Pause size={18} fill="#fff" /> : <Play size={18} fill="#fff" style={{ marginLeft: 1 }} />}</button>
+                {own && <button onClick={() => setEditing(s)} aria-label={t("a11y.edit")} className="shrink-0 active:scale-90" style={{ color: C.ink2 }}><Pencil size={17} /></button>}
+                {own && <button onClick={() => setConfirmDel(s)} aria-label={t("action.delete")} className="shrink-0 active:scale-90" style={{ color: C.like }}><Trash2 size={17} /></button>}
+                <button onClick={() => onPlay(s)} aria-label={playingThis ? t("a11y.pause") : t("a11y.play")} className="shrink-0 rounded-full flex items-center justify-center active:scale-90" style={{ width: 40, height: 40, backgroundImage: GBRAND, color: "#fff", boxShadow: SH.glow }}>{playingThis ? <Pause size={18} fill="#fff" /> : <Play size={18} fill="#fff" style={{ marginLeft: 1 }} />}</button>
               </div>
             );
           })}

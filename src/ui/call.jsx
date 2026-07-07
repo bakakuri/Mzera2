@@ -224,14 +224,14 @@ export const CallLayer = forwardRef(function CallLayer({ me, enabled }, ref) {
       <div className="absolute inset-x-0 bottom-0 pt-10 flex items-center justify-center gap-5" style={{ zIndex: 5, paddingBottom: "max(2.5rem, env(safe-area-inset-bottom))", background: "linear-gradient(transparent, rgba(0,0,0,.55))" }}>
         {call.state === "incoming" ? (
           <>
-            <button onClick={decline} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 68, height: 68, background: "#ef4444" }}><PhoneOff size={28} color="#fff" /></button>
-            <button onClick={accept} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 68, height: 68, background: "#22c55e" }}><Phone size={28} color="#fff" /></button>
+            <button onClick={decline} aria-label="ზარის უარყოფა" className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 68, height: 68, background: "#ef4444" }}><PhoneOff size={28} color="#fff" /></button>
+            <button onClick={accept} aria-label="ზარზე პასუხი" className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 68, height: 68, background: "#22c55e" }}><Phone size={28} color="#fff" /></button>
           </>
         ) : (
           <>
-            <button onClick={toggleMute} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 56, height: 56, background: call.muted ? "#fff" : "rgba(255,255,255,.16)" }}>{call.muted ? <MicOff size={23} color="#0b0e16" /> : <Mic size={23} color="#fff" />}</button>
-            {call.video && <button onClick={toggleCam} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 56, height: 56, background: call.camOff ? "#fff" : "rgba(255,255,255,.16)" }}>{call.camOff ? <VideoOff size={23} color="#0b0e16" /> : <Video size={23} color="#fff" />}</button>}
-            <button onClick={() => endCall(true)} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 68, height: 68, background: "#ef4444" }}><PhoneOff size={28} color="#fff" /></button>
+            <button onClick={toggleMute} aria-label={call.muted ? "მიკროფონის ჩართვა" : "მიკროფონის გამორთვა"} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 56, height: 56, background: call.muted ? "#fff" : "rgba(255,255,255,.16)" }}>{call.muted ? <MicOff size={23} color="#0b0e16" /> : <Mic size={23} color="#fff" />}</button>
+            {call.video && <button onClick={toggleCam} aria-label={call.camOff ? "კამერის ჩართვა" : "კამერის გამორთვა"} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 56, height: 56, background: call.camOff ? "#fff" : "rgba(255,255,255,.16)" }}>{call.camOff ? <VideoOff size={23} color="#0b0e16" /> : <Video size={23} color="#fff" />}</button>}
+            <button onClick={() => endCall(true)} aria-label="ზარის დასრულება" className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 68, height: 68, background: "#ef4444" }}><PhoneOff size={28} color="#fff" /></button>
           </>
         )}
       </div>

@@ -58,7 +58,7 @@ export function SuggestedPeople({ people, isFollowing, onToggle, onDismiss, onOp
       <div className="flex items-center justify-between px-4 pt-3 pb-1.5"><span className="text-[14px] font-bold" style={{ color: C.ink }}>{t("suggested.mayKnow")}</span></div>
       <div className="flex gap-2.5 px-4 overflow-x-auto no-scrollbar pb-3">
         {people.map(u => <Tilt key={u.id} max={9} radius={18} touchAction="pan-x" className="shrink-0 p-3 flex flex-col items-center" style={{ width: 144, ...card() }}>
-          <button onClick={() => onDismiss(u.id)} className="self-end -mt-1 -mr-1 rounded-full p-0.5 active:scale-90" style={{ color: C.faint }}><X size={15} /></button>
+          <button onClick={() => onDismiss(u.id)} aria-label={t("a11y.remove")} className="self-end -mt-1 -mr-1 rounded-full p-0.5 active:scale-90" style={{ color: C.faint }}><X size={15} /></button>
           <button onClick={() => onOpenProfile(u.id)} className="flex flex-col items-center w-full"><Avatar id={u.id} size={72} /><div className="text-[13px] font-bold mt-2 text-center truncate w-full" style={{ color: C.ink }}>{USERS[u.id] ? USERS[u.id].name : "—"}</div><Mono className="text-[11px] truncate w-full text-center" style={{ color: C.faint }}>@{USERS[u.id] ? USERS[u.id].handle : ""}</Mono></button>
           <button onClick={() => onToggle(u.id)} className="w-full mt-2.5 py-1.5 rounded-lg text-[12.5px] font-bold transition active:scale-95" style={isFollowing(u.id) ? { background: C.surfaceMuted, color: C.ink } : { backgroundImage: GBRAND, color: "#fff" }}>{isFollowing(u.id) ? t("follow.followedCheck") : t("follow.followShort")}</button>
         </Tilt>)}
@@ -152,10 +152,10 @@ function AlbumsGrid({ isMe, albums, photos, onCreateAlbum, onRenameAlbum, onDele
       )}
       {openAlbum && (
         <div className="flex items-center gap-2.5 px-3 pb-3">
-          <button onClick={() => setOpenAlbum(null)} className="active:scale-90"><ArrowLeft size={20} style={{ color: C.ink }} /></button>
+          <button onClick={() => setOpenAlbum(null)} aria-label={t("a11y.back")} className="active:scale-90"><ArrowLeft size={20} style={{ color: C.ink }} /></button>
           <span className="font-bold text-[14.5px] flex-1 truncate" style={{ color: C.ink }}>{openAlbum.name}</span>
-          {isMe && <button onClick={() => renameAlbum(openAlbum)} className="active:scale-90" style={{ color: C.faint }}><Pencil size={16} /></button>}
-          {isMe && <button onClick={() => { deleteAlbum(openAlbum); setOpenAlbum(null); }} className="active:scale-90" style={{ color: C.faint }}><Trash2 size={16} /></button>}
+          {isMe && <button onClick={() => renameAlbum(openAlbum)} aria-label={t("a11y.edit")} className="active:scale-90" style={{ color: C.faint }}><Pencil size={16} /></button>}
+          {isMe && <button onClick={() => { deleteAlbum(openAlbum); setOpenAlbum(null); }} aria-label={t("action.delete")} className="active:scale-90" style={{ color: C.faint }}><Trash2 size={16} /></button>}
         </div>
       )}
       {isMe && (
@@ -185,9 +185,9 @@ function AlbumsGrid({ isMe, albums, photos, onCreateAlbum, onRenameAlbum, onDele
       {viewer && (
         <div className="fixed inset-0 z-[85] flex flex-col" style={{ background: "rgba(6,7,12,.94)" }} onClick={closeViewer}>
           <div className="flex items-center justify-end gap-4 px-4 py-3" onClick={e => e.stopPropagation()}>
-            {isMe && <button onClick={() => setMovePicker(true)} className="active:scale-90" style={{ color: "#fff" }}><CornerUpLeft size={20} /></button>}
-            {isMe && <button onClick={() => deletePhoto(viewer)} className="active:scale-90" style={{ color: "#fff" }}><Trash2 size={20} /></button>}
-            <button onClick={closeViewer} className="active:scale-90" style={{ color: "#fff" }}><X size={22} /></button>
+            {isMe && <button onClick={() => setMovePicker(true)} aria-label={t("a11y.move")} className="active:scale-90" style={{ color: "#fff" }}><CornerUpLeft size={20} /></button>}
+            {isMe && <button onClick={() => deletePhoto(viewer)} aria-label={t("action.delete")} className="active:scale-90" style={{ color: "#fff" }}><Trash2 size={20} /></button>}
+            <button onClick={closeViewer} aria-label={t("a11y.close")} className="active:scale-90" style={{ color: "#fff" }}><X size={22} /></button>
           </div>
           <div className="flex-1 flex items-center justify-center px-4" onClick={e => e.stopPropagation()}>
             <img src={viewer.image} alt="" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: 8 }} />
@@ -209,7 +209,7 @@ function AlbumsGrid({ isMe, albums, photos, onCreateAlbum, onRenameAlbum, onDele
 }
 
 export function Profile({ userId, posts, savedPosts, reels, xp, meProfile, following, followerCounts, followsMe, onToggleFollow, onMessage, onOpenList, onSettings, flash, onBack, onTag, onLike, onReact, onSave, onComment, onPollVote, onReport, onRemove, onOpenProfile, isAdmin, onUploadAvatar, onUploadCover, onOpenReels, onAddReel, onReelDelete, onReelEdit, onEditPost, onDeletePost, onEditComment, onDeleteComment, blocked, muted, onBlock, onUnblock, onMute, onUnmute, closeFriend, onToggleCloseFriend, collections, onCreateCollection, onAssignCollection, albums, albumPhotos, onCreateAlbum, onRenameAlbum, onDeleteAlbum, onUploadAlbumPhoto, onMoveAlbumPhoto, onReorderAlbumPhotos, onDeleteAlbumPhoto }) {
-  const u = USERS[userId]; const isMe = userId === ME; const [tab, setTab] = useState("grid"); const [sel, setSel] = useState(null); const [editReel, setEditReel] = useState(null); const [editCap, setEditCap] = useState("");
+  const u = USERS[userId]; const isMe = userId === ME; const [tab, setTab] = useState("grid"); const [sel, setSel] = useState(null); const [editReel, setEditReel] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false); const [qrOpen, setQrOpen] = useState(false); const [selCol, setSelCol] = useState(null); const [assignFor, setAssignFor] = useState(null); const [avatarView, setAvatarView] = useState(false);
   const [avatarProgress, setAvatarProgress] = useState(null); const [coverProgress, setCoverProgress] = useState(null);
   const pickAvatar = async (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; setAvatarProgress(0); try { await onUploadAvatar(f, setAvatarProgress); } catch (err) { flash && flash(t("onb.avatarUploadFailedPre") + (err && err.message ? err.message : t("error.unknown"))); } setAvatarProgress(null); e.target.value = ""; };
@@ -246,9 +246,9 @@ export function Profile({ userId, posts, savedPosts, reels, xp, meProfile, follo
         {isMe && onUploadCover && <label style={{ position: "absolute", right: 12, bottom: 12, cursor: "pointer", zIndex: 2 }}><input type="file" accept="image/*" style={{ display: "none" }} disabled={coverProgress != null} onChange={pickCover} /><div className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 36, height: 36, background: "rgba(0,0,0,.5)", color: "#fff", backdropFilter: "blur(6px)" }}>{coverProgress != null ? <Mono style={{ fontSize: 10, fontWeight: 700 }}>{coverProgress}%</Mono> : <Camera size={17} />}</div></label>}
         <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(180deg, rgba(0,0,0,.28), rgba(0,0,0,.04))" }} />
         <div className="absolute top-0 inset-x-0 flex items-center gap-3 px-4 py-3">
-          {!isMe && <button onClick={onBack} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 38, height: 38, background: "rgba(0,0,0,.4)", color: "#fff", backdropFilter: "blur(6px)" }}><ArrowLeft size={20} /></button>}
+          {!isMe && <button onClick={onBack} aria-label={t("a11y.back")} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 38, height: 38, background: "rgba(0,0,0,.4)", color: "#fff", backdropFilter: "blur(6px)" }}><ArrowLeft size={20} /></button>}
           <div className="flex-1" />
-          <button onClick={() => isMe ? onSettings() : setMenuOpen(true)} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 38, height: 38, background: "rgba(0,0,0,.4)", color: "#fff", backdropFilter: "blur(6px)" }}>{isMe ? <Settings size={19} /> : <MoreHorizontal size={20} />}</button>
+          <button onClick={() => isMe ? onSettings() : setMenuOpen(true)} aria-label={isMe ? t("drawer.settings") : t("a11y.moreOptions")} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 38, height: 38, background: "rgba(0,0,0,.4)", color: "#fff", backdropFilter: "blur(6px)" }}>{isMe ? <Settings size={19} /> : <MoreHorizontal size={20} />}</button>
         </div>
       </div>
       <div className="px-4">
@@ -331,8 +331,8 @@ export function Profile({ userId, posts, savedPosts, reels, xp, meProfile, follo
             <button onClick={() => onOpenReels && onOpenReels()} className="block w-full h-full active:opacity-80">{r.image ? <Pic src={r.image} grad={GRADS[hashIdx(r.id, GRADS.length)]} w={400} round={10} style={{ aspectRatio: "9/16" }} /> : r.video ? <video src={r.video + "#t=0.1"} preload="metadata" muted playsInline className="w-full h-full" style={{ objectFit: "cover", borderRadius: 10, aspectRatio: "9/16", background: "#000" }} /> : <Pic src={null} grad={GRADS[hashIdx(r.id, GRADS.length)]} round={10} style={{ aspectRatio: "9/16" }} />}</button>
             <span className="absolute bottom-1.5 left-1.5 flex items-center gap-1" style={{ color: "#fff", filter: "drop-shadow(0 1px 2px rgba(0,0,0,.7))" }}><Play size={12} fill="#fff" /><Mono style={{ fontSize: 11, fontWeight: 700 }}>{kfmt(r.views || 0)}</Mono></span>
             {isMe && <div className="absolute top-1 right-1 flex flex-col gap-1">
-              <button onClick={() => { setEditReel(r.id); setEditCap(r.caption || ""); }} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 27, height: 27, background: "rgba(0,0,0,.6)", color: "#fff" }}><Settings size={13} /></button>
-              <button onClick={() => { if (window.confirm(t("reels.deleteConfirm"))) onReelDelete(r.id); }} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 27, height: 27, background: "rgba(220,38,38,.85)", color: "#fff" }}><Trash2 size={13} /></button>
+              <button onClick={() => setEditReel(r.id)} aria-label={t("a11y.edit")} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 27, height: 27, background: "rgba(0,0,0,.6)", color: "#fff" }}><Settings size={13} /></button>
+              <button onClick={() => { if (window.confirm(t("reels.deleteConfirm"))) onReelDelete(r.id); }} aria-label={t("action.delete")} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 27, height: 27, background: "rgba(220,38,38,.85)", color: "#fff" }}><Trash2 size={13} /></button>
             </div>}
           </div>
         ))}
@@ -360,35 +360,55 @@ export function Profile({ userId, posts, savedPosts, reels, xp, meProfile, follo
         );
       })()}
       </>}
-      {assignFor && (
-        <div className="fixed inset-0 z-[70] flex items-end" style={{ background: "rgba(0,0,0,.45)" }} onClick={() => setAssignFor(null)}>
-          <div className="w-full rounded-t-3xl pb-6 pt-2" style={{ background: C.paper, maxWidth: 600, margin: "0 auto", animation: "up .25s ease both" }} onClick={e => e.stopPropagation()}>
-            <div className="mx-auto rounded-full mb-2" style={{ width: 38, height: 4, background: C.line }} />
-            <div className="px-5 py-2 text-[13px] font-bold" style={{ color: C.muted }}>{t("folder.moveTo")}</div>
-            {(collections || []).map(c => <button key={c.id} onClick={() => { onAssignCollection(assignFor, c.id); setAssignFor(null); }} className="w-full flex items-center gap-3 px-5 py-3.5 active:opacity-60" style={{ color: C.ink }}><span style={{ fontSize: 18 }}>📁</span><span className="text-[15px] font-medium">{c.name}</span></button>)}
-            <button onClick={async () => { const n = window.prompt(t("folder.namePrompt")); if (n) { const c = await onCreateCollection(n); if (c) { onAssignCollection(assignFor, c.id); setAssignFor(null); } } }} className="w-full flex items-center gap-3 px-5 py-3.5 active:opacity-60" style={{ color: C.accent }}><Plus size={20} /><span className="text-[15px] font-medium">{t("folder.new")}</span></button>
-            <button onClick={() => { onAssignCollection(assignFor, null); setAssignFor(null); }} className="w-full flex items-center gap-3 px-5 py-3.5 active:opacity-60" style={{ color: "#e05656" }}><X size={20} /><span className="text-[15px] font-medium">{t("folder.remove")}</span></button>
-          </div>
-        </div>
-      )}
+      {assignFor && <AssignCollectionSheet postId={assignFor} collections={collections} onAssignCollection={onAssignCollection} onCreateCollection={onCreateCollection} onClose={() => setAssignFor(null)} />}
 
-      {selPost && (
-        <div className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto" style={{ background: "rgba(0,0,0,.55)" }} onClick={() => setSel(null)}>
-          <div className="w-full max-w-[540px] min-h-full md:min-h-0 md:my-6" style={{ background: C.paper }} onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-3 px-4 py-3 sticky top-0 z-10" style={{ background: C.paper + "e6", backdropFilter: "blur(12px)", borderBottom: `1px solid ${C.line}` }}><button onClick={() => setSel(null)} style={{ color: C.ink2 }}><ArrowLeft size={22} /></button><span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{t("word.post")}</span></div>
-            <div className="p-3"><PostCard post={selPost} onLike={onLike} onReact={onReact} onSave={onSave} onComment={onComment} onPollVote={onPollVote} onTag={onTag} onReport={onReport} onRemove={onRemove} onOpenProfile={onOpenProfile} isAdmin={isAdmin} onEdit={onEditPost} onDelete={onDeletePost} onEditComment={onEditComment} onDeleteComment={onDeleteComment} /></div>
-          </div>
-        </div>
-      )}
-      {editReel && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-5" style={{ background: "rgba(0,0,0,.55)" }} onClick={() => setEditReel(null)}>
-          <div className="w-full max-w-[440px] rounded-3xl p-5" style={{ background: C.surface, boxShadow: SH.pop }} onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4"><h2 className="text-[17px]" style={{ color: C.ink, fontFamily: DISPLAY, fontWeight: 700 }}>{t("reel.editTitle")}</h2><button onClick={() => setEditReel(null)} style={{ color: C.faint }}><X size={22} /></button></div>
-            <textarea value={editCap} onChange={e => setEditCap(e.target.value)} rows={3} placeholder={t("reel.captionPh")} className="w-full px-4 py-3 rounded-xl mb-3 text-[15px] outline-none resize-none" style={{ background: C.surfaceMuted, color: C.ink }} />
-            <button onClick={() => { onReelEdit(editReel, editCap.trim()); setEditReel(null); flash && flash(t("reel.updated")); }} className="w-full py-3.5 rounded-xl text-[15px] font-bold text-white active:scale-[.98]" style={{ backgroundImage: GBRAND }}>{t("action.save")}</button>
-          </div>
-        </div>
-      )}
+      {selPost && <SelectedPostSheet post={selPost} onClose={() => setSel(null)} onLike={onLike} onReact={onReact} onSave={onSave} onComment={onComment} onPollVote={onPollVote} onTag={onTag} onReport={onReport} onRemove={onRemove} onOpenProfile={onOpenProfile} isAdmin={isAdmin} onEditPost={onEditPost} onDeletePost={onDeletePost} onEditComment={onEditComment} onDeleteComment={onDeleteComment} />}
+      {editReel && <EditReelSheet reelId={editReel} initialCaption={(gridReels.find(r => r.id === editReel) || {}).caption} onReelEdit={onReelEdit} onClose={() => setEditReel(null)} flash={flash} />}
+    </div>
+  );
+}
+
+// extracted so useModalA11y (Escape-to-close + focus-on-open/return-on-close)
+// runs at the right time — it registers its effect once on mount, so it must
+// live in a component that mounts exactly when the sheet opens, not inside
+// Profile (which is already mounted before/after these sheets show).
+function AssignCollectionSheet({ postId, collections, onAssignCollection, onCreateCollection, onClose }) {
+  const modalRef = useModalA11y(onClose);
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end" style={{ background: "rgba(0,0,0,.45)" }} onClick={onClose}>
+      <div ref={modalRef} tabIndex={-1} role="dialog" aria-modal="true" className="w-full rounded-t-3xl pb-6 pt-2" style={{ background: C.paper, maxWidth: 600, margin: "0 auto", animation: "up .25s ease both", outline: "none" }} onClick={e => e.stopPropagation()}>
+        <div className="mx-auto rounded-full mb-2" style={{ width: 38, height: 4, background: C.line }} />
+        <div className="px-5 py-2 text-[13px] font-bold" style={{ color: C.muted }}>{t("folder.moveTo")}</div>
+        {(collections || []).map(c => <button key={c.id} onClick={() => { onAssignCollection(postId, c.id); onClose(); }} className="w-full flex items-center gap-3 px-5 py-3.5 active:opacity-60" style={{ color: C.ink }}><span style={{ fontSize: 18 }}>📁</span><span className="text-[15px] font-medium">{c.name}</span></button>)}
+        <button onClick={async () => { const n = window.prompt(t("folder.namePrompt")); if (n) { const c = await onCreateCollection(n); if (c) { onAssignCollection(postId, c.id); onClose(); } } }} className="w-full flex items-center gap-3 px-5 py-3.5 active:opacity-60" style={{ color: C.accent }}><Plus size={20} /><span className="text-[15px] font-medium">{t("folder.new")}</span></button>
+        <button onClick={() => { onAssignCollection(postId, null); onClose(); }} className="w-full flex items-center gap-3 px-5 py-3.5 active:opacity-60" style={{ color: "#e05656" }}><X size={20} /><span className="text-[15px] font-medium">{t("folder.remove")}</span></button>
+      </div>
+    </div>
+  );
+}
+
+function SelectedPostSheet({ post, onClose, onLike, onReact, onSave, onComment, onPollVote, onTag, onReport, onRemove, onOpenProfile, isAdmin, onEditPost, onDeletePost, onEditComment, onDeleteComment }) {
+  const modalRef = useModalA11y(onClose);
+  return (
+    <div className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto" style={{ background: "rgba(0,0,0,.55)" }} onClick={onClose}>
+      <div ref={modalRef} tabIndex={-1} role="dialog" aria-modal="true" className="w-full max-w-[540px] min-h-full md:min-h-0 md:my-6" style={{ background: C.paper, outline: "none" }} onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-3 px-4 py-3 sticky top-0 z-10" style={{ background: C.paper + "e6", backdropFilter: "blur(12px)", borderBottom: `1px solid ${C.line}` }}><button onClick={onClose} aria-label={t("a11y.back")} style={{ color: C.ink2 }}><ArrowLeft size={22} /></button><span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{t("word.post")}</span></div>
+        <div className="p-3"><PostCard post={post} onLike={onLike} onReact={onReact} onSave={onSave} onComment={onComment} onPollVote={onPollVote} onTag={onTag} onReport={onReport} onRemove={onRemove} onOpenProfile={onOpenProfile} isAdmin={isAdmin} onEdit={onEditPost} onDelete={onDeletePost} onEditComment={onEditComment} onDeleteComment={onDeleteComment} /></div>
+      </div>
+    </div>
+  );
+}
+
+function EditReelSheet({ reelId, initialCaption, onReelEdit, onClose, flash }) {
+  const modalRef = useModalA11y(onClose);
+  const [editCap, setEditCap] = useState(initialCaption || "");
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-5" style={{ background: "rgba(0,0,0,.55)" }} onClick={onClose}>
+      <div ref={modalRef} tabIndex={-1} role="dialog" aria-modal="true" className="w-full max-w-[440px] rounded-3xl p-5" style={{ background: C.surface, boxShadow: SH.pop, outline: "none" }} onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4"><h2 className="text-[17px]" style={{ color: C.ink, fontFamily: DISPLAY, fontWeight: 700 }}>{t("reel.editTitle")}</h2><button onClick={onClose} aria-label={t("a11y.close")} style={{ color: C.faint }}><X size={22} /></button></div>
+        <textarea value={editCap} onChange={e => setEditCap(e.target.value)} rows={3} placeholder={t("reel.captionPh")} className="w-full px-4 py-3 rounded-xl mb-3 text-[15px] outline-none resize-none" style={{ background: C.surfaceMuted, color: C.ink }} />
+        <button onClick={() => { onReelEdit(reelId, editCap.trim()); onClose(); flash && flash(t("reel.updated")); }} className="w-full py-3.5 rounded-xl text-[15px] font-bold text-white active:scale-[.98]" style={{ backgroundImage: GBRAND }}>{t("action.save")}</button>
+      </div>
     </div>
   );
 }
@@ -703,7 +723,7 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
             {bulkMode && <button onClick={() => toggleSelected(l.id)} className="rounded-full flex items-center justify-center shrink-0" style={{ width: 22, height: 22, border: `2px solid ${selected.has(l.id) ? C.accent : C.line}`, background: selected.has(l.id) ? C.accent : "transparent" }}>{selected.has(l.id) && <Check size={14} color="#fff" />}</button>}
             <Pic src={l.image} grad={GRADS[hashIdx(l.id, GRADS.length)]} round={10} style={{ width: 46, height: 46 }} />
             <div className="flex-1 min-w-0"><div className="font-bold text-[13px] truncate" style={{ color: C.ink }}>{l.title}</div><div className="text-[12px]" style={{ color: C.accent, fontWeight: 700 }}>{(l.price || 0).toLocaleString()}₾</div><Mono style={{ fontSize: 11, color: C.faint }} className="truncate block">{USERS[l.sellerId] ? USERS[l.sellerId].name.split(" ")[0] : "—"}</Mono></div>
-            <button onClick={() => { const v = window.prompt("ახალი სახელი:", l.title); if (v && v.trim() && v.trim() !== l.title) onEditListing(l.id, { title: v.trim() }); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.accentSoft, color: C.accentText }}><Pencil size={16} /></button>
+            <button onClick={() => { const v = window.prompt("ახალი სახელი:", l.title); if (v && v.trim() && v.trim() !== l.title) onEditListing(l.id, { title: v.trim() }); }} aria-label={t("a11y.edit")} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.accentSoft, color: C.accentText }}><Pencil size={16} /></button>
             <button onClick={() => { if (window.confirm("წავშალო ეს განცხადება?")) onDeleteListing(l.id); }} aria-label={t("action.delete")} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.likeSoft, color: C.like }}><Trash2 size={16} /></button>
           </div>
         )); })()}</div>}
@@ -712,9 +732,9 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
             {bulkMode && <button onClick={() => toggleSelected(t.id)} className="rounded-full flex items-center justify-center shrink-0" style={{ width: 22, height: 22, border: `2px solid ${selected.has(t.id) ? C.accent : C.line}`, background: selected.has(t.id) ? C.accent : "transparent" }}>{selected.has(t.id) && <Check size={14} color="#fff" />}</button>}
             <div className="rounded-xl flex items-center justify-center shrink-0" style={{ width: 40, height: 40, background: catColor(t.cat) + "1f" }}><MessageSquare size={18} style={{ color: catColor(t.cat) }} /></div>
             <div className="flex-1 min-w-0"><div className="font-bold text-[13px] truncate" style={{ color: C.ink }}>{t.title}</div><div className="text-[12px] line-clamp-1" style={{ color: C.muted }}>{t.body}</div><Mono style={{ fontSize: 11, color: C.faint }} className="truncate block">{USERS[t.authorId] ? USERS[t.authorId].name.split(" ")[0] : "—"}</Mono></div>
-            <button onClick={() => onSetThreadPinned(t.id, !t.pinned)} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={t.pinned ? { width: 38, height: 38, backgroundImage: GBRAND, color: "#fff" } : { width: 38, height: 38, background: C.surfaceMuted, color: C.ink2 }}><Pin size={16} /></button>
-            <button onClick={() => onSetThreadLocked(t.id, !t.locked)} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.surfaceMuted, color: t.locked ? C.like : C.ink2 }}><Lock size={16} /></button>
-            <button onClick={() => { const v = window.prompt("ახალი სათაური:", t.title); if (v && v.trim() && v.trim() !== t.title) onEditThread(t.id, { title: v.trim() }); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.accentSoft, color: C.accentText }}><Pencil size={16} /></button>
+            <button onClick={() => onSetThreadPinned(t.id, !t.pinned)} aria-label={t.pinned ? "დამაგრების მოხსნა" : "დამაგრება"} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={t.pinned ? { width: 38, height: 38, backgroundImage: GBRAND, color: "#fff" } : { width: 38, height: 38, background: C.surfaceMuted, color: C.ink2 }}><Pin size={16} /></button>
+            <button onClick={() => onSetThreadLocked(t.id, !t.locked)} aria-label={t.locked ? "განბლოკვა" : "დაბლოკვა"} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.surfaceMuted, color: t.locked ? C.like : C.ink2 }}><Lock size={16} /></button>
+            <button onClick={() => { const v = window.prompt("ახალი სათაური:", t.title); if (v && v.trim() && v.trim() !== t.title) onEditThread(t.id, { title: v.trim() }); }} aria-label="რედაქტირება" className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.accentSoft, color: C.accentText }}><Pencil size={16} /></button>
             <button onClick={() => { if (window.confirm("წავშალო ეს თემა?")) onDeleteThread(t.id); }} aria-label="წაშლა" className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.likeSoft, color: C.like }}><Trash2 size={16} /></button>
           </div>
         )); })()}</div>}
@@ -731,7 +751,7 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
             {bulkMode && <button onClick={() => toggleSelected(g.id)} className="rounded-full flex items-center justify-center shrink-0" style={{ width: 22, height: 22, border: `2px solid ${selected.has(g.id) ? C.accent : C.line}`, background: selected.has(g.id) ? C.accent : "transparent" }}>{selected.has(g.id) && <Check size={14} color="#fff" />}</button>}
             <Pic src={g.cover} grad={GRADS[hashIdx(g.id, GRADS.length)]} round={10} style={{ width: 46, height: 46 }} />
             <div className="flex-1 min-w-0"><div className="font-bold text-[13px] truncate" style={{ color: C.ink }}>{g.name}</div><Mono style={{ fontSize: 11, color: C.faint }} className="truncate block">{g.members} წევრი · {g.cat || "—"}</Mono></div>
-            <button onClick={() => { const v = window.prompt("ახალი სახელი:", g.name); if (v && v.trim() && v.trim() !== g.name) onEditGroup(g.id, { name: v.trim() }); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.accentSoft, color: C.accentText }}><Pencil size={16} /></button>
+            <button onClick={() => { const v = window.prompt("ახალი სახელი:", g.name); if (v && v.trim() && v.trim() !== g.name) onEditGroup(g.id, { name: v.trim() }); }} aria-label={t("a11y.edit")} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.accentSoft, color: C.accentText }}><Pencil size={16} /></button>
             <button onClick={() => { if (window.confirm("წავშალო ეს ჯგუფი?")) onDeleteGroup(g.id); }} aria-label={t("action.delete")} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.likeSoft, color: C.like }}><Trash2 size={16} /></button>
           </div>
         )); })()}</div>}
@@ -740,7 +760,7 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
             {bulkMode && <button onClick={() => toggleSelected(e.id)} className="rounded-full flex items-center justify-center shrink-0" style={{ width: 22, height: 22, border: `2px solid ${selected.has(e.id) ? C.accent : C.line}`, background: selected.has(e.id) ? C.accent : "transparent" }}>{selected.has(e.id) && <Check size={14} color="#fff" />}</button>}
             <Pic src={e.cover} grad={GRADS[hashIdx(e.id, GRADS.length)]} round={10} style={{ width: 46, height: 46 }} />
             <div className="flex-1 min-w-0"><div className="font-bold text-[13px] truncate" style={{ color: C.ink }}>{e.title}</div><Mono style={{ fontSize: 11, color: C.faint }} className="truncate block">{e.going} მონაწილე · {e.location || "—"}</Mono></div>
-            <button onClick={() => { const v = window.prompt("ახალი სახელი:", e.title); if (v && v.trim() && v.trim() !== e.title) onEditEvent(e.id, { title: v.trim() }); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.accentSoft, color: C.accentText }}><Pencil size={16} /></button>
+            <button onClick={() => { const v = window.prompt("ახალი სახელი:", e.title); if (v && v.trim() && v.trim() !== e.title) onEditEvent(e.id, { title: v.trim() }); }} aria-label={t("a11y.edit")} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.accentSoft, color: C.accentText }}><Pencil size={16} /></button>
             <button onClick={() => { if (window.confirm("წავშალო ეს ივენთი?")) onDeleteEvent(e.id); }} aria-label={t("action.delete")} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.likeSoft, color: C.like }}><Trash2 size={16} /></button>
           </div>
         )); })()}</div>}
@@ -749,7 +769,7 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
             {bulkMode && <button onClick={() => toggleSelected(f.id)} className="rounded-full flex items-center justify-center shrink-0" style={{ width: 22, height: 22, border: `2px solid ${selected.has(f.id) ? C.accent : C.line}`, background: selected.has(f.id) ? C.accent : "transparent" }}>{selected.has(f.id) && <Check size={14} color="#fff" />}</button>}
             <Pic src={f.poster} grad={GRADS[hashIdx(f.id, GRADS.length)]} round={10} style={{ width: 46, height: 46 }} />
             <div className="flex-1 min-w-0"><div className="font-bold text-[13px] truncate" style={{ color: C.ink }}>{f.title}</div><Mono style={{ fontSize: 11, color: C.faint }} className="truncate block">{[f.year, f.genre].filter(Boolean).join(" · ")}</Mono></div>
-            <button onClick={() => { const v = window.prompt("ახალი სახელი:", f.title); if (v && v.trim() && v.trim() !== f.title) onEditFilm(f.id, { title: v.trim() }); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.accentSoft, color: C.accentText }}><Pencil size={16} /></button>
+            <button onClick={() => { const v = window.prompt("ახალი სახელი:", f.title); if (v && v.trim() && v.trim() !== f.title) onEditFilm(f.id, { title: v.trim() }); }} aria-label={t("a11y.edit")} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.accentSoft, color: C.accentText }}><Pencil size={16} /></button>
             <button onClick={() => { if (window.confirm("წავშალო ეს ფილმი?")) onDeleteFilm(f.id); }} aria-label={t("action.delete")} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.likeSoft, color: C.like }}><Trash2 size={16} /></button>
           </div>
         )); })()}</div>}
@@ -758,7 +778,7 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
             {bulkMode && <button onClick={() => toggleSelected(s.id)} className="rounded-full flex items-center justify-center shrink-0" style={{ width: 22, height: 22, border: `2px solid ${selected.has(s.id) ? C.accent : C.line}`, background: selected.has(s.id) ? C.accent : "transparent" }}>{selected.has(s.id) && <Check size={14} color="#fff" />}</button>}
             <Pic src={s.cover} grad={GRADS[hashIdx(s.id, GRADS.length)]} round={10} style={{ width: 46, height: 46 }} />
             <div className="flex-1 min-w-0"><div className="font-bold text-[13px] truncate" style={{ color: C.ink }}>{s.title}</div><Mono style={{ fontSize: 11, color: C.faint }} className="truncate block">{s.artist || "უცნობი"} · {s.plays || 0} მოსმენა</Mono></div>
-            <button onClick={() => { const v = window.prompt("ახალი სახელი:", s.title); if (v && v.trim() && v.trim() !== s.title) onEditSong(s.id, { title: v.trim() }); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.accentSoft, color: C.accentText }}><Pencil size={16} /></button>
+            <button onClick={() => { const v = window.prompt("ახალი სახელი:", s.title); if (v && v.trim() && v.trim() !== s.title) onEditSong(s.id, { title: v.trim() }); }} aria-label={t("a11y.edit")} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.accentSoft, color: C.accentText }}><Pencil size={16} /></button>
             <button onClick={() => { if (window.confirm("წავშალო ეს სიმღერა?")) onDeleteSong(s.id); }} aria-label={t("action.delete")} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.likeSoft, color: C.like }}><Trash2 size={16} /></button>
           </div>
         )); })()}</div>}
@@ -824,7 +844,7 @@ export function OnlinePage({ onlineIds, onOpenProfile, onMessage, following }) {
         <div key={id} className="flex items-center gap-3 px-2 py-2.5 rounded-xl">
           <button onClick={() => onOpenProfile(id)} className="relative active:scale-95"><Avatar id={id} size={48} /><span className="absolute bottom-0 right-0" style={{ width: 13, height: 13, borderRadius: "50%", background: C.online, border: `2.5px solid ${C.paper}` }} /></button>
           <button onClick={() => onOpenProfile(id)} className="flex-1 text-left min-w-0"><Name id={id} className="text-[15px]" /><Mono className="block truncate" style={{ fontSize: 12, color: C.online }}>● ონლაინ</Mono></button>
-          <button onClick={() => onMessage(id)} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 38, height: 38, background: C.accentSoft, color: C.accent }}><Send size={17} /></button>
+          <button onClick={() => onMessage(id)} aria-label={t("a11y.send")} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 38, height: 38, background: C.accentSoft, color: C.accent }}><Send size={17} /></button>
         </div>
       ))}</div>}
     </div>
@@ -881,12 +901,12 @@ export function SettingsView({ settings, setSettings, meProfile, setMeProfile, m
   return (
     <div className="fixed inset-0 z-[59] flex justify-center" style={{ background: C.paper }}>
       <div className="w-full max-w-[600px] flex flex-col" style={{ height: "100dvh", borderLeft: `1px solid ${C.line}`, borderRight: `1px solid ${C.line}` }}>
-        <div className="flex items-center gap-3 px-3 py-3 shrink-0" style={{ background: C.surface, borderBottom: `1px solid ${C.line}`, paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}><button onClick={onClose} className="active:scale-90" style={{ color: C.ink2 }}><ArrowLeft size={22} /></button><span className="font-bold text-[16px]" style={{ color: C.ink, fontFamily: DISPLAY }}>{t("settings.title")}</span></div>
+        <div className="flex items-center gap-3 px-3 py-3 shrink-0" style={{ background: C.surface, borderBottom: `1px solid ${C.line}`, paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}><button onClick={onClose} aria-label={t("a11y.back")} className="active:scale-90" style={{ color: C.ink2 }}><ArrowLeft size={22} /></button><span className="font-bold text-[16px]" style={{ color: C.ink, fontFamily: DISPLAY }}>{t("settings.title")}</span></div>
         <div className="flex-1 overflow-y-auto pb-10">
           <div className="flex items-center gap-3 px-4 pt-5"><label style={{ position: "relative", cursor: "pointer", flexShrink: 0 }}><input type="file" accept="image/*" style={{ display: "none" }} disabled={avatarProgress != null} onChange={pickAvatar} /><div style={{ position: "relative", width: 60, height: 60 }}><Avatar id={ME} size={60} /><UploadRing pct={avatarProgress} size={60} strokeWidth={2.5} /></div><div style={{ position: "absolute", right: -2, bottom: -2, width: 23, height: 23, borderRadius: "50%", backgroundImage: GBRAND, display: "flex", alignItems: "center", justifyContent: "center", border: `2.5px solid ${C.surface}` }}>{avatarProgress != null ? <Mono style={{ fontSize: 8, color: "#fff", fontWeight: 700 }}>{avatarProgress}%</Mono> : <Camera size={12} color="#fff" />}</div></label><div><div className="font-bold text-[16px]" style={{ color: C.ink, fontFamily: DISPLAY }}>{meProfile.name}</div><Mono style={{ fontSize: 12, color: C.faint }}>@{USERS[ME].handle}</Mono><div className="text-[12px] mt-0.5" style={{ color: C.accent }}>ფოტოს შესაცვლელად დააჭირე</div></div></div>
           <SettingsSection title="პროფილის რედაქტირება">
-            <div className="px-4 py-3"><div className="text-[12px] mb-1" style={{ color: C.faint }}>სახელი</div><input value={meProfile.name} onChange={e => setMeProfile(p => ({ ...p, name: e.target.value }))} className="w-full bg-transparent outline-none text-[15px]" style={{ color: C.ink }} /></div>
-            <div className="px-4 py-3" style={{ borderTop: `1px solid ${C.lineSoft}` }}><div className="text-[12px] mb-1" style={{ color: C.faint }}>ბიო</div><textarea value={meProfile.bio} onChange={e => setMeProfile(p => ({ ...p, bio: e.target.value }))} rows={2} className="w-full bg-transparent outline-none text-[15px] resize-none" style={{ color: C.ink, lineHeight: 1.5 }} /></div>
+            <div className="px-4 py-3"><div className="text-[12px] mb-1" style={{ color: C.faint }}>სახელი</div><input value={meProfile.name} onChange={e => setMeProfile(p => ({ ...p, name: e.target.value }))} aria-label="სახელი" className="w-full bg-transparent outline-none text-[15px]" style={{ color: C.ink }} /></div>
+            <div className="px-4 py-3" style={{ borderTop: `1px solid ${C.lineSoft}` }}><div className="text-[12px] mb-1" style={{ color: C.faint }}>ბიო</div><textarea value={meProfile.bio} onChange={e => setMeProfile(p => ({ ...p, bio: e.target.value }))} rows={2} aria-label="ბიო" className="w-full bg-transparent outline-none text-[15px] resize-none" style={{ color: C.ink, lineHeight: 1.5 }} /></div>
           </SettingsSection>
           {referralCode && <SettingsSection title="მოწვევა მეგობრების 🎁">
             <div className="px-4 py-3">
@@ -941,7 +961,7 @@ export function SettingsView({ settings, setSettings, meProfile, setMeProfile, m
                 <div key={id} className="px-4 py-2.5 flex items-center gap-3" style={{ borderBottom: `1px solid ${C.lineSoft}` }}>
                   <Avatar id={id} size={38} />
                   <button className="flex-1 min-w-0 text-left active:opacity-60" style={{ background: "none", border: "none", padding: 0, font: "inherit" }} onClick={() => { onClose(); onOpenProfile && onOpenProfile(id); }}><div className="text-[14px] font-bold truncate" style={{ color: C.ink }}>{cu.name}</div><div className="text-[12px]" style={{ color: C.faint }}>@{cu.handle}</div></button>
-                  <button onClick={() => onToggleCloseFriend(id)} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 34, height: 34, background: on ? "#1f8f4e" : C.surfaceMuted, border: on ? "none" : `1px solid ${C.line}` }}><Star size={17} style={{ color: on ? "#fff" : C.faint }} fill={on ? "#fff" : "none"} /></button>
+                  <button onClick={() => onToggleCloseFriend(id)} aria-label={on ? t("profile.removeCloseFriend") : t("profile.addCloseFriend")} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 34, height: 34, background: on ? "#1f8f4e" : C.surfaceMuted, border: on ? "none" : `1px solid ${C.line}` }}><Star size={17} style={{ color: on ? "#fff" : C.faint }} fill={on ? "#fff" : "none"} /></button>
                 </div>); });
             })()}
           </SettingsSection>
@@ -1081,7 +1101,7 @@ export function SearchView({ posts, onOpenProfile, onTag, onClose, runSearch, on
     <div className="fixed inset-0 z-[59] flex justify-center" style={{ background: C.paper }}>
       <div className="w-full max-w-[600px] flex flex-col" style={{ height: "100dvh", borderLeft: `1px solid ${C.line}`, borderRight: `1px solid ${C.line}` }}>
         <div className="flex items-center gap-2 px-3 py-2.5 shrink-0" style={{ background: C.surface, borderBottom: `1px solid ${C.line}` }}>
-          <button onClick={onClose} className="active:scale-90" style={{ color: C.ink2 }}><ArrowLeft size={22} /></button>
+          <button onClick={onClose} aria-label={t("a11y.back")} className="active:scale-90" style={{ color: C.ink2 }}><ArrowLeft size={22} /></button>
           <div className="flex-1 flex items-center gap-2 px-3.5 py-2.5 rounded-full" style={{ background: C.surfaceMuted, border: `1px solid ${C.line}` }}><Search size={18} style={{ color: C.faint }} /><input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder={t("search.placeholder")} className="flex-1 bg-transparent text-[15px] outline-none" style={{ color: C.ink }} />{q && <button onClick={() => setQ("")} aria-label={t("a11y.close")} style={{ color: C.faint }}><X size={18} /></button>}</div>
         </div>
         <div className="flex-1 overflow-y-auto">

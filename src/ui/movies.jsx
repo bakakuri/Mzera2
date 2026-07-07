@@ -49,11 +49,12 @@ function NewFilm({ onClose, onCreate, onUpload, onUploadVideo, initial }) {
     setVideoProgress(null); e.target.value = "";
   };
   const ok = title.trim().length > 0;
+  const modalRef = useModalA11y(onClose);
   return (
     <div className="fixed inset-0 z-[60] flex sm:items-center justify-center items-end" style={{ background: "rgba(6,7,12,.55)", backdropFilter: "blur(4px)", height: vph ? vph + "px" : "100dvh" }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="w-full sm:max-w-[520px] sm:rounded-3xl rounded-t-3xl overflow-y-auto" style={{ background: C.surface, boxShadow: SH.pop, maxHeight: vph ? vph + "px" : "88vh" }}>
+      <div ref={modalRef} tabIndex={-1} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="w-full sm:max-w-[520px] sm:rounded-3xl rounded-t-3xl overflow-y-auto" style={{ background: C.surface, boxShadow: SH.pop, maxHeight: vph ? vph + "px" : "88vh", outline: "none" }}>
         <div className="flex items-center justify-between px-4 py-3.5 sticky top-0" style={{ background: C.surface, borderBottom: `1px solid ${C.lineSoft}` }}>
-          <button onClick={onClose} style={{ color: C.muted }}><X size={22} /></button>
+          <button onClick={onClose} aria-label={t("a11y.close")} style={{ color: C.muted }}><X size={22} /></button>
           <span className="font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{initial ? t("film.editTitle") : t("film.addTitle")}</span>
           <button disabled={!ok} onClick={() => onCreate({ title: title.trim(), year: year ? Number(year) : null, genre, desc: desc.trim(), poster: picked, video: video || null })} className="px-4 py-1.5 rounded-full text-sm font-bold" style={{ backgroundImage: GBRAND, color: "#fff", opacity: ok ? 1 : 0.4 }}>{initial ? t("action.save") : t("action.add")}</button>
         </div>
@@ -62,14 +63,14 @@ function NewFilm({ onClose, onCreate, onUpload, onUploadVideo, initial }) {
           <div className="flex gap-2 items-center flex-wrap">
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickFile} />
             <button onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading} className="rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95" style={{ width: 72, height: 96, background: C.accentSoft, color: C.accentText }}>{uploading ? <span className="text-[13px] font-bold">{progress}%</span> : <><Upload size={20} /><span className="text-[10px] font-bold mt-0.5 text-center">{t("film.posterWord")}</span></>}</button>
-            {picked && <div className="rounded-xl overflow-hidden shrink-0 relative" style={{ width: 72, height: 96, outline: `2.5px solid ${C.accent}`, outlineOffset: 2 }}><Pic src={picked} className="w-full h-full" /><button onClick={() => setPicked("")} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div>}
+            {picked && <div className="rounded-xl overflow-hidden shrink-0 relative" style={{ width: 72, height: 96, outline: `2.5px solid ${C.accent}`, outlineOffset: 2 }}><Pic src={picked} className="w-full h-full" /><button onClick={() => setPicked("")} aria-label={t("a11y.remove")} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div>}
             {!picked && !uploading && <span className="text-[12px]" style={{ color: C.faint }}>{t("film.addPosterHint")}</span>}
           </div>
           {uploading && <UploadProgress pct={progress} label={t("film.posterWord")} />}
           <div className="flex gap-2 items-center flex-wrap">
             <input ref={videoRef} type="file" accept="video/*" hidden onChange={pickVideo} />
             <button onClick={() => videoRef.current && videoRef.current.click()} disabled={uploadingVideo} className="rounded-xl flex flex-col items-center justify-center shrink-0 active:scale-95" style={{ width: 72, height: 72, background: C.accentSoft, color: C.accentText }}>{uploadingVideo ? <span className="text-[13px] font-bold">{videoProgress}%</span> : <><Play size={20} /><span className="text-[10px] font-bold mt-0.5 text-center">{t("word.film")}</span></>}</button>
-            {video && <div className="rounded-xl overflow-hidden shrink-0 relative flex items-center justify-center" style={{ width: 72, height: 72, background: "#000", outline: `2.5px solid ${C.accent}`, outlineOffset: 2 }}><Play size={22} color="#fff" fill="#fff" /><button onClick={() => setVideo("")} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div>}
+            {video && <div className="rounded-xl overflow-hidden shrink-0 relative flex items-center justify-center" style={{ width: 72, height: 72, background: "#000", outline: `2.5px solid ${C.accent}`, outlineOffset: 2 }}><Play size={22} color="#fff" fill="#fff" /><button onClick={() => setVideo("")} aria-label={t("a11y.remove")} className="absolute -top-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 18, height: 18, background: C.ink, color: "#fff" }}><X size={11} /></button></div>}
             {!video && !uploadingVideo && <span className="text-[12px]" style={{ color: C.faint }}>{t("film.uploadVideoHint")}</span>}
           </div>
           {uploadingVideo && <UploadProgress pct={videoProgress} label={t("word.film")} />}
@@ -121,9 +122,9 @@ export function Movies({ films, watch, onNew, onEdit, onDelete, onOpenProfile, f
     return (
       <div className="pb-36 md:pb-10">
         <div className="flex items-center gap-3 px-4 py-3 sticky top-0 z-10" style={{ background: C.paper + "e6", backdropFilter: "blur(12px)" }}>
-          <button onClick={() => setOpenId(null)} style={{ color: C.ink2 }}><ArrowLeft size={22} /></button>
+          <button onClick={() => setOpenId(null)} aria-label={t("a11y.back")} style={{ color: C.ink2 }}><ArrowLeft size={22} /></button>
           <span className="font-bold truncate flex-1" style={{ color: C.ink, fontFamily: DISPLAY }}>{it.title}</span>
-          {it.authorId === ME && <><button onClick={() => setEditing(it)} className="active:scale-90" style={{ color: C.ink2 }}><Pencil size={20} /></button><button onClick={() => setConfirmDel(true)} className="active:scale-90" style={{ color: C.like }}><Trash2 size={20} /></button></>}
+          {it.authorId === ME && <><button onClick={() => setEditing(it)} aria-label={t("a11y.edit")} className="active:scale-90" style={{ color: C.ink2 }}><Pencil size={20} /></button><button onClick={() => setConfirmDel(true)} aria-label={t("action.delete")} className="active:scale-90" style={{ color: C.like }}><Trash2 size={20} /></button></>}
         </div>
         <div className="flex gap-4 px-4 pt-1">
           <Pic src={it.poster} grad={GRADS[hashIdx(it.id, GRADS.length)]} className="rounded-2xl shrink-0" style={{ width: 128, aspectRatio: "2/3" }} />
