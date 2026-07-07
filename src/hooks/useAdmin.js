@@ -15,19 +15,22 @@ export function useAdmin({ tab, session, flash, dbErr, setXp, setPosts }) {
 
   useEffect(() => {
     if (tab === "admin" && USERS[ME] && USERS[ME].admin && hasSupabase) {
-      adminApi.stats().then(setAdminStats).catch(() => flash && flash(t("toast.adminLoadFailed")));
-      adminApi.dailyTrends().then(setDailyTrends).catch(() => flash && flash(t("toast.adminLoadFailed")));
-      adminApi.pendingPublic().then(rows => { rows.forEach(r => { if (r.author) mergeProfile(r.author); }); setPendingPublic(rows.map(mapDbPost)); }).catch(() => flash && flash(t("toast.adminLoadFailed")));
+      // each piece of the admin dashboard fails independently and reports
+      // through dbErr (not just a generic toast) so a real failure shows the
+      // actual message/hint/code in the ⚠ DB banner instead of a dead end
+      adminApi.stats().then(setAdminStats).catch(dbErr ? dbErr("ადმინის სტატისტიკა") : () => flash && flash(t("toast.adminLoadFailed")));
+      adminApi.dailyTrends().then(setDailyTrends).catch(dbErr ? dbErr("ადმინის ტრენდები") : () => flash && flash(t("toast.adminLoadFailed")));
+      adminApi.pendingPublic().then(rows => { rows.forEach(r => { if (r.author) mergeProfile(r.author); }); setPendingPublic(rows.map(mapDbPost)); }).catch(dbErr ? dbErr("მოდერაციის რიგი") : () => flash && flash(t("toast.adminLoadFailed")));
       // benign: just leaves the languages toggle at its existing default, not worth alarming the admin over
       languagesApi.getSetting("languages_enabled").then(v => { if (v === false) setLangEnabled(false); }).catch(() => {});
-      languagesApi.adminProgress().then(rows => { rows.forEach(r => { if (!USERS[r.user_id]) profilesApi.byIds([r.user_id]).then(ps => ps.forEach(mergeProfile)).catch(() => {}); }); setLangProgress(rows); }).catch(() => flash && flash(t("toast.adminLoadFailed")));
+      languagesApi.adminProgress().then(rows => { rows.forEach(r => { if (!USERS[r.user_id]) profilesApi.byIds([r.user_id]).then(ps => ps.forEach(mergeProfile)).catch(() => {}); }); setLangProgress(rows); }).catch(dbErr ? dbErr("ენების პროგრესი") : () => flash && flash(t("toast.adminLoadFailed")));
       reportsApi.list().then(rows => {
         const mapped = rows.map(mapDbReport);
         const missing = [...new Set(mapped.filter(r => r.type === "user" && (!USERS[r.targetId] || USERS[r.targetId].id !== r.targetId)).map(r => r.targetId))];
         const finish = () => setReports(mapped);
         if (missing.length) profilesApi.byIds(missing).then(ps => { ps.forEach(mergeProfile); finish(); }).catch(finish);
         else finish();
-      }).catch(() => flash && flash(t("toast.adminLoadFailed")));
+      }).catch(dbErr ? dbErr("რეპორტების სია") : () => flash && flash(t("toast.adminLoadFailed")));
     }
   }, [tab]);
 
