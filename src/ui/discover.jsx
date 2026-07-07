@@ -20,8 +20,9 @@ function ConfirmDialog({ title, msg, confirmText = t("action.delete"), onCancel,
   );
 }
 
-export function Forum({ threads, onReply, onVote, onNew, onOpenProfile, onEdit, onDelete, pendingOpen, pendingReplyId, clearPending }) {
+export function Forum({ threads, onReply, onVote, onReplyVote, onSetThreadPinned, onSetThreadLocked, isAdmin, onNew, onOpenProfile, onEdit, onDelete, pendingOpen, pendingReplyId, clearPending }) {
   const [cat, setCat] = useState("ყველა"); const [openId, setOpenId] = useState(null); const [creating, setCreating] = useState(false); const [draft, setDraft] = useState(""); const [editing, setEditing] = useState(null); const [confirmDel, setConfirmDel] = useState(false);
+  const [forumQ, setForumQ] = useState(""); const [sort, setSort] = useState("new");
   const replyRefs = useRef({}); const [scrollReplyId, setScrollReplyId] = useState(null);
   const th = threads.find(t => t.id === openId);
   useEffect(() => { if (pendingOpen) { setOpenId(pendingOpen); setScrollReplyId(pendingReplyId || null); clearPending && clearPending(); } }, [pendingOpen]);
@@ -37,16 +38,21 @@ export function Forum({ threads, onReply, onVote, onNew, onOpenProfile, onEdit, 
     const send = () => { if (!draft.trim()) return; onReply(th.id, draft.trim()); setDraft(""); };
     return (
       <div className="pb-36 md:pb-10">
-        <div className="flex items-center gap-3 px-4 py-3 sticky top-0 z-10" style={{ background: C.paper + "e6", backdropFilter: "blur(12px)" }}><button onClick={() => setOpenId(null)} style={{ color: C.ink2 }}><ArrowLeft size={22} /></button><span className="font-bold flex-1" style={{ color: C.ink, fontFamily: DISPLAY }}>{t("word.thread")}</span>{th.authorId === ME && <><button onClick={() => setEditing(th)} className="active:scale-90" style={{ color: C.ink2 }}><Pencil size={19} /></button><button onClick={() => setConfirmDel(true)} className="active:scale-90" style={{ color: C.like }}><Trash2 size={19} /></button></>}</div>
+        <div className="flex items-center gap-3 px-4 py-3 sticky top-0 z-10" style={{ background: C.paper + "e6", backdropFilter: "blur(12px)" }}><button onClick={() => setOpenId(null)} style={{ color: C.ink2 }}><ArrowLeft size={22} /></button><span className="font-bold flex-1" style={{ color: C.ink, fontFamily: DISPLAY }}>{t("word.thread")}</span>{isAdmin && <><button onClick={() => onSetThreadPinned(th.id, !th.pinned)} className="px-2.5 py-1.5 rounded-full text-[12px] font-bold" style={th.pinned ? { backgroundImage: GBRAND, color: "#fff" } : { background: C.surfaceMuted, color: C.ink2 }}>{th.pinned ? t("forum.unpin") : t("forum.pin")}</button><button onClick={() => onSetThreadLocked(th.id, !th.locked)} className="px-2.5 py-1.5 rounded-full text-[12px] font-bold" style={{ background: C.surfaceMuted, color: th.locked ? C.like : C.ink2 }}>{th.locked ? t("forum.unlock") : t("forum.lock")}</button></>}{th.authorId === ME && <><button onClick={() => setEditing(th)} className="active:scale-90" style={{ color: C.ink2 }}><Pencil size={19} /></button><button onClick={() => setConfirmDel(true)} className="active:scale-90" style={{ color: C.like }}><Trash2 size={19} /></button></>}</div>
         <div className="px-3">
           <div className="p-4" style={card()}>
+            {th.pinned && <div className="mb-2 text-[12px] font-bold" style={{ color: C.accent }}>{t("forum.pinnedBadge")}</div>}
             <span className="rounded-lg px-2 py-1 text-[11px] font-bold uppercase" style={{ background: catColor(th.cat) + "1f", color: catColor(th.cat), fontFamily: MONO }}>{th.cat}</span>
             <h2 className="text-[19px] mt-2.5 mb-2" style={{ color: C.ink, fontFamily: DISPLAY, fontWeight: 700, lineHeight: 1.3 }}>{th.title}</h2>
             <div className="text-[15px]" style={{ color: C.ink2, lineHeight: 1.55 }}>{th.body}</div>
             <div className="flex items-center gap-2.5 mt-3.5 pt-3" style={{ borderTop: `1px solid ${C.lineSoft}` }}>
               <button onClick={() => onOpenProfile(u.id)}><Avatar id={u.id} size={34} /></button>
               <div className="flex-1 min-w-0 leading-tight"><Name id={u.id} className="text-[14px]" /><div><Handle h={u.handle} t={th.time} /></div></div>
-              <button onClick={() => onVote(th.id)} className="flex items-center gap-1.5 px-3 py-2 rounded-full active:scale-95 transition" style={th.likedByMe ? { backgroundImage: GBRAND, color: "#fff" } : { background: C.surfaceMuted, color: C.ink2 }}><TrendingUp size={17} /><Mono className="text-sm font-bold">{th.votes}</Mono></button>
+              <div className="flex items-center gap-1 rounded-full px-1" style={{ background: C.surfaceMuted }}>
+                <button onClick={() => onVote(th.id, 1)} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 30, height: 30, color: th.myVote > 0 ? C.accent : C.ink2 }}>▲</button>
+                <Mono className="text-sm font-bold" style={{ color: C.ink, minWidth: 20, textAlign: "center" }}>{th.votes}</Mono>
+                <button onClick={() => onVote(th.id, -1)} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 30, height: 30, color: th.myVote < 0 ? C.like : C.ink2 }}>▼</button>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2 px-1 mt-5 mb-2"><MessageSquare size={16} style={{ color: C.muted }} /><span className="text-sm font-bold" style={{ color: C.ink }}>{th.replies.length} {t("word.reply")}</span></div>
@@ -54,28 +60,36 @@ export function Forum({ threads, onReply, onVote, onNew, onOpenProfile, onEdit, 
             {th.replies.length ? th.replies.map(r => (
               <div key={r.id} ref={el => { replyRefs.current[r.id] = el; }} className="p-3.5 flex gap-3 transition-colors" style={{ ...card(), background: scrollReplyId === r.id ? C.accentSoft : card().background, transitionDuration: "600ms" }}>
                 <button onClick={() => onOpenProfile(r.authorId)}><Avatar id={r.authorId} size={36} /></button>
-                <div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><Name id={r.authorId} className="text-[14px]" /><Mono style={{ color: C.faint, fontSize: 12 }}>{r.time}</Mono></div><div className="text-[14px] mt-1" style={{ color: C.ink2, lineHeight: 1.5 }}>{r.text}</div><div className="flex items-center gap-1.5 mt-2 text-[13px]" style={{ color: C.faint }}><Heart size={14} /> <Mono>{r.likes}</Mono></div></div>
+                <div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><Name id={r.authorId} className="text-[14px]" /><Mono style={{ color: C.faint, fontSize: 12 }}>{r.time}</Mono></div><div className="text-[14px] mt-1" style={{ color: C.ink2, lineHeight: 1.5 }}>{r.text}</div><button onClick={() => onReplyVote(th.id, r.id)} className="flex items-center gap-1.5 mt-2 text-[13px] active:scale-90" style={{ color: r.likedByMe ? C.like : C.faint }}><Heart size={14} fill={r.likedByMe ? C.like : "none"} /> <Mono>{r.likes}</Mono></button></div>
               </div>
             )) : <Empty icon={MessageSquare} t={t("forum.noRepliesYet")} s={t("forum.writeFirstReply")} />}
           </div>
         </div>
-        <div className="fixed bottom-0 inset-x-0 z-30 md:static" style={{ background: C.surface, borderTop: `1px solid ${C.line}`, paddingBottom: "calc(var(--mz-nav, 64px) + 0.6rem)" }}>
+        {th.locked ? <div className="fixed bottom-0 inset-x-0 z-30 md:static px-4 py-3 text-center text-[13px] font-semibold" style={{ background: C.surface, borderTop: `1px solid ${C.line}`, color: C.faint, paddingBottom: "calc(var(--mz-nav, 64px) + 0.6rem)" }}>{t("forum.lockedNotice")}</div> : <div className="fixed bottom-0 inset-x-0 z-30 md:static" style={{ background: C.surface, borderTop: `1px solid ${C.line}`, paddingBottom: "calc(var(--mz-nav, 64px) + 0.6rem)" }}>
           <div className="flex items-center gap-2 px-3 py-2.5 max-w-[600px] mx-auto"><Avatar id={ME} size={32} /><input value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} placeholder={t("comment.replyPh")} className="flex-1 px-4 py-2.5 rounded-full text-[15px] outline-none" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} /><button onClick={send} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 42, height: 42, backgroundImage: GBRAND, color: "#fff", boxShadow: SH.glow, opacity: draft.trim() ? 1 : 0.5 }}><Send size={19} /></button></div>
-        </div>
+        </div>}
         {editing && <NewThread initial={{ title: editing.title, body: editing.body, cat: editing.cat }} onClose={() => setEditing(null)} onCreate={(d) => { onEdit && onEdit(editing.id, { title: d.title, body: d.body, category: d.cat }); setEditing(null); }} />}
         {confirmDel && <ConfirmDialog title={t("forum.deleteThreadTitle")} msg={t("forum.deleteThreadMsg")} onCancel={() => setConfirmDel(false)} onConfirm={() => { onDelete && onDelete(th.id); setConfirmDel(false); setOpenId(null); }} />}
       </div>
     );
   }
-  const list = cat === "ყველა" ? threads : threads.filter(t => t.cat === cat);
+  const fq = forumQ.trim().toLowerCase();
+  const filtered = threads.filter(x => (cat === "ყველა" || x.cat === cat) && (!fq || x.title.toLowerCase().includes(fq) || (x.body || "").toLowerCase().includes(fq)));
+  const list = filtered.slice().sort((a, b) => {
+    if (!!b.pinned !== !!a.pinned) return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0);
+    if (sort === "top") return b.votes - a.votes;
+    return 0; // "new": keep the server's created_at-desc order (stable sort)
+  });
   return (
     <div className="pb-28 md:pb-10">
       <div className="flex items-center justify-between px-4 pt-5 pb-3"><Title>{t("nav.forum")}</Title><Pill tone="solid" onClick={() => setCreating(true)}>{t("forum.newThread")}</Pill></div>
+      <div className="px-4 mb-3"><div className="flex items-center gap-2 px-3 py-2 rounded-full" style={{ background: C.surfaceMuted }}><Search size={16} style={{ color: C.faint }} /><input value={forumQ} onChange={e => setForumQ(e.target.value)} placeholder={t("forum.searchPh")} className="flex-1 bg-transparent text-[14px] outline-none" style={{ color: C.ink }} /></div></div>
       <Chips items={FORUM_CATS} value={cat} onChange={setCat} />
-      <div className="space-y-2.5 px-3">
-        {list.map(t => { const u = USERS[t.authorId]; return (
+      <div className="px-4 mb-1"><div className="flex gap-1 p-1 rounded-2xl" style={{ background: C.surfaceMuted, width: "fit-content" }}>{[["new", t("forum.sortNew")], ["top", t("forum.sortTop")]].map(([k, l]) => <button key={k} onClick={() => setSort(k)} className="px-4 py-1.5 rounded-xl text-[13px] font-bold transition" style={sort === k ? { background: C.surface, color: C.accent, boxShadow: SH.card } : { color: C.muted }}>{l}</button>)}</div></div>
+      <div className="space-y-2.5 px-3 mt-2">
+        {list.length === 0 ? <Empty icon={MessageSquare} t={t("picker.notFound")} s="" /> : list.map(t => { const u = USERS[t.authorId]; return (
           <button key={t.id} onClick={() => setOpenId(t.id)} className="w-full text-left p-4 transition active:scale-[.99]" style={card()}>
-            <div className="flex items-center gap-2 mb-2"><span className="rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase" style={{ background: catColor(t.cat) + "1f", color: catColor(t.cat), fontFamily: MONO }}>{t.cat}</span><Mono style={{ color: C.faint, fontSize: 11 }}>· {t.time}</Mono></div>
+            <div className="flex items-center gap-2 mb-2">{t.pinned && <span style={{ color: C.accent }}>📌</span>}<span className="rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase" style={{ background: catColor(t.cat) + "1f", color: catColor(t.cat), fontFamily: MONO }}>{t.cat}</span><Mono style={{ color: C.faint, fontSize: 11 }}>· {t.time}</Mono></div>
             <div className="text-[16px] mb-1" style={{ color: C.ink, fontFamily: DISPLAY, fontWeight: 700, lineHeight: 1.3 }}>{t.title}</div>
             <div className="text-[14px] line-clamp-2 mb-3" style={{ color: C.muted, lineHeight: 1.5 }}>{t.body}</div>
             <div className="flex items-center gap-3"><Avatar id={u.id} size={26} /><span className="text-[13px] font-semibold" style={{ color: C.ink2 }}>{u.name.split(" ")[0]}</span><div className="flex-1" /><span className="flex items-center gap-1" style={{ color: C.faint }}><TrendingUp size={14} /><Mono className="text-[13px]">{t.votes}</Mono></span><span className="flex items-center gap-1" style={{ color: C.faint }}><MessageSquare size={14} /><Mono className="text-[13px]">{t.replies.length}</Mono></span><span className="flex items-center gap-1" style={{ color: C.faint }}><Eye size={14} /><Mono className="text-[13px]">{t.views}</Mono></span></div>

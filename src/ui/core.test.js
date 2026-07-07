@@ -376,6 +376,38 @@ describe("mapDbThread", () => {
     expect(thread.cat).toBe("სხვა");
     expect(thread.body).toBe("");
   });
+
+  it("sums signed vote values (upvote/downvote), not just row counts", () => {
+    const row = { id: "t4", author_id: "u1", title: "x", thread_votes: [{ user_id: "a", value: 1 }, { user_id: "b", value: 1 }, { user_id: "c", value: -1 }] };
+    expect(mapDbThread(row, "me-1").votes).toBe(1);
+  });
+
+  it("reports myVote as 1/-1/0 depending on the caller's own vote", () => {
+    const row = { id: "t5", author_id: "u1", title: "x", thread_votes: [{ user_id: "me-1", value: -1 }, { user_id: "u2", value: 1 }] };
+    expect(mapDbThread(row, "me-1").myVote).toBe(-1);
+    expect(mapDbThread(row, "u2").myVote).toBe(1);
+    expect(mapDbThread(row, "stranger").myVote).toBe(0);
+  });
+
+  it("only counts a downvote as likedByMe:false", () => {
+    const row = { id: "t6", author_id: "u1", title: "x", thread_votes: [{ user_id: "me-1", value: -1 }] };
+    expect(mapDbThread(row, "me-1").likedByMe).toBe(false);
+  });
+
+  it("maps each reply's like count and whether the caller liked it", () => {
+    const row = {
+      id: "t7", author_id: "u1", title: "x",
+      thread_replies: [{ id: "r1", author_id: "u2", text: "hi", created_at: "2026-01-01T10:00:00Z", thread_reply_votes: [{ user_id: "me-1" }, { user_id: "u3" }] }],
+    };
+    const reply = mapDbThread(row, "me-1").replies[0];
+    expect(reply.likes).toBe(2);
+    expect(reply.likedByMe).toBe(true);
+  });
+
+  it("passes through pinned/locked flags, defaulting to false", () => {
+    expect(mapDbThread({ id: "t8", author_id: "u1", title: "x" }, "me-1").pinned).toBe(false);
+    expect(mapDbThread({ id: "t9", author_id: "u1", title: "x", pinned: true, locked: true }, "me-1")).toMatchObject({ pinned: true, locked: true });
+  });
 });
 
 describe("mapDbGroup", () => {

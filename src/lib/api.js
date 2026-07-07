@@ -1120,7 +1120,7 @@ export const forum = {
   list: async () => {
     const { data, error } = await need()
       .from("threads")
-      .select("*, author:profiles!threads_author_id_fkey(*), thread_replies(*, author:profiles!thread_replies_author_id_fkey(*)), thread_votes(user_id)")
+      .select("*, author:profiles!threads_author_id_fkey(*), thread_replies(*, author:profiles!thread_replies_author_id_fkey(*), thread_reply_votes(user_id)), thread_votes(user_id, value)")
       .order("created_at", { ascending: false });
     if (error) throw error;
     return data;
@@ -1130,7 +1130,7 @@ export const forum = {
     const uid = (await sb.auth.getUser()).data.user.id;
     const { data, error } = await sb.from("threads").insert({ author_id: uid, title, body, category }).select().single();
     if (error) throw error;
-    await sb.from("thread_votes").insert({ thread_id: data.id, user_id: uid });
+    await sb.from("thread_votes").insert({ thread_id: data.id, user_id: uid, value: 1 });
     return data;
   },
   reply: async (threadId, text) => {
@@ -1140,14 +1140,28 @@ export const forum = {
     if (error) throw error;
     return data;
   },
-  toggleVote: async (threadId) => {
+  // direction: 1 (up) | -1 (down). Voting the same direction again clears
+  // the vote; voting the other direction flips it. Delete-then-insert
+  // instead of update, since thread_votes only has insert/delete RLS.
+  vote: async (threadId, direction) => {
     const sb = need();
     const uid = (await sb.auth.getUser()).data.user.id;
-    const { data: ex } = await sb.from("thread_votes").select("user_id").eq("thread_id", threadId).eq("user_id", uid).maybeSingle();
-    if (ex) { await sb.from("thread_votes").delete().eq("thread_id", threadId).eq("user_id", uid); return false; }
-    await sb.from("thread_votes").insert({ thread_id: threadId, user_id: uid });
+    const { data: ex } = await sb.from("thread_votes").select("value").eq("thread_id", threadId).eq("user_id", uid).maybeSingle();
+    if (ex) await sb.from("thread_votes").delete().eq("thread_id", threadId).eq("user_id", uid);
+    if (ex && ex.value === direction) return 0;
+    await sb.from("thread_votes").insert({ thread_id: threadId, user_id: uid, value: direction });
+    return direction;
+  },
+  replyVote: async (replyId) => {
+    const sb = need();
+    const uid = (await sb.auth.getUser()).data.user.id;
+    const { data: ex } = await sb.from("thread_reply_votes").select("user_id").eq("reply_id", replyId).eq("user_id", uid).maybeSingle();
+    if (ex) { await sb.from("thread_reply_votes").delete().eq("reply_id", replyId).eq("user_id", uid); return false; }
+    await sb.from("thread_reply_votes").insert({ reply_id: replyId, user_id: uid });
     return true;
   },
+  setPinned: async (threadId, pinned) => { const { error } = await need().from("threads").update({ pinned }).eq("id", threadId); if (error) throw error; },
+  setLocked: async (threadId, locked) => { const { error } = await need().from("threads").update({ locked }).eq("id", threadId); if (error) throw error; },
 };
 
 /* ───────────── STORAGE (media) ───────────── */

@@ -711,6 +711,32 @@ create table if not exists public.thread_votes (
   user_id   uuid not null references public.profiles(id) on delete cascade,
   primary key (thread_id, user_id)
 );
+-- value: +1 (upvote) | -1 (downvote) — added after thread_votes already
+-- shipped as an upvote-only table, so existing rows default to +1 to keep
+-- their original meaning.
+alter table public.thread_votes add column if not exists value smallint not null default 1;
+
+-- reply voting was entirely decorative client-side (a static heart+count
+-- with no handler) until this table existed to back it — upvote-only,
+-- unlike thread_votes, since replies don't need full up/down.
+create table if not exists public.thread_reply_votes (
+  reply_id uuid not null references public.thread_replies(id) on delete cascade,
+  user_id  uuid not null references public.profiles(id) on delete cascade,
+  primary key (reply_id, user_id)
+);
+alter table public.thread_reply_votes enable row level security;
+drop policy if exists treply_votes_read on public.thread_reply_votes;
+create policy treply_votes_read on public.thread_reply_votes for select using (true);
+drop policy if exists treply_votes_insert on public.thread_reply_votes;
+create policy treply_votes_insert on public.thread_reply_votes for insert with check (auth.uid() = user_id);
+drop policy if exists treply_votes_delete on public.thread_reply_votes;
+create policy treply_votes_delete on public.thread_reply_votes for delete using (auth.uid() = user_id);
+
+-- pin/lock are moderation actions — RLS reuses the existing author-or-admin
+-- threads_update policy (same pattern as the rest of this app's admin
+-- content tools), but the client only ever exposes these buttons to admins.
+alter table public.threads add column if not exists pinned boolean not null default false;
+alter table public.threads add column if not exists locked boolean not null default false;
 
 alter table public.threads        enable row level security;
 alter table public.thread_replies enable row level security;

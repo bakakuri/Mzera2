@@ -639,8 +639,15 @@ export function mapDbReel(row, likedSet, savedSet) {
 export function mapDbThread(row, uid) {
   if (row.author) mergeProfile(row.author);
   const votes = (row.thread_votes || []);
-  const replies = (row.thread_replies || []).slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at)).map(r => { if (r.author) mergeProfile(r.author); return { id: r.id, authorId: r.author_id, text: r.text, time: timeAgo(r.created_at), likes: 0 }; });
-  return { id: row.id, authorId: row.author_id, cat: row.category || "სხვა", title: row.title, body: row.body || "", votes: votes.length, views: "0", time: timeAgo(row.created_at), likedByMe: votes.some(v => v.user_id === uid), replies };
+  const mine = votes.find(v => v.user_id === uid);
+  const myVote = mine ? (mine.value || 1) : 0;
+  const replies = (row.thread_replies || []).slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at)).map(r => {
+    if (r.author) mergeProfile(r.author);
+    const rVotes = r.thread_reply_votes || [];
+    return { id: r.id, authorId: r.author_id, text: r.text, time: timeAgo(r.created_at), likes: rVotes.length, likedByMe: rVotes.some(v => v.user_id === uid) };
+  });
+  const score = votes.reduce((s, v) => s + (v.value || 1), 0);
+  return { id: row.id, authorId: row.author_id, cat: row.category || "სხვა", title: row.title, body: row.body || "", votes: score, myVote, views: "0", time: timeAgo(row.created_at), likedByMe: myVote > 0, replies, pinned: !!row.pinned, locked: !!row.locked };
 }
 
 export function getMons() { return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => t("mon." + n)); }
