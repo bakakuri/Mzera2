@@ -217,7 +217,7 @@ function LeaderboardView({ lang, board, loading, onOpenProfile }) {
 }
 
 export function LanguagesPage({
-  learnLang, setLearnLang, level, setLevel, enabled,
+  learnLang, setLearnLang, level, setLevel, enabled, wordsReady,
   wordsForLevel, availableLevels, masteredCount, totalCount,
   nextFlashcard, onFlashcardKnow, onFlashcardDontKnow,
   genExercise, onExerciseAnswer,
@@ -229,6 +229,7 @@ export function LanguagesPage({
   useEffect(() => { if (view === "leaderboard" && learnLang) loadBoard(learnLang); }, [view, learnLang]);
 
   if (!enabled) return <div className="pt-5"><Title>{t("nav.languages")}</Title><Empty icon={LanguagesIcon} t={t("lang.disabled")} /></div>;
+  if (learnLang && !wordsReady) return <div className="pt-5"><Title>{t("nav.languages")}</Title><div className="px-4 py-10 text-center text-[13px]" style={{ color: C.muted }}>{t("word.loading")}</div></div>;
 
   if (!learnLang || view === "home") {
     return (

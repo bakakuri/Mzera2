@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import { languagesApi, hasSupabase, profilesApi, mergeProfile } from "../ui/core";
-import { WDB, allWords } from "../data/langWords";
 
 export const LEARN_LANGS = ["english", "german", "spanish", "french"];
 const LANG_CODE = { english: "en-US", german: "de-DE", spanish: "es-ES", french: "fr-FR" };
@@ -34,11 +33,18 @@ export function useLanguages({ session, gainXp }) {
   const [enabled, setEnabled] = useState(true);
   const [board, setBoard] = useState([]);
   const [boardLoading, setBoardLoading] = useState(false);
+  // the CEFR word tables are ~450kB of pure data used only by the languages tab —
+  // loaded on demand so it doesn't bloat the bundle every other tab pays for.
+  const [wordsMod, setWordsMod] = useState(null);
+  const WDB = wordsMod ? wordsMod.WDB : {};
+  const allWords = wordsMod ? wordsMod.allWords : () => [];
 
   useEffect(() => {
     if (!hasSupabase) return;
     languagesApi.getSetting("languages_enabled").then((v) => { if (v === false) setEnabled(false); }).catch(() => {});
   }, []);
+
+  useEffect(() => { import("../data/langWords").then(setWordsMod); }, []);
 
   const setLearnLang = (l) => { setLearnLangState(l); lsSet("mz_learn_lang", l || ""); setLevel("all"); };
 
@@ -114,7 +120,7 @@ export function useLanguages({ session, gainXp }) {
   };
 
   return {
-    learnLang, setLearnLang, progress, level, setLevel, enabled,
+    learnLang, setLearnLang, progress, level, setLevel, enabled, wordsReady: !!wordsMod,
     wordsForLevel, availableLevels, masteredCount, totalCount,
     nextFlashcard, onFlashcardKnow, onFlashcardDontKnow,
     genExercise, onExerciseAnswer,
