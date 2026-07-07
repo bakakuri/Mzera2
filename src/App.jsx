@@ -219,7 +219,13 @@ export default function App() {
   const visible = feed.posts.filter(p => !p.hidden && !p.groupId && !mutedIds.includes(p.userId) && !blockedIds.includes(p.userId));
   const homeVisible = (() => {
     const base = visible.filter(p => (p.authorId === ME || following.includes(p.authorId) || p.publicStatus === "approved") && !feed.hiddenPosts.includes(p.id));
-    const tier = (p) => feed.favorites.includes(p.authorId) ? 0 : feed.seeLess.includes(p.authorId) ? 2 : 1;
+    // a just-published post has zero likes/comments, so under "top" sort
+    // score() ranks it below almost anything else until it earns engagement —
+    // effectively invisible right after posting. Floating your own post to
+    // the very top for its first few minutes (regardless of sort mode)
+    // matches how every mainstream feed surfaces "you just posted this".
+    const tier = (p) => (p.authorId === ME && (Date.now() - new Date(p.createdAt || 0).getTime()) < 10 * 60 * 1000) ? -1
+      : feed.favorites.includes(p.authorId) ? 0 : feed.seeLess.includes(p.authorId) ? 2 : 1;
     const score = (p) => { const ageH = (Date.now() - new Date(p.createdAt || Date.now()).getTime()) / 3.6e6; return ((p.likes || 0) * 3 + ((p.comments && p.comments.length) || 0) * 4 + 1) / Math.pow(ageH + 2, 1.2); };
     return base.slice().sort((a, b) => tier(a) - tier(b) || (feed.feedSort === "top" ? score(b) - score(a) : new Date(b.createdAt || 0) - new Date(a.createdAt || 0)));
   })();

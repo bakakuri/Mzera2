@@ -133,14 +133,18 @@ function AlbumsGrid({ isMe, albums, photos, onCreateAlbum, onRenameAlbum, onDele
         <div className="flex gap-3 overflow-x-auto no-scrollbar px-3 pb-3">
           {isMe && <button onClick={createAlbum} className="flex flex-col items-center gap-1.5 shrink-0 active:scale-95"><div className="rounded-2xl flex items-center justify-center" style={{ width: 62, height: 62, border: `2px dashed ${C.line}`, color: C.muted }}><Plus size={22} /></div><span className="text-[11px]" style={{ color: C.muted }}>{t("album.new")}</span></button>}
           {albums.map(a => {
-            const count = photos.filter(p => p.album_id === a.id).length;
+            const albumPhotos = photos.filter(p => p.album_id === a.id);
+            // no explicit "set as cover" action exists yet, so fall back to
+            // the album's own most recent photo — an empty folder icon for
+            // an album that already has photos in it looks like a bug.
+            const cover = a.cover || (albumPhotos[0] && albumPhotos[0].image);
             return (
               <div key={a.id} className="flex flex-col items-center gap-1 shrink-0" style={{ width: 62 }}>
                 <button data-album-drop={a.id} onClick={() => setOpenAlbum(a)} className="rounded-2xl overflow-hidden relative active:scale-95 transition" style={{ width: 62, height: 62, background: C.surfaceMuted, boxShadow: overId === "album:" + a.id ? `0 0 0 2.5px ${C.accent}` : "none" }}>
-                  {a.cover ? <img src={a.cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div className="w-full h-full flex items-center justify-center"><ImageIcon size={20} style={{ color: C.faint }} /></div>}
+                  {cover ? <img src={cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div className="w-full h-full flex items-center justify-center"><ImageIcon size={20} style={{ color: C.faint }} /></div>}
                 </button>
                 <span className="text-[11px] truncate w-full text-center" style={{ color: C.ink2 }}>{a.name}</span>
-                <span className="text-[10px]" style={{ color: C.faint }}>{count}</span>
+                <span className="text-[10px]" style={{ color: C.faint }}>{albumPhotos.length}</span>
               </div>
             );
           })}
