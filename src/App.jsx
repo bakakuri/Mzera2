@@ -219,15 +219,39 @@ export default function App() {
   const visible = feed.posts.filter(p => !p.hidden && !p.groupId && !mutedIds.includes(p.userId) && !blockedIds.includes(p.userId));
   const homeVisible = (() => {
     const base = visible.filter(p => (p.authorId === ME || following.includes(p.authorId) || p.publicStatus === "approved") && !feed.hiddenPosts.includes(p.id));
-    // a just-published post has zero likes/comments, so under "top" sort
-    // score() ranks it below almost anything else until it earns engagement —
-    // effectively invisible right after posting. Floating your own post to
-    // the very top for its first few minutes (regardless of sort mode)
-    // matches how every mainstream feed surfaces "you just posted this".
+    // a just-published post has zero likes/comments, so under engagement scoring
+    // it ranks below almost anything else until it earns engagement — effectively
+    // invisible right after posting. Floating your own post to the very top for
+    // its first few minutes matches how every mainstream feed surfaces "you just
+    // posted this"; favorites float next, seeLess sinks to the very bottom.
     const tier = (p) => (p.authorId === ME && (Date.now() - new Date(p.createdAt || 0).getTime()) < 10 * 60 * 1000) ? -1
       : feed.favorites.includes(p.authorId) ? 0 : feed.seeLess.includes(p.authorId) ? 2 : 1;
     const score = (p) => { const ageH = (Date.now() - new Date(p.createdAt || Date.now()).getTime()) / 3.6e6; return ((p.likes || 0) * 3 + ((p.comments && p.comments.length) || 0) * 4 + 1) / Math.pow(ageH + 2, 1.2); };
-    return base.slice().sort((a, b) => tier(a) - tier(b) || (feed.feedSort === "top" ? score(b) - score(a) : new Date(b.createdAt || 0) - new Date(a.createdAt || 0)));
+    const pinned = base.filter(p => tier(p) <= 0).sort((a, b) => tier(a) - tier(b) || new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    const buried = base.filter(p => tier(p) === 2).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    const pool = base.filter(p => tier(p) === 1);
+    // interleave chronological ("ბოლო") and engagement-ranked ("ტოპ") posts
+    // instead of a user-picked global sort: mostly 3 recent posts then 1 top
+    // post, repeating — the run length is jittered (2-4) each cycle so the
+    // rhythm isn't perfectly mechanical. Seeded from promoSeedRef so the order
+    // is stable while scrolling/re-rendering but reshuffles on the next load.
+    let seed = promoSeedRef.current * 77003;
+    const rand = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+    const byRecent = pool.slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    const byTop = pool.slice().sort((a, b) => score(b) - score(a));
+    const used = new Set();
+    const interleaved = [];
+    let ri = 0, ti = 0, runLeft = 3;
+    while (interleaved.length < pool.length) {
+      if (runLeft > 0) {
+        while (ri < byRecent.length && used.has(byRecent[ri].id)) ri++;
+        if (ri < byRecent.length) { interleaved.push(byRecent[ri]); used.add(byRecent[ri].id); ri++; runLeft--; continue; }
+      }
+      while (ti < byTop.length && used.has(byTop[ti].id)) ti++;
+      if (ti < byTop.length) { interleaved.push(byTop[ti]); used.add(byTop[ti].id); ti++; runLeft = 2 + Math.floor(rand() * 3); continue; }
+      break; // both lists exhausted — guards against an infinite loop
+    }
+    return [...pinned, ...interleaved, ...buried];
   })();
   // up to 20 suggested people, picked once per session (stable while scrolling,
   // reshuffled on the next reload) rather than always the same first N
@@ -458,7 +482,6 @@ export default function App() {
                 <PullMenu open={pullMenuOpen} setOpen={setPullMenuOpen} nav={NAV} onNav={goTab} onCreate={() => setCreateOpen(true)} flash={flash} tab={tab} mode={mode} setMode={setMode} xp={xp} followers={followerCounts[ME] != null ? followerCounts[ME] : (USERS[ME] ? USERS[ME].followers : 0)} following={following.length} onSettings={() => setSettingsOpen(true)} onSignOut={() => authApi.signOut().catch(dbErr("გასვლა"))} />
                 {todayBdays.length > 0 && <div className="mx-4 mt-3 rounded-2xl p-3.5 flex items-center gap-3" style={{ background: C.accentSoft }}><span style={{ fontSize: 26 }}>🎂</span><div className="min-w-0 flex-1"><div className="text-[14px] font-bold" style={{ color: C.accentText }}>დღეს დაბადების დღეა!</div><div className="text-[13px] truncate" style={{ color: C.ink2 }}>{todayBdays.map(id => id === ME ? "შენ 🎉" : (USERS[id] ? USERS[id].name : "")).filter(Boolean).join(", ")}</div></div>{todayBdays.filter(id => id !== ME).length > 0 && <button onClick={() => openProfile(todayBdays.find(id => id !== ME))} className="shrink-0 px-3 py-1.5 rounded-full text-[12.5px] font-bold text-white active:scale-95" style={{ backgroundImage: GBRAND }}>მიულოცე</button>}</div>}
                 {feed.memories.length > 0 && <div className="mx-4 mt-3 rounded-2xl p-3" style={{ background: C.surface, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 mb-2"><span style={{ fontSize: 18 }}>🗓</span><span className="text-[14px] font-bold" style={{ color: C.ink }}>ამ დღეს</span></div><div className="flex gap-2 overflow-x-auto no-scrollbar">{feed.memories.map(m => <div key={m.id} className="shrink-0 rounded-xl overflow-hidden" style={{ width: 130 }}>{m.image ? <Pic src={m.image} grad={GRADS[hashIdx(m.id, GRADS.length)]} style={{ width: 130, height: 130 }} /> : <div className="flex items-center justify-center p-2.5 text-center" style={{ width: 130, height: 130, background: (m.bg && POST_BGS[m.bg]) ? undefined : C.surfaceMuted, backgroundImage: (m.bg && POST_BGS[m.bg]) ? `linear-gradient(140deg, ${POST_BGS[m.bg][0]}, ${POST_BGS[m.bg][1]})` : undefined }}><span className="text-[12px] font-semibold line-clamp-4" style={{ color: m.bg ? "#fff" : C.ink2 }}>{(m.text || "პოსტი").slice(0, 90)}</span></div>}<div className="text-[11px] px-1 pt-1" style={{ color: C.faint }}>{m.time}</div></div>)}</div></div>}
-                {homeVisible.length > 0 && <div className="flex items-center px-4 pt-3"><div className="flex gap-1 p-0.5 rounded-full" style={{ background: C.surfaceMuted }}>{[["top", "ტოპ"], ["recent", "ბოლო"]].map(([k, l]) => <button key={k} onClick={() => feed.setFeedSort(k)} className="px-4 py-1.5 rounded-full text-[12.5px] font-bold transition" style={feed.feedSort === k ? { background: C.surface, color: C.accent, boxShadow: SH.card } : { color: C.muted }}>{l}</button>)}</div></div>}
                 {homeVisible.length ? <div className="stagger space-y-4 p-4">{feedItems.map((it, i) => it.type === "post"
                   ? <PostCard key={it.post.id} post={it.post} onLike={feed.onLike} onReact={feed.onReact} onSave={feed.onSave} onComment={feed.onComment} onPollVote={feed.onPollVote} onTag={onTag} onReport={admin.onReport} onRemove={feed.onRemovePost} onOpenProfile={openProfile} isAdmin={me.admin} onEdit={feed.onEditPost} onDelete={feed.onDeletePost} onEditComment={feed.onEditComment} onDeleteComment={feed.onDeleteComment} onLikeComment={feed.onLikeComment} onRepost={feed.onRepost} onReactors={(pid) => reactionsApi.listForPost(pid)} onHide={feed.onHidePost} onSeeLess={feed.onSeeLess} onFavorite={feed.onToggleFavorite} isFavorite={feed.favorites.includes(it.post.authorId)} />
                   : it.type === "promo" && it.promo.kind === "post"

@@ -16,11 +16,9 @@ const lsSet = (k, v) => { try { if (typeof localStorage !== "undefined") localSt
 // every other domain (groups/films/music/market/forum/reels/games) — those
 // are only ever *read* here (for building promo cards), never mutated.
 export function useFeed({ tab, session, flash, dbErr, setDbError, gainXp }) {
-  const [feedSort, setFeedSort] = useState(() => lsGet("mz_feedsort", "top"));
   const [hiddenPosts, setHiddenPosts] = useState(() => lsGet("mz_hidden", []));
   const [favorites, setFavorites] = useState(() => lsGet("mz_favs", []));
   const [seeLess, setSeeLess] = useState(() => lsGet("mz_seeless", []));
-  useEffect(() => { lsSet("mz_feedsort", feedSort); }, [feedSort]);
   useEffect(() => { lsSet("mz_hidden", hiddenPosts); }, [hiddenPosts]);
   useEffect(() => { lsSet("mz_favs", favorites); }, [favorites]);
   useEffect(() => { lsSet("mz_seeless", seeLess); }, [seeLess]);
@@ -208,7 +206,7 @@ export function useFeed({ tab, session, flash, dbErr, setDbError, gainXp }) {
   };
 
   return {
-    feedSort, setFeedSort, hiddenPosts, setHiddenPosts, favorites, setFavorites, seeLess, setSeeLess,
+    hiddenPosts, setHiddenPosts, favorites, setFavorites, seeLess, setSeeLess,
     posts, setPosts, savedPosts, setSavedPosts, shareCounts, newPosts, setNewPosts,
     feedCursor, feedMore, feedLoadingMore, feedSentinelRef, memories, setMemories,
     activeTag, setActiveTag, tagView, setTagView, postView, setPostView, postViewCommentId, setPostViewCommentId, tagPosts, tagLoading,
