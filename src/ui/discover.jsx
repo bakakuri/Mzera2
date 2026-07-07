@@ -163,6 +163,12 @@ export function Market({ listings, onSave, onNew, onMessage, onOpenProfile, flas
 
 const LOCATION_STALE_MS = 60 * 60 * 1000;
 
+// map marker icons are built as raw HTML strings for Leaflet's divIcon (which
+// sets innerHTML directly, bypassing React's escaping) — avatar_url/name are
+// user-controlled profile fields, so they must be escaped before interpolation
+// or a crafted avatar_url becomes stored XSS against anyone viewing the map.
+const escapeHtml = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
 export function MapView({ onMessage, onMenu, onOpenProfile, sharing, myPos, myAccuracy, lastSharedAt, geoErr, setGeoErr, busy, onStartShare, onStopShare, onRefreshShare }) {
   const mapRef = useRef(null); const mapObj = useRef(null); const markersRef = useRef([]); const accCircleRef = useRef(null); const clusterRef = useRef(null);
   const [sel, setSel] = useState(null);
@@ -195,9 +201,9 @@ export function MapView({ onMessage, onMenu, onOpenProfile, sharing, myPos, myAc
     const group = L.markerClusterGroup ? L.markerClusterGroup({ maxClusterRadius: 55, showCoverageOnHover: false, spiderfyOnMaxZoom: true }) : null;
     pins.forEach(p => {
       const u = USERS[p.user_id]; const isMe = p.user_id === ME; const g = GRADS[hashIdx(p.user_id, GRADS.length)];
-      const inner = (u && u.avatar) ? `<img src="${u.avatar}" style="width:42px;height:42px;border-radius:50%;object-fit:cover;display:block"/>` : `<div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(140deg,${g[0]},${g[1]});color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px;font-family:sans-serif">${(((u && u.name) || "?").trim()[0]) || "?"}</div>`;
+      const inner = (u && u.avatar) ? `<img src="${escapeHtml(u.avatar)}" style="width:42px;height:42px;border-radius:50%;object-fit:cover;display:block"/>` : `<div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(140deg,${g[0]},${g[1]});color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px;font-family:sans-serif">${escapeHtml((((u && u.name) || "?").trim()[0]) || "?")}</div>`;
       const ring = isMe ? "linear-gradient(140deg,#6d5efc,#8b5cf6)" : "#ffffff";
-      const tag = isMe ? `<div style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:#6d5efc;color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;white-space:nowrap;font-family:sans-serif">${t("map.youShort")}</div>` : "";
+      const tag = isMe ? `<div style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:#6d5efc;color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;white-space:nowrap;font-family:sans-serif">${escapeHtml(t("map.youShort"))}</div>` : "";
       const html = `<div style="position:relative"><div style="padding:3px;border-radius:50%;background:${ring};box-shadow:0 3px 8px rgba(0,0,0,.35)">${inner}</div>${tag}</div>`;
       const icon = L.divIcon({ html, className: "mz-pin", iconSize: [50, 50], iconAnchor: [25, 50] });
       const marker = L.marker([p.lat, p.lng], { icon });

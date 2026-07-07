@@ -1924,6 +1924,148 @@ drop trigger if exists threads_rate_limit on public.threads;
 create trigger threads_rate_limit before insert on public.threads
   for each row execute function public.rl_enforce('author_id', 5, 60);
 
+-- these five had the same abuse surface as the tables above (unbounded
+-- inserts from one user) but never got a trigger — closed as part of the
+-- full security audit below.
+drop trigger if exists reports_rate_limit on public.reports;
+create trigger reports_rate_limit before insert on public.reports
+  for each row execute function public.rl_enforce('reporter_id', 10, 60);
+
+drop trigger if exists thread_replies_rate_limit on public.thread_replies;
+create trigger thread_replies_rate_limit before insert on public.thread_replies
+  for each row execute function public.rl_enforce('author_id', 20, 30);
+
+drop trigger if exists group_posts_rate_limit on public.group_posts;
+create trigger group_posts_rate_limit before insert on public.group_posts
+  for each row execute function public.rl_enforce('author_id', 10, 30);
+
+drop trigger if exists story_comments_rate_limit on public.story_comments;
+create trigger story_comments_rate_limit before insert on public.story_comments
+  for each row execute function public.rl_enforce('author_id', 20, 30);
+
+drop trigger if exists reel_comments_rate_limit on public.reel_comments;
+create trigger reel_comments_rate_limit before insert on public.reel_comments
+  for each row execute function public.rl_enforce('author_id', 20, 30);
+
+-- ============================================================================
+--  SECURITY HARDENING — RLS gaps found in a full-schema audit. Each one below
+--  replaces an earlier, looser policy defined further up this file; kept as a
+--  separate dated section (rather than editing in place) so the audit trail
+--  of what was wrong and why is preserved.
+-- ============================================================================
+
+-- 1) STORIES: close_friends was read/written by the client for a while but
+-- never defined here (same undocumented-column class as groups.is_private
+-- below), and stories_read ignored it entirely — a "close friends only"
+-- story was actually readable by anyone. is_close_friend_of() has to be
+-- security definer: close_friends' own RLS only lets a user read ROWS THEY
+-- OWN (user_id = auth.uid()), so a plain subquery run as the viewing user
+-- would find nothing even for a genuine close friend.
+alter table public.stories add column if not exists close_friends boolean not null default false;
+
+create or replace function public.is_close_friend_of(target uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.close_friends where user_id = target and friend_id = auth.uid());
+$$;
+
+drop policy if exists stories_read on public.stories;
+create policy stories_read on public.stories for select using (
+  not close_friends or auth.uid() = author_id or public.is_close_friend_of(author_id)
+);
+
+-- 2) GROUPS: is_private was read/written by the client (groups.setPrivate(),
+-- discover.jsx's lock icon, requestJoin's pending-vs-approved branch) but,
+-- like group_members.status/role above, was never defined here — and every
+-- read/insert policy on groups/group_members/group_posts used `using (true)`
+-- or an owner-only check with no privacy or membership check at all. Net
+-- effect: a private group's roster, posts, and metadata were all readable by
+-- anyone, and posting into ANY group (private or not, joined or not) was
+-- unrestricted. is_group_member() is security definer for the same reason as
+-- is_close_friend_of() above — group_members_read (below) is itself
+-- membership-gated, so a plain subquery would be circular.
+alter table public.groups add column if not exists is_private boolean not null default false;
+
+create or replace function public.is_group_member(gid uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.group_members gm where gm.group_id = gid and gm.user_id = auth.uid() and gm.status = 'approved'
+  ) or exists (
+    select 1 from public.groups g where g.id = gid and g.created_by = auth.uid()
+  );
+$$;
+
+drop policy if exists groups_read on public.groups;
+create policy groups_read on public.groups for select using (
+  not is_private or public.is_group_member(id) or public.is_admin()
+);
+
+drop policy if exists gmem_read on public.group_members;
+create policy gmem_read on public.group_members for select using (
+  exists (select 1 from public.groups g where g.id = group_id and not g.is_private)
+  or public.is_group_member(group_id) or public.is_admin()
+);
+
+-- self-join used to be a bare `user_id = auth.uid()` with no check on
+-- status/role/privacy at all — a user could insert themselves as
+-- status='approved' into a private group (skipping the pending-approval
+-- flow that requestJoin() enforces client-side) or role='owner' into
+-- anyone's group (cosmetic only — ownership checks elsewhere read
+-- groups.created_by, never this column — but tightened anyway).
+drop policy if exists gmem_rw on public.group_members;
+create policy gmem_insert on public.group_members for insert with check (
+  auth.uid() = user_id
+  and (
+    (status = 'approved' and not exists (select 1 from public.groups g where g.id = group_id and g.is_private))
+    or (status = 'pending' and exists (select 1 from public.groups g where g.id = group_id and g.is_private))
+  )
+  and (role = 'member' or exists (select 1 from public.groups g where g.id = group_id and g.created_by = auth.uid()))
+);
+
+drop policy if exists gposts_read on public.group_posts;
+create policy gposts_read on public.group_posts for select using (
+  exists (select 1 from public.groups g where g.id = group_id and not g.is_private)
+  or public.is_group_member(group_id) or public.is_admin()
+);
+
+-- used to only check auth.uid() = author_id — anyone could post into any
+-- group, private or not, joined or not.
+drop policy if exists gposts_insert on public.group_posts;
+create policy gposts_insert on public.group_posts for insert with check (
+  auth.uid() = author_id and public.is_group_member(group_id)
+);
+
+-- the group_posts table above is a separate, older path — the group-posting
+-- flow the client actually uses (useGroups.js's onGroupPost) inserts into
+-- public.posts with group_id set (see the posts.group_id comment near where
+-- that column is added). posts_insert had exactly the same gap: only
+-- auth.uid() = author_id, no group-membership check, so the table that's
+-- actually in use was equally postable-into by a non-member.
+drop policy if exists posts_insert on public.posts;
+create policy posts_insert on public.posts for insert with check (
+  auth.uid() = author_id and (group_id is null or public.is_group_member(group_id))
+);
+
+-- 3) CONVERSATIONS: the `user_id = auth.uid()` clause exists so a brand-new
+-- conversation's creator can insert the first membership row (before any
+-- row exists, is_conversation_member() is necessarily false, so it can't be
+-- the only path in) — but it had no restriction on WHICH conversation_id,
+-- so any authenticated user could self-insert into any EXISTING
+-- conversation and start reading its messages. Now the bootstrap path only
+-- works for a conversation the caller actually created.
+drop policy if exists conv_mem_insert on public.conversation_members;
+create policy conv_mem_insert on public.conversation_members for insert with check (
+  public.is_conversation_member(conversation_id)
+  or (user_id = auth.uid() and exists (select 1 from public.conversations c where c.id = conversation_id and c.created_by = auth.uid()))
+);
+
+-- 4) ORDERS: a seller had no way to read orders placed against their own
+-- listings (only the buyer could) — an app-breaking gap, not an exposure,
+-- but a seller-facing "my orders" view is impossible without this.
+drop policy if exists orders_read on public.orders;
+create policy orders_read on public.orders for select using (
+  auth.uid() = buyer_id or exists (select 1 from public.listings l where l.id = listing_id and l.seller_id = auth.uid())
+);
+
 -- ============================================================================
 --  STORAGE (media bucket: avatars, post images, story media, voice notes)
 -- ============================================================================
@@ -1931,9 +2073,20 @@ insert into storage.buckets (id, name, public)
 values ('media', 'media', true)
 on conflict (id) do nothing;
 
+-- chat attachments (images/voice/docs, uploaded to {uid}/chat/...) are private
+-- DM content, unlike every other folder in this bucket (avatars/posts/stories/
+-- reels/albums/market covers), which are meant to be public. The path doesn't
+-- carry a conversation_id, so this can't be scoped to actual conversation
+-- membership without reworking the upload path — as a partial mitigation,
+-- require at least authentication for the chat folder specifically, closing
+-- off anonymous/unauthenticated scraping even though any logged-in user who
+-- has or guesses a chat attachment's URL can still read it.
 drop policy if exists "media public read" on storage.objects;
 create policy "media public read" on storage.objects
-  for select using (bucket_id = 'media');
+  for select using (
+    bucket_id = 'media'
+    and ((storage.foldername(name))[2] is distinct from 'chat' or auth.role() = 'authenticated')
+  );
 
 drop policy if exists "media auth upload" on storage.objects;
 create policy "media auth upload" on storage.objects
