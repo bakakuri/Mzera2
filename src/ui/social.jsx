@@ -33,8 +33,8 @@ export function Drawer({ open, onClose, nav, onNav, onCreate, flash, tab, mode, 
   );
 }
 
-// same menu as Drawer, but pulled down (not tapped) into a 3D "trap-door"
-// dropdown — a little pull-tab in the feed opens it on a downward drag.
+// same menu as Drawer, but opened from a miniature tap button in the feed
+// (previously a drag-down "pull tab" — replaced with a plain tap trigger).
 const PULLMENU_HUES = [265, 205, 172, 28, 330, 150, 10, 235, 45, 190];
 
 export function PullMenu({ open, setOpen, nav, onNav, onCreate, flash, tab, mode, setMode, xp, followers, following, onSettings, onSignOut }) {
@@ -42,27 +42,9 @@ export function PullMenu({ open, setOpen, nav, onNav, onCreate, flash, tab, mode
   const extras = [{ label: t("drawer.saved"), icon: Bookmark, act: () => onNav("profile") }, { label: t("drawer.settings"), icon: Settings, act: () => onSettings() }, { label: t("drawer.help"), icon: HelpCircle, act: () => flash(t("drawer.helpSoon")) }, { label: t("drawer.signout"), icon: LogOut, act: () => onSignOut(), danger: true }];
   const tiles = [...nav.map(n => ({ key: n.key, label: n.label, icon: n.icon, badge: n.badge, act: () => n.key === "create" ? onCreate() : go(n.key) })), ...extras.map(e => ({ key: e.label, label: e.label, icon: e.icon, danger: e.danger, act: e.act }))];
 
-  const startY = useRef(null);
-  const [drag, setDrag] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const onDown = (e) => { startY.current = e.clientY; setIsDragging(true); };
-  const onDrag = (e) => {
-    if (startY.current == null) return;
-    const dy = e.clientY - startY.current;
-    setDrag(open ? Math.min(0, Math.max(-140, dy)) : Math.max(0, Math.min(140, dy)));
-  };
-  const onUp = () => {
-    if (startY.current == null) { setIsDragging(false); return; }
-    if (!open && drag > 50) setOpen(true);
-    else if (open && drag < -50) setOpen(false);
-    startY.current = null; setDrag(0); setIsDragging(false);
-  };
   function go(key) { onNav(key); setOpen(false); }
 
-  const progress = open ? Math.max(0, 1 + drag / 130) : Math.min(1.12, drag / 90);
-  const shownProgress = Math.min(1, progress);
-  const CLOSED_W = 36, OPEN_W = 186;
-  const tabWidth = OPEN_W - shownProgress * (OPEN_W - CLOSED_W);
+  const shownProgress = open ? 1 : 0;
 
   const trackRef = useRef(null);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -86,56 +68,31 @@ export function PullMenu({ open, setOpen, nav, onNav, onCreate, flash, tab, mode
 
   return (
     <>
-      <div className="w-full flex justify-center py-1.5" style={{ touchAction: "none" }}>
+      <div className="w-full flex justify-center py-1.5">
         <button
-          onPointerDown={onDown} onPointerMove={onDrag} onPointerUp={onUp} onPointerCancel={onUp}
-          className="relative rounded-full flex items-center active:scale-95 overflow-hidden"
+          onClick={() => setOpen(o => !o)}
+          className="rounded-full flex items-center justify-center active:scale-90"
           style={{
-            width: tabWidth, height: 34,
-            paddingLeft: 4, paddingRight: 4,
-            background: `linear-gradient(90deg, hsla(${PULLMENU_HUES[0]},75%,55%,.14), hsla(${PULLMENU_HUES[2]},70%,50%,.14))`,
-            border: `1px solid ${C.line}`,
-            boxShadow: SH.soft,
-            transition: isDragging ? "none" : "width .4s cubic-bezier(.34,1.56,.64,1)",
+            width: 30, height: 30,
+            backgroundImage: `linear-gradient(135deg, hsl(${PULLMENU_HUES[0]},75%,58%), hsl(${PULLMENU_HUES[2]},70%,50%))`,
+            boxShadow: `0 2px 10px -2px hsla(${PULLMENU_HUES[0]},75%,50%,.65)`,
           }}
           aria-label={t("drawer.pullHint")}
         >
-          <span
-            className="flex-1 text-[12px] font-bold whitespace-nowrap px-2 text-left"
-            style={{
-              backgroundImage: `linear-gradient(90deg, hsl(${PULLMENU_HUES[0]},80%,55%), hsl(${PULLMENU_HUES[2]},75%,48%))`,
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-              color: "transparent",
-              opacity: 1 - shownProgress,
-              transition: isDragging ? "none" : "opacity .25s ease",
-            }}
-          >
-            {t("drawer.pullHint")}
-          </span>
-          <span
-            className="rounded-full flex items-center justify-center shrink-0"
-            style={{
-              width: 26, height: 26,
-              backgroundImage: `linear-gradient(135deg, hsl(${PULLMENU_HUES[0]},75%,58%), hsl(${PULLMENU_HUES[2]},70%,50%))`,
-              boxShadow: `0 2px 10px -2px hsla(${PULLMENU_HUES[0]},75%,50%,.65)`,
-            }}
-          >
-            <ChevronDown size={15} color="#fff" style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .3s ease", animation: (!open && !isDragging) ? "mzPullHint 1.6s ease-in-out infinite" : "none" }} />
-          </span>
+          <ChevronDown size={15} color="#fff" style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .3s ease" }} />
         </button>
       </div>
 
       <div className="fixed inset-0 z-[54] md:hidden" style={{ pointerEvents: open ? "auto" : "none" }}>
-        <div onClick={() => setOpen(false)} className="absolute inset-0" style={{ background: "rgba(6,7,12,.5)", backdropFilter: "blur(2px)", opacity: shownProgress, transition: isDragging ? "none" : "opacity .35s ease" }} />
+        <div onClick={() => setOpen(false)} className="absolute inset-0" style={{ background: "rgba(6,7,12,.5)", backdropFilter: "blur(2px)", opacity: shownProgress, transition: "opacity .35s ease" }} />
         <div
           className="absolute left-1/2 w-full max-w-[420px] rounded-b-[32px] overflow-hidden"
           style={{
             top: "var(--mz-hdr, 56px)",
-            transform: `translateX(-50%) perspective(1300px) rotateX(${(1 - progress) * -85}deg) translateY(${(1 - shownProgress) * -18}px) scale(${0.92 + Math.min(1, progress) * 0.08})`,
+            transform: `translateX(-50%) perspective(1300px) rotateX(${(1 - shownProgress) * -85}deg) translateY(${(1 - shownProgress) * -18}px) scale(${0.92 + shownProgress * 0.08})`,
             transformOrigin: "top center",
             opacity: shownProgress,
-            transition: isDragging ? "none" : "transform .55s cubic-bezier(.34,1.56,.64,1), opacity .3s ease",
+            transition: "transform .55s cubic-bezier(.34,1.56,.64,1), opacity .3s ease",
             background: C.surface + "F0",
             backdropFilter: "blur(18px) saturate(1.4)",
             border: `1px solid ${C.lineSoft}`,
@@ -174,8 +131,7 @@ export function PullMenu({ open, setOpen, nav, onNav, onCreate, flash, tab, mode
               const hue = PULLMENU_HUES[i % PULLMENU_HUES.length];
               const isTab = tab === tl.key;
               const near = Math.abs(i - activeIdx) <= 1;
-              const stagger = Math.max(0, Math.min(1, (shownProgress - i * 0.035) / (1 - i * 0.035 || 1)));
-              const p = isDragging ? stagger : shownProgress > 0.98 ? 1 : shownProgress < 0.02 ? 0 : stagger;
+              const p = shownProgress;
               return (
                 <button
                   key={tl.key}
@@ -186,7 +142,7 @@ export function PullMenu({ open, setOpen, nav, onNav, onCreate, flash, tab, mode
                     scrollSnapAlign: "center",
                     opacity: p * (i === activeIdx ? 1 : near ? 0.65 : 0.35),
                     transform: `scale(${(i === activeIdx ? 1 : 0.82) * (0.7 + p * 0.3)}) translateY(${(1 - p) * 16}px)`,
-                    transition: isDragging ? "none" : `opacity .35s cubic-bezier(.34,1.56,.64,1) ${i * 12}ms, transform .35s cubic-bezier(.34,1.56,.64,1) ${i * 12}ms`,
+                    transition: `opacity .35s cubic-bezier(.34,1.56,.64,1) ${i * 12}ms, transform .35s cubic-bezier(.34,1.56,.64,1) ${i * 12}ms`,
                   }}
                 >
                   <div className="relative rounded-[26px] flex items-center justify-center" style={{ width: 76, height: 76, background: tl.danger ? C.like + "1f" : `hsla(${hue},75%,55%,.16)`, boxShadow: i === activeIdx ? `0 12px 26px -12px hsla(${hue},75%,50%,.6), 0 0 0 2px hsla(${hue},75%,55%,.55)` : "none" }}>

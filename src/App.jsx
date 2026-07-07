@@ -436,7 +436,6 @@ export default function App() {
         @keyframes fadeOnly{from{opacity:0}to{opacity:1}}
         @keyframes slideIn{from{opacity:0;transform:translateX(22px)}to{opacity:1;transform:none}}
         @keyframes mzTicker{from{transform:translateX(100%)}to{transform:translateX(-100%)}}
-        @keyframes mzPullHint{0%,100%{transform:translateY(0)}50%{transform:translateY(4px)}}
         @keyframes mzLiveDot{0%{transform:scale(1);opacity:.7}70%{transform:scale(2.4);opacity:0}100%{opacity:0}}
         .fadein{animation:fadeOnly .35s ease both}
         .slidein{animation:slideIn .28s cubic-bezier(.2,.8,.2,1) both}
