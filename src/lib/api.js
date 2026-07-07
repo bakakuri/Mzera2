@@ -479,6 +479,13 @@ export const follows = {
     if (error) throw error;
     return data.map((r) => r.following);
   },
+  // used for the private-account gate: does this profile follow ME back?
+  isFollowedBy: async (id) => {
+    const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;
+    const { data, error } = await sb.from("follows").select("follower_id").eq("follower_id", id).eq("following_id", uid).maybeSingle();
+    if (error) throw error;
+    return !!data;
+  },
 };
 
 /* ───────────── MESSAGES / CHAT ───────────── */

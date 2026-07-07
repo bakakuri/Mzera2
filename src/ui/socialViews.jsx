@@ -208,7 +208,7 @@ function AlbumsGrid({ isMe, albums, photos, onCreateAlbum, onRenameAlbum, onDele
   );
 }
 
-export function Profile({ userId, posts, savedPosts, reels, xp, meProfile, following, followerCounts, onToggleFollow, onMessage, onOpenList, onSettings, flash, onBack, onTag, onLike, onReact, onSave, onComment, onPollVote, onReport, onRemove, onOpenProfile, isAdmin, onUploadAvatar, onUploadCover, onOpenReels, onAddReel, onReelDelete, onReelEdit, onEditPost, onDeletePost, onEditComment, onDeleteComment, blocked, muted, onBlock, onUnblock, onMute, onUnmute, closeFriend, onToggleCloseFriend, collections, onCreateCollection, onAssignCollection, albums, albumPhotos, onCreateAlbum, onRenameAlbum, onDeleteAlbum, onUploadAlbumPhoto, onMoveAlbumPhoto, onReorderAlbumPhotos, onDeleteAlbumPhoto }) {
+export function Profile({ userId, posts, savedPosts, reels, xp, meProfile, following, followerCounts, followsMe, onToggleFollow, onMessage, onOpenList, onSettings, flash, onBack, onTag, onLike, onReact, onSave, onComment, onPollVote, onReport, onRemove, onOpenProfile, isAdmin, onUploadAvatar, onUploadCover, onOpenReels, onAddReel, onReelDelete, onReelEdit, onEditPost, onDeletePost, onEditComment, onDeleteComment, blocked, muted, onBlock, onUnblock, onMute, onUnmute, closeFriend, onToggleCloseFriend, collections, onCreateCollection, onAssignCollection, albums, albumPhotos, onCreateAlbum, onRenameAlbum, onDeleteAlbum, onUploadAlbumPhoto, onMoveAlbumPhoto, onReorderAlbumPhotos, onDeleteAlbumPhoto }) {
   const u = USERS[userId]; const isMe = userId === ME; const [tab, setTab] = useState("grid"); const [sel, setSel] = useState(null); const [editReel, setEditReel] = useState(null); const [editCap, setEditCap] = useState("");
   const [menuOpen, setMenuOpen] = useState(false); const [qrOpen, setQrOpen] = useState(false); const [selCol, setSelCol] = useState(null); const [assignFor, setAssignFor] = useState(null); const [avatarView, setAvatarView] = useState(false);
   const [avatarProgress, setAvatarProgress] = useState(null); const [coverProgress, setCoverProgress] = useState(null);
@@ -234,6 +234,10 @@ export function Profile({ userId, posts, savedPosts, reels, xp, meProfile, follo
   const followers = (followerCounts && followerCounts[userId] != null) ? followerCounts[userId] : u.followers;
   const followingCount = isMe ? following.length : u.following;
   const amFollowing = following.includes(userId);
+  // private accounts here require a MUTUAL follow (both directions), not
+  // just a one-way approved-follower relationship — matches the account's
+  // own is_private RLS gate (public.can_view_private_content in schema.sql).
+  const gated = !isMe && !isAdmin && u.isPrivate && !(amFollowing && followsMe);
   const fmt = (n) => n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, "") + "ათ" : "" + n;
   return (
     <div className="pb-28 md:pb-10">
@@ -306,6 +310,13 @@ export function Profile({ userId, posts, savedPosts, reels, xp, meProfile, follo
           );
         })()}
       </div>
+      {gated ? (
+        <div className="flex flex-col items-center text-center px-8 py-14">
+          <div className="rounded-full flex items-center justify-center mb-3" style={{ width: 64, height: 64, background: C.surfaceMuted }}><Lock size={28} style={{ color: C.faint }} /></div>
+          <div className="text-[16px] font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{t("profile.privateTitle")}</div>
+          <div className="text-[13.5px] mt-1.5 max-w-[280px]" style={{ color: C.faint, lineHeight: 1.5 }}>{t("profile.privateBody")}</div>
+        </div>
+      ) : <>
       <div className="flex mt-5" style={{ borderBottom: `1px solid ${C.line}` }}>{[["grid", t("profile.tabPhotos")], ["reels", "Reels"], ["posts", t("profile.tabPosts")], ...(isMe ? [["saved", t("profile.tabSaved")]] : [])].map(([k, l]) => <button key={k} onClick={() => setTab(k)} className="flex-1 py-3 text-sm font-bold transition" style={{ color: tab === k ? C.accent : C.faint, borderBottom: tab === k ? `2px solid ${C.accent}` : "2px solid transparent" }}>{l}</button>)}</div>
       {tab === "grid" && <AlbumsGrid isMe={isMe} albums={albums || []} photos={albumPhotos || []} onCreateAlbum={onCreateAlbum} onRenameAlbum={onRenameAlbum} onDeleteAlbum={onDeleteAlbum} onUploadPhoto={onUploadAlbumPhoto} onMovePhoto={onMoveAlbumPhoto} onReorderPhotos={onReorderAlbumPhotos} onDeletePhoto={onDeleteAlbumPhoto} flash={flash} />}
       {tab === "posts" && <div className="space-y-4 px-3 pt-4">{mine.length ? mine.map(p => <PostCard key={p.id} post={p} onLike={onLike} onReact={onReact} onSave={onSave} onComment={onComment} onPollVote={onPollVote} onTag={onTag} onReport={onReport} onRemove={onRemove} onOpenProfile={onOpenProfile} isAdmin={isAdmin} onEdit={onEditPost} onDelete={onDeletePost} onEditComment={onEditComment} onDeleteComment={onDeleteComment} />) : <Empty icon={ImageIcon} t={t("profile.noPosts")} s="" />}</div>}
@@ -348,6 +359,7 @@ export function Profile({ userId, posts, savedPosts, reels, xp, meProfile, follo
           </div>
         );
       })()}
+      </>}
       {assignFor && (
         <div className="fixed inset-0 z-[70] flex items-end" style={{ background: "rgba(0,0,0,.45)" }} onClick={() => setAssignFor(null)}>
           <div className="w-full rounded-t-3xl pb-6 pt-2" style={{ background: C.paper, maxWidth: 600, margin: "0 auto", animation: "up .25s ease both" }} onClick={e => e.stopPropagation()}>
@@ -860,7 +872,7 @@ export function Progress({ xp, posts, myFollowers, questData, onClaim }) {
 
 /* ─────────────────────────  SETTINGS  ───────────────────────── */
 
-export function SettingsView({ settings, setSettings, meProfile, setMeProfile, mode, setMode, onClose, flash, onSignOut, onUploadAvatar, pushState, onTogglePush, blockedIds, mutedIds, onUnblock, onUnmute, onOpenProfile, following, closeFriends, onToggleCloseFriend, onExportData, onDeleteAccount, birthday, onSetBirthday, showProfileVisits, onToggleShowProfileVisits, referralCode, invitedCount, invitedUsers, inviteLink, onCopyInviteLink, locSharing, locBusy, locLastSharedAt, onStartLocationShare, onStopLocationShare }) {
+export function SettingsView({ settings, setSettings, meProfile, setMeProfile, mode, setMode, onClose, flash, onSignOut, onUploadAvatar, pushState, onTogglePush, blockedIds, mutedIds, onUnblock, onUnmute, onOpenProfile, following, closeFriends, onToggleCloseFriend, onExportData, onDeleteAccount, birthday, onSetBirthday, showProfileVisits, onToggleShowProfileVisits, isPrivate, onToggleIsPrivate, referralCode, invitedCount, invitedUsers, inviteLink, onCopyInviteLink, locSharing, locBusy, locLastSharedAt, onStartLocationShare, onStopLocationShare }) {
   const set = (k, v) => setSettings(s => ({ ...s, [k]: v }));
   const [delMode, setDelMode] = useState(false); const [delTxt, setDelTxt] = useState("");
   const [avatarProgress, setAvatarProgress] = useState(null);
@@ -892,7 +904,7 @@ export function SettingsView({ settings, setSettings, meProfile, setMeProfile, m
             <div className="px-4 py-3" style={{ borderTop: `1px solid ${C.lineSoft}` }}><div className="text-[13px] mb-2" style={{ color: C.muted }}>{t("settings.language")}</div><div className="flex gap-1 p-1 rounded-2xl" style={{ background: C.surfaceMuted }}>{LANGS.map(([k, l]) => <button key={k} onClick={() => set("lang", k)} className="flex-1 py-2 rounded-xl text-sm font-bold transition" style={settings.lang === k ? { background: C.surface, color: C.accent, boxShadow: SH.card } : { color: C.muted }}>{l}</button>)}</div></div>
           </SettingsSection>
           <SettingsSection title="კონფიდენციალურობა">
-            <SettingsRow first label="დახურული ანგარიში" sub="მხოლოდ მიმდევრები ხედავენ შენს პოსტებს" on={settings.private} onToggle={() => tog("private")} />
+            <SettingsRow first label="დახურული ანგარიში" sub="მხოლოდ ორმხრივი მიმდევრები ხედავენ შენს პოსტებს, Reels-სა და ფოტოებს" on={!!isPrivate} onToggle={() => onToggleIsPrivate && onToggleIsPrivate(!isPrivate)} />
             <SettingsRow label="აქტივობის სტატუსი" sub="აჩვენე როდის ხარ ონლაინ" on={settings.activity} onToggle={() => tog("activity")} />
             <SettingsRow label={t("settings.showProfileVisits")} sub={t("settings.showProfileVisitsSub")} on={showProfileVisits} onToggle={() => onToggleShowProfileVisits && onToggleShowProfileVisits(!showProfileVisits)} />
           </SettingsSection>

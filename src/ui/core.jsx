@@ -571,6 +571,7 @@ export function mergeProfile(p) {
     cover: p.cover_url !== undefined ? (p.cover_url || null) : (prev ? prev.cover : null),
     birthday: p.birthday !== undefined ? (p.birthday || null) : (prev ? prev.birthday : null),
     showProfileVisits: p.show_profile_visits != null ? !!p.show_profile_visits : (prev ? prev.showProfileVisits : true),
+    isPrivate: p.is_private != null ? !!p.is_private : (prev ? prev.isPrivate : false),
   };
 }
 

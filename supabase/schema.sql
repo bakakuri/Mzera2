@@ -2155,5 +2155,51 @@ create policy "media owner delete" on storage.objects
   );
 
 -- ============================================================================
+--  PRIVATE ACCOUNTS — the "დახურული ანგარიში" settings toggle only ever
+--  wrote to localStorage (mz_settings), never the database, so it was
+--  decorative: nobody's content was actually gated by it. Wired up for real:
+--  a private profile's posts/reels/albums are only visible to the owner,
+--  admins, and accounts that MUTUALLY follow each other (both directions) —
+--  not just a one-way "approved follower", per how this app's private
+--  accounts are meant to work.
+-- ============================================================================
+alter table public.profiles add column if not exists is_private boolean not null default false;
+
+create or replace function public.is_mutual_follow(target uuid)
+returns boolean language sql stable as $$
+  select exists (select 1 from public.follows where follower_id = auth.uid() and following_id = target)
+     and exists (select 1 from public.follows where follower_id = target and following_id = auth.uid());
+$$;
+
+create or replace function public.can_view_private_content(target uuid)
+returns boolean language sql stable as $$
+  select target = auth.uid()
+    or public.is_admin()
+    or not exists (select 1 from public.profiles p where p.id = target and p.is_private)
+    or public.is_mutual_follow(target);
+$$;
+
+drop policy if exists posts_read on public.posts;
+create policy posts_read on public.posts for select using (
+  (not hidden or author_id = auth.uid())
+  and (
+    public_status not in ('pending', 'rejected')
+    or author_id = auth.uid()
+    or public.is_admin()
+    or exists (select 1 from public.follows f where f.follower_id = auth.uid() and f.following_id = author_id)
+  )
+  and public.can_view_private_content(author_id)
+);
+
+drop policy if exists reels_read on public.reels;
+create policy reels_read on public.reels for select using (public.can_view_private_content(author_id));
+
+drop policy if exists photo_albums_read on public.photo_albums;
+create policy photo_albums_read on public.photo_albums for select using (public.can_view_private_content(owner_id));
+
+drop policy if exists album_photos_read on public.album_photos;
+create policy album_photos_read on public.album_photos for select using (public.can_view_private_content(owner_id));
+
+-- ============================================================================
 --  მზადაა! შემდეგი ნაბიჯები იხ. README.md
 -- ============================================================================

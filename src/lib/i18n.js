@@ -279,6 +279,8 @@ export const DICT = {
   "profile.noPostsYet": { ka: "ჯერ პოსტი არ არის", en: "No posts yet", ru: "Пока нет постов" },
   "profile.sharedPostsHere": { ka: "გაზიარებული პოსტები აქ გამოჩნდება.", en: "Shared posts will show up here.", ru: "Опубликованные посты появятся здесь." },
   "profile.noPosts": { ka: "პოსტი არ არის", en: "No posts", ru: "Нет постов" },
+  "profile.privateTitle": { ka: "ეს ანგარიში დახურულია", en: "This account is private", ru: "Этот аккаунт закрыт" },
+  "profile.privateBody": { ka: "პოსტების, Reels-ისა და ფოტოების სანახავად საჭიროა ორმხრივი გამოწერა — ორივემ ერთმანეთი უნდა გამოიწეროთ.", en: "Seeing posts, Reels, and photos needs a mutual follow — you both need to follow each other.", ru: "Чтобы видеть посты, Reels и фото, нужна взаимная подписка — вы оба должны подписаться друг на друга." },
 
   "album.new": { ka: "ახალი ალბომი", en: "New album", ru: "Новый альбом" },
   "album.namePrompt": { ka: "ალბომის სახელი:", en: "Album name:", ru: "Название альбома:" },
@@ -753,6 +755,8 @@ export const DICT = {
   "toast.storyAddedCloseFriends": { ka: "Story ახლო მეგობრებს ✨", en: "Story to close friends ✨", ru: "История для близких друзей ✨" },
   "toast.storyAdded": { ka: "Story დაემატა ✨", en: "Story added ✨", ru: "История добавлена ✨" },
   "toast.storyBroadcast": { ka: "Story გაეგზავნა ყველას 🌍", en: "Story broadcast to everyone 🌍", ru: "История отправлена всем 🌍" },
+  "toast.accountNowPrivate": { ka: "ანგარიში დახურულია 🔒", en: "Account is now private 🔒", ru: "Аккаунт теперь закрыт 🔒" },
+  "toast.accountNowPublic": { ka: "ანგარიში გაიხსნა", en: "Account is now public", ru: "Аккаунт снова открыт" },
   "chat.newMessage": { ka: "ახალი შეტყობინება", en: "New message", ru: "Новое сообщение" },
 
   "langname.english": { ka: "ინგლისური", en: "English", ru: "Английский" },
