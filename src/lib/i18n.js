@@ -38,6 +38,7 @@ export function setLang(l) {
 
 export const DICT = {
   "nav.home": { ka: "მთავარი", en: "Home", ru: "Главная" },
+  "nav.you": { ka: "შენ", en: "You", ru: "Вы" },
   "nav.explore": { ka: "აღმოჩენა", en: "Explore", ru: "Обзор" },
   "nav.reels": { ka: "Reels", en: "Reels", ru: "Reels" },
   "nav.forum": { ka: "ფორუმი", en: "Forum", ru: "Форум" },

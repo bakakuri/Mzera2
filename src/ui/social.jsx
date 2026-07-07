@@ -1,5 +1,5 @@
 import {
-  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, ChevronDown, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Clapperboard, Music, Gift, Calendar, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, questsApi, xpApi, adminApi, pushApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Tilt, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, levelInfo, kfmt, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, STORY_STICKERS, setTheme, setME, t, LANGS, Languages, UploadRing,
+  Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Clapperboard, Music, Gift, Calendar, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, questsApi, xpApi, adminApi, pushApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Tilt, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, levelInfo, kfmt, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, STORY_STICKERS, setTheme, setME, t, LANGS, Languages, UploadRing,
 } from "./core";
 import { PostCard, Lightbox } from "./feed";
 
@@ -33,135 +33,42 @@ export function Drawer({ open, onClose, nav, onNav, onCreate, flash, tab, mode, 
   );
 }
 
-// same menu as Drawer, but opened from a miniature tap button in the feed
-// (previously a drag-down "pull tab" — replaced with a plain tap trigger).
-const PULLMENU_HUES = [265, 205, 172, 28, 330, 150, 10, 235, 45, 190];
+// same items as Drawer (profile + nav + extras), always visible as a
+// horizontally scrolling tile strip at the top of the feed — tapping a tile
+// switches straight to it, no popup/drag gesture involved.
+const NAVSTRIP_HUES = [265, 205, 172, 28, 330, 150, 10, 235, 45, 190];
 
-export function PullMenu({ open, setOpen, nav, onNav, onCreate, flash, tab, mode, setMode, xp, followers, following, onSettings, onSignOut }) {
-  const me = USERS[ME]; const { lvl, into } = levelInfo(xp);
+export function NavStrip({ nav, onNav, onCreate, flash, tab, xp, onSettings, onSignOut }) {
+  const me = USERS[ME]; const { lvl } = levelInfo(xp);
   const extras = [{ label: t("drawer.saved"), icon: Bookmark, act: () => onNav("profile") }, { label: t("drawer.settings"), icon: Settings, act: () => onSettings() }, { label: t("drawer.help"), icon: HelpCircle, act: () => flash(t("drawer.helpSoon")) }, { label: t("drawer.signout"), icon: LogOut, act: () => onSignOut(), danger: true }];
-  const tiles = [...nav.map(n => ({ key: n.key, label: n.label, icon: n.icon, badge: n.badge, act: () => n.key === "create" ? onCreate() : go(n.key) })), ...extras.map(e => ({ key: e.label, label: e.label, icon: e.icon, danger: e.danger, act: e.act }))];
-
-  function go(key) { onNav(key); setOpen(false); }
-
-  const shownProgress = open ? 1 : 0;
-
-  const trackRef = useRef(null);
-  const [activeIdx, setActiveIdx] = useState(0);
-  const SLIDE_W = 100;
-  const onTrackScroll = () => {
-    const el = trackRef.current;
-    if (!el) return;
-    setActiveIdx(Math.max(0, Math.min(tiles.length - 1, Math.round(el.scrollLeft / SLIDE_W))));
-  };
-  const scrollToIdx = (i, smooth = true) => {
-    const el = trackRef.current;
-    if (!el) return;
-    el.scrollTo({ left: i * SLIDE_W, behavior: smooth ? "smooth" : "auto" });
-  };
-  useEffect(() => {
-    if (!open) return;
-    const idx = Math.max(0, tiles.findIndex(tl => tl.key === tab));
-    setActiveIdx(idx);
-    requestAnimationFrame(() => scrollToIdx(idx, false));
-  }, [open]);
+  const tiles = [...nav.map(n => ({ key: n.key, label: n.label, icon: n.icon, badge: n.badge, act: () => n.key === "create" ? onCreate() : onNav(n.key) })), ...extras.map(e => ({ key: e.label, label: e.label, icon: e.icon, danger: e.danger, act: e.act }))];
 
   return (
-    <>
-      <div className="w-full flex justify-center py-1.5">
-        <button
-          onClick={() => setOpen(o => !o)}
-          className="rounded-full flex items-center justify-center active:scale-90"
-          style={{
-            width: 30, height: 30,
-            backgroundImage: `linear-gradient(135deg, hsl(${PULLMENU_HUES[0]},75%,58%), hsl(${PULLMENU_HUES[2]},70%,50%))`,
-            boxShadow: `0 2px 10px -2px hsla(${PULLMENU_HUES[0]},75%,50%,.65)`,
-          }}
-          aria-label={t("drawer.pullHint")}
-        >
-          <ChevronDown size={15} color="#fff" style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .3s ease" }} />
-        </button>
-      </div>
-
-      <div className="fixed inset-0 z-[54] md:hidden" style={{ pointerEvents: open ? "auto" : "none" }}>
-        <div onClick={() => setOpen(false)} className="absolute inset-0" style={{ background: "rgba(6,7,12,.5)", backdropFilter: "blur(2px)", opacity: shownProgress, transition: "opacity .35s ease" }} />
-        <div
-          className="absolute left-1/2 w-full max-w-[420px] rounded-b-[32px] overflow-hidden"
-          style={{
-            top: "var(--mz-hdr, 56px)",
-            transform: `translateX(-50%) perspective(1300px) rotateX(${(1 - shownProgress) * -85}deg) translateY(${(1 - shownProgress) * -18}px) scale(${0.92 + shownProgress * 0.08})`,
-            transformOrigin: "top center",
-            opacity: shownProgress,
-            transition: "transform .55s cubic-bezier(.34,1.56,.64,1), opacity .3s ease",
-            background: C.surface + "F0",
-            backdropFilter: "blur(18px) saturate(1.4)",
-            border: `1px solid ${C.lineSoft}`,
-            borderTop: "none",
-            boxShadow: open ? `0 30px 70px -20px ${C.accent}4a, 0 10px 30px -10px rgba(0,0,0,.35)` : "none",
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="flex items-center justify-between px-4 pt-4 pb-2">
-            <button onClick={() => go("profile")} className="flex items-center gap-2.5 text-left min-w-0">
-              <div className="relative shrink-0" style={{ width: 46, height: 46 }}>
-                <div className="absolute inset-0 rounded-full" style={{ background: `conic-gradient(${C.accent} ${into}%, ${C.surfaceMuted} 0)`, padding: 2 }} />
-                <div className="absolute" style={{ inset: 2.5 }}><Avatar id={ME} size={41} /></div>
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1 font-bold text-[14.5px]" style={{ color: C.ink }}>{me.name}<ShieldCheck size={12} style={{ color: C.accent }} /></div>
-                <div className="flex items-center gap-2 text-[11.5px]" style={{ color: C.muted }}>
-                  <span className="flex items-center gap-0.5" style={{ color: C.accent, fontWeight: 700 }}><Zap size={11} fill={C.accent} />{lvl}</span>
-                  <Mono>{fmtN(followers)} · {fmtN(following)}</Mono>
-                </div>
-              </div>
-            </button>
-            <div className="flex items-center gap-1 shrink-0">
-              <ThemeToggle mode={mode} setMode={setMode} />
-              <button onClick={() => setOpen(false)} className="active:scale-90 rounded-full flex items-center justify-center" style={{ width: 32, height: 32, background: C.surfaceMuted, color: C.ink2 }}><X size={16} /></button>
-            </div>
-          </div>
-
-          <div
-            ref={trackRef}
-            onScroll={onTrackScroll}
-            className="flex overflow-x-auto no-scrollbar pt-1 pb-4"
-            style={{ scrollSnapType: "x mandatory", touchAction: "pan-x", paddingLeft: "calc(50% - 50px)", paddingRight: "calc(50% - 50px)" }}
-          >
-            {tiles.map((tl, i) => {
-              const hue = PULLMENU_HUES[i % PULLMENU_HUES.length];
-              const isTab = tab === tl.key;
-              const near = Math.abs(i - activeIdx) <= 1;
-              const p = shownProgress;
-              return (
-                <button
-                  key={tl.key}
-                  onClick={() => { if (i === activeIdx) { tl.act(); setOpen(false); } else scrollToIdx(i); }}
-                  className="relative flex flex-col items-center gap-2 shrink-0 active:scale-95"
-                  style={{
-                    width: 100,
-                    scrollSnapAlign: "center",
-                    opacity: p * (i === activeIdx ? 1 : near ? 0.65 : 0.35),
-                    transform: `scale(${(i === activeIdx ? 1 : 0.82) * (0.7 + p * 0.3)}) translateY(${(1 - p) * 16}px)`,
-                    transition: `opacity .35s cubic-bezier(.34,1.56,.64,1) ${i * 12}ms, transform .35s cubic-bezier(.34,1.56,.64,1) ${i * 12}ms`,
-                  }}
-                >
-                  <div className="relative rounded-[26px] flex items-center justify-center" style={{ width: 76, height: 76, background: tl.danger ? C.like + "1f" : `hsla(${hue},75%,55%,.16)`, boxShadow: i === activeIdx ? `0 12px 26px -12px hsla(${hue},75%,50%,.6), 0 0 0 2px hsla(${hue},75%,55%,.55)` : "none" }}>
-                    <tl.icon size={28} style={{ color: tl.danger ? C.like : `hsl(${hue},70%,42%)` }} />
-                    {tl.badge > 0 && <span className="absolute -top-1 -right-1 rounded-full text-white flex items-center justify-center" style={{ minWidth: 16, height: 16, padding: "0 3px", background: C.like, fontFamily: MONO, fontSize: 10, fontWeight: 700 }}>{tl.badge}</span>}
-                    {isTab && <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded-full" style={{ width: 5, height: 5, background: `hsl(${hue},70%,42%)` }} />}
-                  </div>
-                  <span className="text-[12px] leading-tight text-center font-bold whitespace-nowrap" style={{ color: tl.danger ? C.like : C.ink }}>{tl.label}</span>
-                </button>
-              );
-            })}
-          </div>
-          <div className="flex justify-center flex-wrap gap-1.5 px-6 pb-4">
-            {tiles.map((tl, i) => (
-              <button key={tl.key} onClick={() => scrollToIdx(i)} aria-label={tl.label} className="rounded-full transition-all" style={{ width: i === activeIdx ? 14 : 5, height: 5, background: i === activeIdx ? C.accent : C.line }} />
-            ))}
-          </div>
+    <div className="flex overflow-x-auto no-scrollbar gap-3 px-3 py-2" style={{ scrollSnapType: "x proximity" }}>
+      <button onClick={() => onNav("profile")} className="relative flex flex-col items-center gap-1 shrink-0 active:scale-95" style={{ width: 56, scrollSnapAlign: "start" }}>
+        <div className="rounded-full p-[2px]" style={{ width: 44, height: 44, backgroundImage: GBRAND }}>
+          <div className="rounded-full" style={{ width: "100%", height: "100%", padding: 2, background: C.surface }}><Avatar id={ME} size={36} /></div>
         </div>
-      </div>
-    </>
+        <span className="text-[10.5px] leading-tight text-center font-bold whitespace-nowrap" style={{ color: tab === "profile" ? C.accent : C.ink2 }}>{t("nav.you")} · Lv{lvl}</span>
+      </button>
+      {tiles.map((tl, i) => {
+        const hue = NAVSTRIP_HUES[i % NAVSTRIP_HUES.length];
+        const isTab = tab === tl.key;
+        return (
+          <button
+            key={tl.key}
+            onClick={tl.act}
+            className="relative flex flex-col items-center gap-1 shrink-0 active:scale-95"
+            style={{ width: 56, scrollSnapAlign: "start" }}
+          >
+            <div className="relative rounded-2xl flex items-center justify-center" style={{ width: 44, height: 44, background: tl.danger ? C.like + "1f" : `hsla(${hue},75%,55%,${isTab ? 0.24 : 0.13})`, boxShadow: isTab ? `0 0 0 2px hsla(${hue},75%,55%,.55)` : "none" }}>
+              <tl.icon size={19} style={{ color: tl.danger ? C.like : `hsl(${hue},70%,42%)` }} />
+              {tl.badge > 0 && <span className="absolute -top-1 -right-1 rounded-full text-white flex items-center justify-center" style={{ minWidth: 15, height: 15, padding: "0 3px", background: C.like, fontFamily: MONO, fontSize: 9, fontWeight: 700 }}>{tl.badge}</span>}
+            </div>
+            <span className="text-[10.5px] leading-tight text-center font-bold whitespace-nowrap" style={{ color: tl.danger ? C.like : isTab ? C.accent : C.ink2 }}>{tl.label}</span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
