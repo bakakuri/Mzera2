@@ -454,7 +454,7 @@ function CheckList({ results }) {
 
 /* ─────────────────────────  ADMIN  ───────────────────────── */
 
-export function Admin({ reports, posts, allUsers, userCount, postCount, online, stats, dailyTrends, onResolve, onRemovePost, onSetVerified, onSetAdmin, onOpenProfile, onBanUser, onGrantXp, onSetXp, onDeleteUser, onBroadcast, pendingPublic, onReviewPublic, listings, threads, reels, onDeleteListing, onDeleteThread, onDeleteReel, onEditListing, onEditThread, onSetThreadPinned, onSetThreadLocked, groups, events, films, songs, onEditGroup, onDeleteGroup, onEditEvent, onDeleteEvent, onEditFilm, onDeleteFilm, onEditSong, onDeleteSong, langEnabled, langProgress, onToggleLanguages, stories, onDeleteStory }) {
+export function Admin({ reports, posts, allUsers, userCount, postCount, online, stats, dailyTrends, onResolve, onRemovePost, onSetVerified, onSetAdmin, onOpenProfile, onBanUser, onGrantXp, onSetXp, onDeleteUser, onBroadcast, pendingPublic, onReviewPublic, listings, threads, reels, onDeleteListing, onDeleteThread, onDeleteReel, onEditListing, onEditThread, onSetThreadPinned, onSetThreadLocked, groups, events, films, songs, onEditGroup, onDeleteGroup, onEditEvent, onDeleteEvent, onEditFilm, onDeleteFilm, onEditSong, onDeleteSong, langEnabled, langProgress, onToggleLanguages, stories, onDeleteStory, onDeleteComment, adminActions }) {
   const [seg, setSeg] = useState("reports"); const [q, setQ] = useState(""); const [cseg, setCseg] = useState("listings"); const [confirm, setConfirm] = useState(null); const [bcast, setBcast] = useState(""); const [delUser, setDelUser] = useState(null);
   const [bulkMode, setBulkMode] = useState(false); const [selected, setSelected] = useState(() => new Set());
   const toggleCseg = (k) => { setCseg(k); setSelected(new Set()); };
@@ -517,7 +517,7 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
         </div>}
       </div>}
 
-      <div className="px-4 mb-3"><div className="flex gap-1 p-1 rounded-2xl overflow-x-auto no-scrollbar" style={{ background: C.surfaceMuted }}>{[["reports", "რეპორტები"], ["pending", "🌍 საჯარო" + ((pendingPublic || []).length ? " (" + pendingPublic.length + ")" : "")], ["users", "მომხმარებლები"], ["posts", "პოსტები"], ["content", "კონტენტი"], ["languages", "🌐 ენები"], ["broadcast", "📢 გზავნილი"], ["system", "🩺 სისტემა"]].map(([k, l]) => <button key={k} onClick={() => setSeg(k)} className="flex-1 py-2 px-3 rounded-xl text-[13px] font-bold transition whitespace-nowrap" style={seg === k ? { background: C.surface, color: C.accent, boxShadow: SH.card } : { color: C.muted }}>{l}</button>)}</div></div>
+      <div className="px-4 mb-3"><div className="flex gap-1 p-1 rounded-2xl overflow-x-auto no-scrollbar" style={{ background: C.surfaceMuted }}>{[["reports", "რეპორტები"], ["pending", "🌍 საჯარო" + ((pendingPublic || []).length ? " (" + pendingPublic.length + ")" : "")], ["users", "მომხმარებლები"], ["posts", "პოსტები"], ["content", "კონტენტი"], ["languages", "🌐 ენები"], ["broadcast", "📢 გზავნილი"], ["audit", "📜 ისტორია"], ["system", "🩺 სისტემა"]].map(([k, l]) => <button key={k} onClick={() => setSeg(k)} className="flex-1 py-2 px-3 rounded-xl text-[13px] font-bold transition whitespace-nowrap" style={seg === k ? { background: C.surface, color: C.accent, boxShadow: SH.card } : { color: C.muted }}>{l}</button>)}</div></div>
 
       {seg === "languages" && <div className="px-4 space-y-3">
         <div className="p-4" style={card()}>
@@ -594,13 +594,45 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
         </div>
       </div>}
 
+      {seg === "audit" && <div className="px-4">
+        {(adminActions || []).length === 0 ? <Empty icon={Shield} t="ცარიელია" s="ადმინის მოქმედებების ისტორია აქ გამოჩნდება." /> : (
+          <div className="space-y-2">{adminActions.map(a => {
+            const labelMap = {
+              resolve_report: "დახურა რეპორტი",
+              set_verified: a.meta && a.meta.verified ? "მისცა ვერიფიკაცია" : "მოხსნა ვერიფიკაცია",
+              set_admin: a.meta && a.meta.is_admin ? "მისცა admin უფლება" : "მოხსნა admin უფლება",
+              set_banned: a.meta && a.meta.banned ? "დაბლოკა მომხმარებელი" : "მოხსნა ბლოკი",
+              grant_xp: "დაამატა " + (a.meta ? a.meta.amount : "") + " XP",
+              set_xp: "დააყენა XP: " + (a.meta ? a.meta.xp : ""),
+              delete_user: "წაშალა მომხმარებელი (სამუდამოდ)",
+              broadcast: "გაგზავნა გზავნილი ყველასთან",
+              review_public: a.meta && a.meta.approved ? "დაამტკიცა საჯარო პოსტი" : "უარყო საჯარო პოსტი",
+              delete_story: "წაშალა Story",
+            };
+            const targetUser = a.targetType === "user" ? USERS[a.targetId] : null;
+            return (
+              <div key={a.id} className="p-3 flex items-start gap-3" style={card()}>
+                <div className="rounded-full flex items-center justify-center shrink-0" style={{ width: 34, height: 34, background: C.accentSoft, color: C.accentText }}><Shield size={16} /></div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13.5px] font-semibold" style={{ color: C.ink }}>{a.adminName} · {labelMap[a.action] || a.action}</div>
+                  {targetUser && <div className="text-[12.5px]" style={{ color: C.muted }}>{targetUser.name} (@{targetUser.handle})</div>}
+                  {a.action === "broadcast" && a.meta && a.meta.message && <div className="text-[12.5px] line-clamp-2" style={{ color: C.muted }}>"{a.meta.message}"</div>}
+                  <Mono style={{ fontSize: 11, color: C.faint }}>{a.time}</Mono>
+                </div>
+              </div>
+            );
+          })}</div>
+        )}
+      </div>}
+
       {(seg === "users" || seg === "posts" || seg === "content") && <div className="px-4 mb-3"><div className="flex items-center gap-2 px-3 py-2.5 rounded-full" style={{ background: C.surfaceMuted }}><Search size={16} style={{ color: C.faint }} /><input value={q} onChange={e => setQ(e.target.value)} placeholder={seg === "users" ? "მოძებნე მომხმარებელი…" : seg === "content" ? "მოძებნე კონტენტი…" : "მოძებნე პოსტი…"} className="flex-1 bg-transparent text-[14px] outline-none" style={{ color: C.ink }} /></div></div>}
 
       {seg === "reports" && <div className="px-4">
         {open.length === 0 ? <Empty icon={Check} t="სუფთაა ✨" s="ღია რეპორტი არ არის." /> : (
           <div className="space-y-3">{open.map(r => {
-            const target = r.type === "post" ? posts.find(p => p.id === r.targetId) : r.type === "story" ? (stories || []).find(s => s.id === r.targetId) : r.type === "reel" ? (reels || []).find(x => x.id === r.targetId) : USERS[r.targetId];
-            const badge = r.type === "post" ? { l: "POST", bg: C.accentSoft, c: C.accentText } : r.type === "story" ? { l: "STORY", bg: C.online + "22", c: C.online } : r.type === "reel" ? { l: "REEL", bg: C.star + "22", c: C.star } : { l: "USER", bg: C.likeSoft, c: C.like };
+            const commentHost = r.type === "comment" ? posts.find(p => (p.comments || []).some(cm => cm.id === r.targetId)) : null;
+            const target = r.type === "post" ? posts.find(p => p.id === r.targetId) : r.type === "story" ? (stories || []).find(s => s.id === r.targetId) : r.type === "reel" ? (reels || []).find(x => x.id === r.targetId) : r.type === "comment" ? (commentHost ? commentHost.comments.find(cm => cm.id === r.targetId) : null) : USERS[r.targetId];
+            const badge = r.type === "post" ? { l: "POST", bg: C.accentSoft, c: C.accentText } : r.type === "story" ? { l: "STORY", bg: C.online + "22", c: C.online } : r.type === "reel" ? { l: "REEL", bg: C.star + "22", c: C.star } : r.type === "comment" ? { l: "COMMENT", bg: C.surfaceMuted, c: C.ink2 } : { l: "USER", bg: C.likeSoft, c: C.like };
             return (
             <div key={r.id} className="p-4" style={card()}>
               <div className="flex items-start gap-3"><span className="rounded-lg px-2 py-1 text-[11px] font-bold uppercase shrink-0" style={{ background: badge.bg, color: badge.c, fontFamily: MONO }}>{badge.l}</span><div className="flex-1 min-w-0"><div className="text-[14px] font-bold" style={{ color: C.ink }}>{r.reason}</div><div className="text-[12px] mt-0.5" style={{ color: C.faint }}>დაარეპორტა {USERS[r.reporterId].name.split(" ")[0]} · <Mono>{r.time}</Mono></div></div></div>
@@ -608,6 +640,7 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
                 {r.type === "post" && target ? <div className="flex gap-2"><Avatar id={target.authorId} size={28} /><div className="min-w-0"><div className="font-bold text-[13px]" style={{ color: C.ink }}>{USERS[target.authorId].name.split(" ")[0]}</div><div className="line-clamp-2" style={{ color: C.muted }}>{target.text || "(ფოტო პოსტი)"}</div></div></div>
                 : r.type === "story" ? (target ? <div className="flex gap-2"><Avatar id={target.authorId} size={28} /><div className="min-w-0"><div className="font-bold text-[13px]" style={{ color: C.ink }}>{USERS[target.authorId] ? USERS[target.authorId].name.split(" ")[0] : "—"}</div><div className="line-clamp-2" style={{ color: C.muted }}>{target.text || "(ფოტო story)"}</div></div></div> : <div style={{ color: C.faint }}>ეს story აღარ არსებობს (ვადა გაუვიდა ან წაშლილია)</div>)
                 : r.type === "reel" ? (target ? <div className="flex gap-2"><Avatar id={target.authorId} size={28} /><div className="min-w-0"><div className="font-bold text-[13px]" style={{ color: C.ink }}>{USERS[target.authorId] ? USERS[target.authorId].name.split(" ")[0] : "—"}</div><div className="line-clamp-2" style={{ color: C.muted }}>{target.caption || "(უსათაურო Reel)"}</div></div></div> : <div style={{ color: C.faint }}>ეს Reel აღარ არსებობს (წაშლილია)</div>)
+                : r.type === "comment" ? (target ? <div className="flex gap-2"><Avatar id={target.authorId} size={28} /><div className="min-w-0"><div className="font-bold text-[13px]" style={{ color: C.ink }}>{USERS[target.authorId] ? USERS[target.authorId].name.split(" ")[0] : "—"}</div><div className="line-clamp-2" style={{ color: C.muted }}>{target.text}</div></div></div> : <div style={{ color: C.faint }}>ეს კომენტარი აღარ არსებობს (წაშლილია)</div>)
                 : <div className="flex gap-2 items-center"><Avatar id={r.targetId} size={28} /><div><div className="font-bold text-[13px]" style={{ color: C.ink }}>{USERS[r.targetId]?.name}</div><Mono style={{ color: C.muted, fontSize: 12 }}>@{USERS[r.targetId]?.handle}</Mono></div></div>}
               </div>
               <div className="flex gap-2 mt-3">
@@ -615,6 +648,7 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
                 {r.type === "post" && target ? <button onClick={() => { onRemovePost(r.targetId); onResolve(r.id); }} className="flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5" style={{ background: C.likeSoft, color: C.like }}><Trash2 size={15} /> პოსტის წაშლა</button>
                 : r.type === "story" && target ? <button onClick={() => { onDeleteStory(r.targetId); onResolve(r.id); }} className="flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5" style={{ background: C.likeSoft, color: C.like }}><Trash2 size={15} /> Story-ს წაშლა</button>
                 : r.type === "reel" && target ? <button onClick={() => { onDeleteReel(r.targetId); onResolve(r.id); }} className="flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5" style={{ background: C.likeSoft, color: C.like }}><Trash2 size={15} /> Reel-ის წაშლა</button>
+                : r.type === "comment" && target ? <button onClick={() => { onDeleteComment(commentHost.id, r.targetId); onResolve(r.id); }} className="flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5" style={{ background: C.likeSoft, color: C.like }}><Trash2 size={15} /> კომენტარის წაშლა</button>
                 : <button onClick={() => onResolve(r.id)} className="flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5" style={{ background: C.likeSoft, color: C.like }}><Shield size={15} /> დახურვა</button>}
               </div>
             </div>

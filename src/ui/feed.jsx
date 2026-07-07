@@ -265,6 +265,7 @@ export function PostCard({ post, onLike, onReact, onSave, onComment, onPollVote,
                       <button onClick={() => onLikeComment && onLikeComment(post.id, c.id)} className="flex items-center gap-1 text-[11.5px] font-bold active:scale-90" style={{ color: c.likedByMe ? C.like : C.faint }}><Heart size={12} fill={c.likedByMe ? C.like : "none"} />{(c.likes || 0) > 0 ? c.likes : ""}</button>
                       <button onClick={() => startReply(c)} className="text-[11.5px] font-bold" style={{ color: C.faint }}>{t("comment.replyShort")}</button>
                       {cMine && <><button onClick={() => { setEditC(c.id); setEditCText(c.text); }} style={{ color: C.faint, fontSize: 11.5, fontWeight: 700 }}>{t("comment.editShort")}</button><button onClick={() => onDeleteComment && onDeleteComment(post.id, c.id)} style={{ color: C.like, fontSize: 11.5, fontWeight: 700 }}>{t("action.delete")}</button></>}
+                      {!cMine && onReport && <button onClick={() => { if (window.confirm(t("comment.reportConfirm"))) onReport("comment", c.id); }} style={{ color: C.faint, fontSize: 11.5, fontWeight: 700 }}>{t("post.report")}</button>}
                       {!cMine && isAdmin && <button onClick={() => { if (window.confirm(t("comment.deleteConfirmAdmin"))) onDeleteComment && onDeleteComment(post.id, c.id); }} style={{ color: C.like, fontSize: 11.5, fontWeight: 700 }}>{t("post.adminDelete")}</button>}
                     </div>
                   </>}

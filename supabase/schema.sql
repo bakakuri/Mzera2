@@ -669,7 +669,7 @@ grant execute on function public.notify_level_up(int) to authenticated;
 -- ============================================================================
 create table if not exists public.reports (
   id          uuid primary key default gen_random_uuid(),
-  type        text not null,  -- post | user | story | reel
+  type        text not null,  -- post | user | story | reel | comment
   target_id   uuid not null,
   reason      text,
   reporter_id uuid references public.profiles(id) on delete set null,
@@ -1022,6 +1022,28 @@ create or replace function public.is_admin()
 returns boolean language sql stable as $$
   select exists (select 1 from public.profiles where id = auth.uid() and is_admin);
 $$;
+
+-- ============================================================================
+--  ADMIN AUDIT LOG — append-only trail of admin-exclusive actions
+--  (verify/ban/grant xp/delete user/broadcast/resolve report/review public
+--  post/delete story); no update or delete policy on purpose, so the log
+--  itself can't be tampered with from the client.
+-- ============================================================================
+create table if not exists public.admin_actions (
+  id          uuid primary key default gen_random_uuid(),
+  admin_id    uuid references public.profiles(id) on delete set null,
+  action      text not null,
+  target_type text,
+  target_id   uuid,
+  meta        jsonb,
+  created_at  timestamptz not null default now()
+);
+create index if not exists admin_actions_created_idx on public.admin_actions(created_at desc);
+alter table public.admin_actions enable row level security;
+drop policy if exists admin_actions_read on public.admin_actions;
+create policy admin_actions_read on public.admin_actions for select using (public.is_admin());
+drop policy if exists admin_actions_insert on public.admin_actions;
+create policy admin_actions_insert on public.admin_actions for insert with check (public.is_admin() and admin_id = auth.uid());
 
 -- PROFILES: admins can now actually verify/promote/ban other users
 -- (onSetVerified/onSetAdmin/setBanned go through a plain table update)

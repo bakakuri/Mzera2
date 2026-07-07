@@ -1324,6 +1324,17 @@ export const admin = {
   deleteStory: async (id) => { const { error } = await need().from("stories").delete().eq("id", id); if (error) throw error; },
   pendingPublic: async () => { const { data, error } = await need().from("posts").select("*, author:profiles!posts_author_id_fkey(*)").eq("public_status", "pending").order("created_at", { ascending: false }); if (error) throw error; return data || []; },
   reviewPublic: async (id, approve) => { const { error } = await need().rpc("admin_review_public", { post_id: id, approve }); if (error) throw error; },
+  // append-only audit trail for admin-exclusive actions (verify/ban/xp/broadcast/etc.) — see admin_actions in schema.sql
+  logAction: async (action, targetType, targetId, meta) => {
+    const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;
+    const { error } = await sb.from("admin_actions").insert({ admin_id: uid, action, target_type: targetType || null, target_id: targetId || null, meta: meta || null });
+    if (error) throw error;
+  },
+  listActions: async () => {
+    const { data, error } = await need().from("admin_actions").select("*, admin:profiles!admin_actions_admin_id_fkey(*)").order("created_at", { ascending: false }).limit(200);
+    if (error) throw error;
+    return data || [];
+  },
 };
 
 /* ───────────── PUSH SUBSCRIPTIONS ───────────── */

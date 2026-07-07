@@ -391,6 +391,7 @@ export const DICT = {
   "post.shareLink": { ka: "ლინკის გაზიარება", en: "Share link", ru: "Поделиться ссылкой" },
   "post.shared": { ka: "გაზიარდა", en: "Shared", ru: "Отправлено" },
   "comment.deleteConfirmAdmin": { ka: "წავშალო ეს კომენტარი? (admin)", en: "Delete this comment? (admin)", ru: "Удалить комментарий? (админ)" },
+  "comment.reportConfirm": { ka: "დაარეპორტო ეს კომენტარი?", en: "Report this comment?", ru: "Пожаловаться на комментарий?" },
   "sort.popular": { ka: "პოპულარული", en: "Popular", ru: "Популярное" },
   "sort.new": { ka: "ახალი", en: "New", ru: "Новое" },
   "sort.old": { ka: "ძველი", en: "Old", ru: "Старое" },
