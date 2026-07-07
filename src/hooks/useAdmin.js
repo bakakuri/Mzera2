@@ -1,5 +1,10 @@
 import { useState, useEffect } from "react";
-import { profilesApi, postsApi, adminApi, reportsApi, languagesApi, mapDbPost, mapDbReport, mergeProfile, hasSupabase, ME, USERS, t } from "../ui/core";
+import { profilesApi, postsApi, adminApi, reportsApi, languagesApi, storiesApi, mapDbPost, mapDbReport, mergeProfile, hasSupabase, ME, USERS, t } from "../ui/core";
+
+// storiesApi.list()/listPlain() return raw (ungrouped) rows — exactly what
+// moderation needs (one row per story to delete), unlike mapDbStories'
+// grouped-by-author shape built for the story-ring UI.
+const mapAdminStory = (r) => ({ id: r.id, authorId: r.author_id, image: r.image_url, text: r.text || "", closeFriends: !!r.close_friends, isBroadcast: !!r.is_broadcast, createdAt: r.created_at });
 
 // Moderation queue (reports) + admin-only user/content management.
 export function useAdmin({ tab, session, flash, dbErr, setXp, setPosts }) {
@@ -12,6 +17,7 @@ export function useAdmin({ tab, session, flash, dbErr, setXp, setPosts }) {
   const [reports, setReports] = useState([]);
   const [langEnabled, setLangEnabled] = useState(true);
   const [langProgress, setLangProgress] = useState([]);
+  const [adminStories, setAdminStories] = useState([]);
 
   useEffect(() => {
     if (tab === "admin" && USERS[ME] && USERS[ME].admin && hasSupabase) {
@@ -31,6 +37,7 @@ export function useAdmin({ tab, session, flash, dbErr, setXp, setPosts }) {
         if (missing.length) profilesApi.byIds(missing).then(ps => { ps.forEach(mergeProfile); finish(); }).catch(finish);
         else finish();
       }).catch(dbErr ? dbErr("რეპორტების სია") : () => flash && flash(t("toast.adminLoadFailed")));
+      storiesApi.list().then(rows => { rows.forEach(r => { if (r.author) mergeProfile(r.author); }); setAdminStories(rows.map(mapAdminStory)); }).catch(dbErr ? dbErr("სთორების სია") : () => flash && flash(t("toast.adminLoadFailed")));
     }
   }, [tab]);
 
@@ -54,10 +61,11 @@ export function useAdmin({ tab, session, flash, dbErr, setXp, setPosts }) {
   const onBroadcast = (msg) => { if (!msg || !msg.trim()) return; adminApi.broadcast(msg.trim()).then(n => flash(t("toast.broadcastSentPre") + (n || 0) + t("toast.broadcastSentPost"))).catch(dbErr("broadcast")); };
   const onReviewPublic = (id, approve) => { setPendingPublic(pp => pp.filter(p => p.id !== id)); if (approve) setPosts(ps => ps.map(p => p.id === id ? { ...p, publicStatus: "approved" } : p)); adminApi.reviewPublic(id, approve).then(() => flash(approve ? t("toast.publicApprovedNow") : t("toast.rejected"))).catch(dbErr("მოდერაცია")); };
   const onToggleLanguages = (v) => { setLangEnabled(v); languagesApi.setSetting("languages_enabled", v).catch(dbErr("ენების სწავლა")); };
+  const onDeleteStory = (id) => { setAdminStories(ss => ss.filter(s => s.id !== id)); adminApi.deleteStory(id).then(() => flash(t("toast.storyDeletedAdmin"))).catch(dbErr("სთორის წაშლა")); };
 
   return {
     allUsers, adminStats, dailyTrends, pendingPublic, userCount, postCount, reports,
-    langEnabled, langProgress, onToggleLanguages,
+    langEnabled, langProgress, onToggleLanguages, adminStories, onDeleteStory,
     onReport, onResolve, onSetVerified, onSetAdmin, onBanUser, onGrantXp,
     onSetXp, onDeleteUser, onBroadcast, onReviewPublic,
   };

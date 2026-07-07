@@ -720,6 +720,7 @@ export const DICT = {
   "toast.xpGrantedSuffix": { ka: " XP გადაეცა 🎁", en: " XP granted 🎁", ru: " XP начислено 🎁" },
   "toast.xpSetPre": { ka: "XP დაყენდა: ", en: "XP set to: ", ru: "XP установлено: " },
   "toast.userDeletedForever": { ka: "მომხმარებელი სამუდამოდ წაიშალა 🗑", en: "User permanently deleted 🗑", ru: "Пользователь удалён навсегда 🗑" },
+  "toast.storyDeletedAdmin": { ka: "Story წაიშალა 🗑", en: "Story deleted 🗑", ru: "История удалена 🗑" },
   "toast.broadcastSentPre": { ka: "📢 გაიგზავნა ", en: "📢 Sent to ", ru: "📢 Отправлено " },
   "toast.broadcastSentPost": { ka: " მომხმარებელთან", en: " users", ru: " пользователям" },
   "toast.publicApprovedNow": { ka: "დამტკიცდა — საჯაროა ✅", en: "Approved — now public ✅", ru: "Одобрено — теперь публично ✅" },
