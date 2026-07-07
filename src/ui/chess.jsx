@@ -340,54 +340,135 @@ export function ChessGame({ onExit }) {
     <span className="px-2.5 py-1 rounded-lg text-[13px] font-bold" style={{ fontFamily: MONO, background: !ended && g.turn === side ? C.accentSoft : C.surfaceMuted, color: !ended && g.turn === side ? C.accentText : C.ink2 }}>{fmtClock(clock[side])}</span>
   );
 
+  if (fullscreen) {
+    return (
+      <div className="fixed inset-0 z-[95]" style={{ background: "#0b0b10" }}>
+        <div className="absolute inset-0">
+          <Board3D game={g} selected={sel} legalTargets={legal} onSquareTap={select} flipped={flipped} disabled={ended || !!promo || (mySide != null && g.turn !== mySide)} />
+        </div>
+
+        <div className="absolute top-0 inset-x-0 z-10 flex items-center gap-2.5 px-3" style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.65rem)", paddingBottom: "0.65rem", background: "linear-gradient(rgba(0,0,0,.65), rgba(0,0,0,0))" }}>
+          <button onClick={online ? backToMenu : leave} className="active:scale-90"><ArrowLeft size={21} color="#fff" /></button>
+          <span className="font-bold text-[14px] flex-1 truncate" style={{ color: "#fff", fontFamily: DISPLAY }}>{online ? `ონლაინ · ${oppName}` : "ჭადრაკი"}</span>
+          <button onClick={() => setFlipped((f) => !f)} className="px-2.5 py-1.5 rounded-full text-[12px] font-bold active:scale-95" style={{ background: "rgba(255,255,255,.16)", color: "#fff" }}>მოტრიალება</button>
+          <button onClick={() => setFullscreen((f) => !f)} className="px-2.5 py-1.5 rounded-full text-[12px] font-bold active:scale-95" style={{ background: "rgba(255,255,255,.16)", color: "#fff" }}>დაკეცვა</button>
+        </div>
+
+        <div className="absolute inset-x-0 z-10 px-4 flex flex-col items-center gap-2" style={{ top: "calc(env(safe-area-inset-top) + 3.4rem)" }}>
+          <div className="px-4 py-1.5 rounded-full text-center font-bold text-[13px]" style={{ background: "rgba(18,18,24,.72)", backdropFilter: "blur(8px)", color: "#fff", fontFamily: DISPLAY }}>{statusText}</div>
+          {!ended && (
+            <div className="flex gap-2">
+              <button onClick={() => setResignAsk(true)} className="px-3.5 py-1.5 rounded-full text-[12.5px] font-bold active:scale-95" style={{ background: "rgba(229,72,77,.85)", color: "#fff" }}>დანებება</button>
+              <button onClick={offerDraw} disabled={drawState === "offered-by-me"} className="px-3.5 py-1.5 rounded-full text-[12.5px] font-bold active:scale-95" style={{ background: "rgba(255,255,255,.16)", color: "#fff", opacity: drawState === "offered-by-me" ? 0.5 : 1 }}>ფრედის შეთავაზება</button>
+            </div>
+          )}
+          {ended && (!online || role === "host") && (
+            <button onClick={resetGame} className="px-5 py-2 rounded-full text-[13px] font-bold text-white active:scale-95" style={{ backgroundImage: GBRAND }}>ახალი თამაში</button>
+          )}
+        </div>
+
+        {promo && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6" style={{ background: "rgba(6,7,12,.6)", backdropFilter: "blur(4px)" }}>
+            <div className="w-full max-w-[320px] rounded-3xl p-6 text-center" style={{ background: C.surface }}>
+              <div className="flex items-center justify-between mb-4">
+                <span className="font-bold text-[16px]" style={{ color: C.ink, fontFamily: DISPLAY }}>აირჩიე ფიგურა</span>
+                <button onClick={() => { setPromo(null); setSel(null); setLegal([]); }} style={{ color: C.faint }}><X size={20} /></button>
+              </div>
+              <div className="grid grid-cols-4 gap-2.5">
+                {PROMO_PIECES.map((pc) => (
+                  <button key={pc} onClick={() => choosePromo(pc)} className="flex flex-col items-center gap-1 py-3.5 rounded-2xl active:scale-95" style={{ background: C.surfaceMuted }}>
+                    <span style={{ fontSize: 30 }}>{PIECE_GLYPH[g.turn + pc]}</span>
+                    <span className="text-[11px] font-semibold" style={{ color: C.muted }}>{PROMO_NAME[pc]}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {resignAsk && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6" style={{ background: "rgba(6,7,12,.6)", backdropFilter: "blur(4px)" }} onClick={() => setResignAsk(false)}>
+            <div onClick={(e) => e.stopPropagation()} className="w-full max-w-[320px] rounded-3xl p-6 text-center" style={{ background: C.surface }}>
+              <div className="font-bold text-[16px] mb-4" style={{ color: C.ink, fontFamily: DISPLAY }}>დანებება</div>
+              {mode === "local" ? (
+                <div className="flex flex-col gap-2.5">
+                  <button onClick={() => confirmResign("w")} className="w-full py-3 rounded-2xl text-[14px] font-bold active:scale-[.98]" style={{ background: C.surfaceMuted, color: C.ink }}>თეთრი ნებდება</button>
+                  <button onClick={() => confirmResign("b")} className="w-full py-3 rounded-2xl text-[14px] font-bold active:scale-[.98]" style={{ background: C.surfaceMuted, color: C.ink }}>შავი ნებდება</button>
+                  <button onClick={() => setResignAsk(false)} className="w-full py-2.5 text-[13.5px] font-semibold" style={{ color: C.faint }}>გაუქმება</button>
+                </div>
+              ) : (
+                <>
+                  <p className="text-[14px] mb-4" style={{ color: C.muted }}>დარწმუნებული ხარ, რომ გინდა დანებება?</p>
+                  <div className="flex gap-2.5">
+                    <button onClick={() => setResignAsk(false)} className="flex-1 py-3 rounded-2xl text-[14px] font-bold active:scale-[.98]" style={{ background: C.surfaceMuted, color: C.ink2 }}>გაუქმება</button>
+                    <button onClick={() => confirmResign(mySide)} className="flex-1 py-3 rounded-2xl text-[14px] font-bold text-white active:scale-[.98]" style={{ background: "#e5484d" }}>დანებება</button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {drawState === "offered-by-opp" && mode === "local" && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6" style={{ background: "rgba(6,7,12,.6)", backdropFilter: "blur(4px)" }}>
+            <div className="w-full max-w-[320px] rounded-3xl p-6 text-center" style={{ background: C.surface }}>
+              <div className="font-bold text-[16px] mb-4" style={{ color: C.ink, fontFamily: DISPLAY }}>ფრედის შეთავაზება</div>
+              <p className="text-[14px] mb-4" style={{ color: C.muted }}>ეთანხმება მეორე მხარე ფრედს?</p>
+              <div className="flex gap-2.5">
+                <button onClick={() => respondDraw(false)} className="flex-1 py-3 rounded-2xl text-[14px] font-bold active:scale-[.98]" style={{ background: C.surfaceMuted, color: C.ink2 }}>უარი</button>
+                <button onClick={() => respondDraw(true)} className="flex-1 py-3 rounded-2xl text-[14px] font-bold text-white active:scale-[.98]" style={{ backgroundImage: GBRAND }}>თანხმობა</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-[95] flex flex-col" style={{ background: C.paper }}>
       <div className="flex items-center gap-3 px-4 py-3">
         <button onClick={online ? backToMenu : leave} className="active:scale-90"><ArrowLeft size={22} style={{ color: C.ink }} /></button>
         <span className="font-bold text-[17px] flex-1 truncate" style={{ color: C.ink, fontFamily: DISPLAY }}>{online ? `ონლაინ · ${oppName}` : "ჭადრაკი"}</span>
         <button onClick={() => setFlipped((f) => !f)} className="px-3 py-1.5 rounded-full text-[12.5px] font-bold active:scale-95" style={{ background: C.surfaceMuted, color: C.ink2 }}>მოტრიალება</button>
-        <button onClick={() => setFullscreen((f) => !f)} className="px-3 py-1.5 rounded-full text-[12.5px] font-bold active:scale-95" style={{ background: C.surfaceMuted, color: C.ink2 }}>{fullscreen ? "დაკეცვა" : "გაშლა"}</button>
+        <button onClick={() => setFullscreen((f) => !f)} className="px-3 py-1.5 rounded-full text-[12.5px] font-bold active:scale-95" style={{ background: C.surfaceMuted, color: C.ink2 }}>გაშლა</button>
       </div>
 
-      {!fullscreen && oppLeft && <div className="mx-4 mb-1 px-3 py-2 rounded-xl text-[12.5px] font-semibold text-center" style={{ background: C.like + "1a", color: C.like }}>მოწინააღმდეგემ დატოვა თამაში</div>}
-      {!fullscreen && !ended && drawState === "declined" && <div className="mx-4 mb-1 px-3 py-2 rounded-xl text-[12.5px] font-semibold text-center" style={{ background: C.surfaceMuted, color: C.ink2 }}>ფრედს არ დათანხმდნენ</div>}
-      {!fullscreen && !ended && drawState === "offered-by-opp" && mode === "bot" && (
+      {oppLeft && <div className="mx-4 mb-1 px-3 py-2 rounded-xl text-[12.5px] font-semibold text-center" style={{ background: C.like + "1a", color: C.like }}>მოწინააღმდეგემ დატოვა თამაში</div>}
+      {!ended && drawState === "declined" && <div className="mx-4 mb-1 px-3 py-2 rounded-xl text-[12.5px] font-semibold text-center" style={{ background: C.surfaceMuted, color: C.ink2 }}>ფრედს არ დათანხმდნენ</div>}
+      {!ended && drawState === "offered-by-opp" && mode === "bot" && (
         <div className="mx-4 mb-1 px-3 py-2.5 rounded-xl text-center" style={{ background: C.accentSoft }}>
           <span className="text-[12.5px] font-bold" style={{ color: C.accentText }}>ბოტი ფიქრობს ფრედზე…</span>
         </div>
       )}
-      {!fullscreen && !ended && drawState === "offered-by-opp" && online && (
+      {!ended && drawState === "offered-by-opp" && online && (
         <div className="mx-4 mb-1 px-3 py-2.5 rounded-xl flex items-center gap-2.5 justify-between" style={{ background: C.accentSoft }}>
           <span className="text-[12.5px] font-bold" style={{ color: C.accentText }}>შემოგთავაზეს ფრედი</span>
           <div className="flex gap-1.5 shrink-0"><button onClick={() => respondDraw(true)} className="px-3 py-1.5 rounded-full text-[12px] font-bold text-white" style={{ backgroundImage: GBRAND }}>თანხმობა</button><button onClick={() => respondDraw(false)} className="px-3 py-1.5 rounded-full text-[12px] font-bold" style={{ background: C.surface, color: C.ink2 }}>უარი</button></div>
         </div>
       )}
-      {!fullscreen && !ended && drawState === "offered-by-me" && <div className="mx-4 mb-1 px-3 py-2 rounded-xl text-[12.5px] font-semibold text-center" style={{ background: C.surfaceMuted, color: C.ink2 }}>ფრედის შეთავაზება გაიგზავნა…</div>}
+      {!ended && drawState === "offered-by-me" && <div className="mx-4 mb-1 px-3 py-2 rounded-xl text-[12.5px] font-semibold text-center" style={{ background: C.surfaceMuted, color: C.ink2 }}>ფრედის შეთავაზება გაიგზავნა…</div>}
 
-      <div className={fullscreen ? "flex-1 min-h-0 flex flex-col items-center justify-center px-2 pb-2" : "flex-1 min-h-0 flex flex-col items-center px-4 pb-6 overflow-y-auto"}>
-        {!fullscreen && (
-          <div className="w-full flex items-center justify-between mt-1 mb-2" style={{ maxWidth: 480, minHeight: 26 }}>
-            <div className="flex items-center gap-1 flex-wrap">{g.captured.b.map((p, i) => <span key={i} style={{ fontSize: 18 }}>{PIECE_GLYPH[p]}</span>)}</div>
-            {clockPill("b")}
-          </div>
-        )}
+      <div className="flex-1 min-h-0 flex flex-col items-center px-4 pb-6 overflow-y-auto">
+        <div className="w-full flex items-center justify-between mt-1 mb-2" style={{ maxWidth: 480, minHeight: 26 }}>
+          <div className="flex items-center gap-1 flex-wrap">{g.captured.b.map((p, i) => <span key={i} style={{ fontSize: 18 }}>{PIECE_GLYPH[p]}</span>)}</div>
+          {clockPill("b")}
+        </div>
 
-        <div className="w-full rounded-3xl overflow-hidden shrink-0" style={fullscreen ? { width: "min(96vw, 82vh)", aspectRatio: "1", boxShadow: "0 14px 34px -10px rgba(0,0,0,.4)" } : { maxWidth: 480, aspectRatio: "1", boxShadow: "0 14px 34px -10px rgba(0,0,0,.4)" }}>
+        <div className="w-full rounded-3xl overflow-hidden shrink-0" style={{ maxWidth: 480, aspectRatio: "1", boxShadow: "0 14px 34px -10px rgba(0,0,0,.4)" }}>
           <Board3D game={g} selected={sel} legalTargets={legal} onSquareTap={select} flipped={flipped} disabled={ended || !!promo || (mySide != null && g.turn !== mySide)} />
         </div>
 
-        {!fullscreen && (
-          <div className="w-full flex items-center justify-between mt-2 mb-1" style={{ maxWidth: 480, minHeight: 26 }}>
-            <div className="flex items-center gap-1 flex-wrap">{g.captured.w.map((p, i) => <span key={i} style={{ fontSize: 18 }}>{PIECE_GLYPH[p]}</span>)}</div>
-            {clockPill("w")}
-          </div>
-        )}
+        <div className="w-full flex items-center justify-between mt-2 mb-1" style={{ maxWidth: 480, minHeight: 26 }}>
+          <div className="flex items-center gap-1 flex-wrap">{g.captured.w.map((p, i) => <span key={i} style={{ fontSize: 18 }}>{PIECE_GLYPH[p]}</span>)}</div>
+          {clockPill("w")}
+        </div>
 
-        <div className="w-full mt-2 py-3 rounded-2xl text-center font-bold text-[15px] shrink-0" style={{ maxWidth: fullscreen ? "min(96vw, 82vh)" : 480, background: ended ? C.accentSoft : C.surface, color: ended ? C.accentText : C.ink, border: `1px solid ${C.line}`, fontFamily: DISPLAY }}>
+        <div className="w-full mt-2 py-3 rounded-2xl text-center font-bold text-[15px] shrink-0" style={{ maxWidth: 480, background: ended ? C.accentSoft : C.surface, color: ended ? C.accentText : C.ink, border: `1px solid ${C.line}`, fontFamily: DISPLAY }}>
           {statusText}
         </div>
 
-        {!fullscreen && g.history.length > 0 && (
+        {g.history.length > 0 && (
           <div className="w-full mt-3 flex gap-1.5 flex-wrap" style={{ maxWidth: 480 }}>
             {g.history.map((h, i) => (
               <span key={i} className="px-2 py-1 rounded-lg text-[12px] font-bold" style={{ background: C.surfaceMuted, color: C.ink2, fontFamily: MONO }}>
@@ -398,14 +479,14 @@ export function ChessGame({ onExit }) {
         )}
 
         {!ended && (
-          <div className="w-full flex gap-2.5 mt-4 shrink-0" style={{ maxWidth: fullscreen ? "min(96vw, 82vh)" : 480 }}>
+          <div className="w-full flex gap-2.5 mt-4 shrink-0" style={{ maxWidth: 480 }}>
             <button onClick={() => setResignAsk(true)} className="flex-1 py-3 rounded-2xl text-[14px] font-bold active:scale-[.98]" style={{ background: C.surfaceMuted, color: "#e5484d" }}>დანებება</button>
             <button onClick={offerDraw} disabled={drawState === "offered-by-me"} className="flex-1 py-3 rounded-2xl text-[14px] font-bold active:scale-[.98]" style={{ background: C.surfaceMuted, color: C.ink2, opacity: drawState === "offered-by-me" ? 0.5 : 1 }}>ფრედის შეთავაზება</button>
           </div>
         )}
 
         {(ended && (!online || role === "host")) && (
-          <button onClick={resetGame} className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white active:scale-[.98] mt-3 shrink-0" style={{ maxWidth: fullscreen ? "min(96vw, 82vh)" : 480, backgroundImage: GBRAND }}>ახალი თამაში</button>
+          <button onClick={resetGame} className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white active:scale-[.98] mt-3 shrink-0" style={{ maxWidth: 480, backgroundImage: GBRAND }}>ახალი თამაში</button>
         )}
       </div>
 
