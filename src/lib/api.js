@@ -882,10 +882,10 @@ export const stories = {
     if (error) throw error;
     return data;
   },
-  create: async ({ image_url, filter, text, stickers, close_friends }) => {
+  create: async ({ image_url, filter, text, stickers, close_friends, is_broadcast }) => {
     const sb = need();
     const uid = (await sb.auth.getUser()).data.user.id;
-    const { data, error } = await sb.from("stories").insert({ author_id: uid, image_url, filter, text, stickers, close_friends: !!close_friends }).select().single();
+    const { data, error } = await sb.from("stories").insert({ author_id: uid, image_url, filter, text, stickers, close_friends: !!close_friends, is_broadcast: !!is_broadcast }).select().single();
     if (error) throw error;
     return data;
   },

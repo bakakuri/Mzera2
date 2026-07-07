@@ -1968,9 +1968,32 @@ returns boolean language sql stable security definer set search_path = public as
   select exists (select 1 from public.close_friends where user_id = target and friend_id = auth.uid());
 $$;
 
+-- 2026-07 revision: stories were never meant to be public at all — default
+-- visibility is followers-only, close_friends narrows that further, and
+-- is_broadcast is a separate admin-only escape hatch (a story visible to
+-- literally everyone, for a future ads/announcement placement) rather than
+-- something any user can set on their own story. follows_read is `using
+-- (true)` (follow relationships are already public elsewhere in the app),
+-- so this subquery doesn't need to be security definer the way
+-- is_close_friend_of does.
+alter table public.stories add column if not exists is_broadcast boolean not null default false;
+
 drop policy if exists stories_read on public.stories;
 create policy stories_read on public.stories for select using (
-  not close_friends or auth.uid() = author_id or public.is_close_friend_of(author_id)
+  auth.uid() = author_id
+  or is_broadcast
+  or public.is_admin()
+  or (
+    exists (select 1 from public.follows f where f.follower_id = auth.uid() and f.following_id = author_id)
+    and (not close_friends or public.is_close_friend_of(author_id))
+  )
+);
+
+-- only an admin may set is_broadcast — everyone else's stories_insert check
+-- forces it back to false regardless of what the client sends.
+drop policy if exists stories_insert on public.stories;
+create policy stories_insert on public.stories for insert with check (
+  auth.uid() = author_id and (not is_broadcast or public.is_admin())
 );
 
 -- 2) GROUPS: is_private was read/written by the client (groups.setPrivate(),

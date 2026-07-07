@@ -444,7 +444,9 @@ export const DICT = {
   "compose.willPublishLater": { ka: "გამოქვეყნდება მოგვიანებით ⏱", en: "Will publish later ⏱", ru: "Опубликуется позже ⏱" },
   "action.clear": { ka: "გასუფთავება", en: "Clear", ru: "Очистить" },
   "story.closeFriendsOnly": { ka: "ახლო მეგობრები", en: "Close friends", ru: "Близкие друзья" },
-  "story.everyone": { ka: "ყველა — შეეხე ახლო მეგობრებისთვის", en: "Everyone — tap for close friends only", ru: "Все — нажми для только близких друзей" },
+  "story.everyone": { ka: "მიმდევრები — შეეხე ახლო მეგობრებისთვის", en: "Followers — tap for close friends only", ru: "Подписчики — нажми для только близких друзей" },
+  "story.broadcastOn": { ka: "🌍 გაეგზავნება ყველას", en: "🌍 Goes out to everyone", ru: "🌍 Отправится всем" },
+  "story.broadcastOff": { ka: "მხოლოდ ადმინისთვის: გაგზავნა ყველასთან", en: "Admin only: send to everyone", ru: "Только админ: отправить всем" },
 
   "word.thread": { ka: "თემა", en: "Thread", ru: "Тема" },
   "word.reply": { ka: "პასუხი", en: "reply", ru: "ответ" },
@@ -746,6 +748,7 @@ export const DICT = {
   "toast.storyNeedsContent": { ka: "დაამატე ფოტო ან ტექსტი", en: "Add a photo or text", ru: "Добавьте фото или текст" },
   "toast.storyAddedCloseFriends": { ka: "Story ახლო მეგობრებს ✨", en: "Story to close friends ✨", ru: "История для близких друзей ✨" },
   "toast.storyAdded": { ka: "Story დაემატა ✨", en: "Story added ✨", ru: "История добавлена ✨" },
+  "toast.storyBroadcast": { ka: "Story გაეგზავნა ყველას 🌍", en: "Story broadcast to everyone 🌍", ru: "История отправлена всем 🌍" },
   "chat.newMessage": { ka: "ახალი შეტყობინება", en: "New message", ru: "Новое сообщение" },
 
   "langname.english": { ka: "ინგლისური", en: "English", ru: "Английский" },
