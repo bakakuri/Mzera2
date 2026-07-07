@@ -39,6 +39,10 @@ export function Drawer({ open, onClose, nav, onNav, onCreate, flash, tab, mode, 
 const NAVSTRIP_HUES = [265, 205, 172, 28, 330, 150, 10, 235, 45, 190];
 
 const NAVSTRIP_REPEATS = 3;
+// persisted at module scope (not component state) so leaving the Home tab —
+// which unmounts this component — and coming back resumes the same scroll
+// offset instead of visibly restarting the loop from its initial position.
+let navStripOffset = 0;
 
 export function NavStrip({ nav, onNav, onCreate, flash, tab, onSettings, onSignOut }) {
   const extras = [{ label: t("drawer.saved"), icon: Bookmark, act: () => onNav("profile") }, { label: t("drawer.settings"), icon: Settings, act: () => onSettings() }, { label: t("drawer.help"), icon: HelpCircle, act: () => flash(t("drawer.helpSoon")) }, { label: t("drawer.signout"), icon: LogOut, act: () => onSignOut(), danger: true }];
@@ -72,6 +76,7 @@ export function NavStrip({ nav, onNav, onCreate, flash, tab, onSettings, onSignO
         if (lapW > 0) {
           if (el.scrollLeft < lapW) el.scrollLeft += lapW;
           else if (el.scrollLeft > lapW * 2) el.scrollLeft -= lapW;
+          navStripOffset = el.scrollLeft - lapW;
         }
       }
       bump(x => x + 1);
@@ -79,7 +84,7 @@ export function NavStrip({ nav, onNav, onCreate, flash, tab, onSettings, onSignO
   };
   useEffect(() => {
     const el = trackRef.current;
-    if (el) el.scrollLeft = el.scrollWidth / NAVSTRIP_REPEATS;
+    if (el) el.scrollLeft = el.scrollWidth / NAVSTRIP_REPEATS + navStripOffset;
     requestRecompute();
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, []);
