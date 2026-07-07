@@ -1517,10 +1517,18 @@ begin
     raise exception 'not authorized';
   end if;
   return query
-  select gs.day,
-    (select count(*) from public.profiles p where p.created_at::date = gs.day)::bigint as new_users,
-    (select count(*) from public.posts po where po.created_at::date = gs.day)::bigint as new_posts,
-    (select count(*) from public.comments c where c.created_at::date = gs.day)::bigint as new_comments
+  -- generate_series has no plain `date` overload — passing date bounds with
+  -- an interval step makes Postgres fall back to its timestamp overload, so
+  -- gs.day comes back as timestamp, not date. That mismatched the declared
+  -- `returns table(day date, ...)` above (SQLSTATE 42804: "structure of
+  -- query does not match function result type") and broke this function
+  -- outright — caught live via the admin panel's dbErr banner, not by any
+  -- static check, since nothing in this repo runs schema.sql against a real
+  -- Postgres instance.
+  select gs.day::date,
+    (select count(*) from public.profiles p where p.created_at::date = gs.day::date)::bigint as new_users,
+    (select count(*) from public.posts po where po.created_at::date = gs.day::date)::bigint as new_posts,
+    (select count(*) from public.comments c where c.created_at::date = gs.day::date)::bigint as new_comments
   from generate_series((current_date - interval '13 days')::date, current_date, interval '1 day') as gs(day);
 end;
 $$;
