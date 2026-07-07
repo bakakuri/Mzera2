@@ -65,28 +65,33 @@ export function NavStrip({ nav, onNav, onCreate, flash, tab, onSettings, onSignO
   const trackRef = useRef(null);
   const tileRefs = useRef([]);
   const rafRef = useRef(null);
+  const settleTimer = useRef(null);
   const [, bump] = useState(0);
+  // wrapping mid-scroll is what made it feel like a fast "snap back" — the
+  // manual jump was fighting the browser's own momentum/snap. Now the jump
+  // only runs once scrolling has actually settled (debounced), so it's a
+  // silent correction on a static frame instead of a visible fight for
+  // control while the strip is still moving.
+  const wrapIfNeeded = () => {
+    const el = trackRef.current;
+    if (!el) return;
+    const lapW = el.scrollWidth / NAVSTRIP_REPEATS;
+    if (lapW > 0) {
+      if (el.scrollLeft < lapW) el.scrollLeft += lapW;
+      else if (el.scrollLeft > lapW * 2) el.scrollLeft -= lapW;
+      navStripOffset = el.scrollLeft - lapW;
+    }
+  };
   const requestRecompute = () => {
-    if (rafRef.current) return;
-    rafRef.current = requestAnimationFrame(() => {
-      rafRef.current = null;
-      const el = trackRef.current;
-      if (el) {
-        const lapW = el.scrollWidth / NAVSTRIP_REPEATS;
-        if (lapW > 0) {
-          if (el.scrollLeft < lapW) el.scrollLeft += lapW;
-          else if (el.scrollLeft > lapW * 2) el.scrollLeft -= lapW;
-          navStripOffset = el.scrollLeft - lapW;
-        }
-      }
-      bump(x => x + 1);
-    });
+    if (!rafRef.current) rafRef.current = requestAnimationFrame(() => { rafRef.current = null; bump(x => x + 1); });
+    clearTimeout(settleTimer.current);
+    settleTimer.current = setTimeout(wrapIfNeeded, 120);
   };
   useEffect(() => {
     const el = trackRef.current;
     if (el) el.scrollLeft = el.scrollWidth / NAVSTRIP_REPEATS + navStripOffset;
     requestRecompute();
-    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); clearTimeout(settleTimer.current); };
   }, []);
   const tiltStyle = (i) => {
     const el = tileRefs.current[i]; const track = trackRef.current;
@@ -107,7 +112,7 @@ export function NavStrip({ nav, onNav, onCreate, flash, tab, onSettings, onSignO
         ref={trackRef}
         onScroll={requestRecompute}
         className="flex overflow-x-auto no-scrollbar gap-3 px-3 py-3"
-        style={{ scrollSnapType: "x mandatory", ...edgeFade }}
+        style={{ scrollSnapType: "x proximity", ...edgeFade }}
       >
         {loopedTiles.map((tl, i) => {
           const hue = NAVSTRIP_HUES[i % NAVSTRIP_HUES.length];
@@ -118,7 +123,7 @@ export function NavStrip({ nav, onNav, onCreate, flash, tab, onSettings, onSignO
               ref={el => { tileRefs.current[i] = el; }}
               onClick={tl.act}
               className="relative flex flex-col items-center gap-1 shrink-0 active:scale-95"
-              style={{ width: 56, scrollSnapAlign: "center", transition: "transform .15s ease, opacity .15s ease", ...tiltStyle(i) }}
+              style={{ width: 56, scrollSnapAlign: "center", ...tiltStyle(i) }}
             >
               <div className="relative rounded-2xl flex items-center justify-center" style={{ width: 44, height: 44, background: tl.danger ? C.like + "1f" : `hsla(${hue},75%,55%,${isTab ? 0.24 : 0.13})`, boxShadow: isTab ? `0 0 0 2px hsla(${hue},75%,55%,.55)` : "none" }}>
                 <tl.icon size={19} style={{ color: tl.danger ? C.like : `hsl(${hue},70%,42%)` }} />
