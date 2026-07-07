@@ -1,5 +1,5 @@
 import {
-  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, ChevronDown, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Clapperboard, Music, Gift, Calendar, Pin, Lock, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, questsApi, xpApi, adminApi, pushApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Tilt, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, levelInfo, kfmt, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, STORY_STICKERS, setTheme, setME, t, LANGS, Languages, UploadRing,
+  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, ChevronDown, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Clapperboard, Music, Gift, Calendar, Pin, Lock, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, questsApi, xpApi, adminApi, pushApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Tilt, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, levelInfo, kfmt, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, STORY_STICKERS, setTheme, setME, t, LANGS, Languages, UploadRing, useModalA11y,
 } from "./core";
 import { PostCard, Lightbox } from "./feed";
 import { runSelfChecks } from "../lib/selfCheck";
@@ -616,7 +616,7 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
             <button onClick={() => onGrantXp(u.id, 50)} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1" style={{ background: C.surfaceMuted, color: C.ink2 }}><Zap size={12} /> +50 XP</button>
             <button onClick={() => onBanUser(u.id, !u.banned)} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1" style={u.banned ? { background: C.online + "22", color: C.online } : { background: C.likeSoft, color: C.like }}>{u.banned ? <><Check size={12} /> ბლოკის მოხსნა</> : <><X size={12} /> ბლოკი</>}</button>
             <button onClick={() => { const v = window.prompt("ზუსტი XP:", u.xp || 0); if (v !== null && v.trim() !== "" && !isNaN(+v)) onSetXp(u.id, +v); }} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1" style={{ background: C.surfaceMuted, color: C.ink2 }}><Zap size={12} /> XP ⚙</button>
-            <button onClick={() => setDelUser(u)} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1" style={{ background: C.like, color: "#fff" }}><Trash2 size={12} /> წაშლა</button>
+            <button onClick={() => setDelUser(u)} aria-label={t("action.delete")} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1" style={{ background: C.like, color: "#fff" }}><Trash2 size={12} /> წაშლა</button>
           </div>
         </div>
       ))}</div>}
@@ -625,7 +625,7 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
         <div key={p.id} className="p-3 flex items-center gap-3" style={card()}>
           {p.image ? <Pic src={p.image} grad={GRADS[hashIdx(p.id, GRADS.length)]} round={10} style={{ width: 46, height: 46 }} /> : <div className="rounded-xl flex items-center justify-center shrink-0" style={{ width: 46, height: 46, background: C.surfaceMuted }}><ImageIcon size={18} style={{ color: C.faint }} /></div>}
           <div className="flex-1 min-w-0"><button onClick={() => onOpenProfile(p.authorId)} className="font-bold text-[13px] block truncate text-left" style={{ color: C.ink }}>{USERS[p.authorId] ? USERS[p.authorId].name.split(" ")[0] : "—"}</button><div className="text-[13px] line-clamp-1" style={{ color: C.muted }}>{p.text || "(ფოტო პოსტი)"}</div><Mono style={{ fontSize: 11, color: C.faint }}>❤ {p.likes} · 💬 {p.comments.length}</Mono></div>
-          <button onClick={() => { if (window.confirm("წავშალო ეს პოსტი?")) onRemovePost(p.id); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.likeSoft, color: C.like }}><Trash2 size={16} /></button>
+          <button onClick={() => { if (window.confirm("წავშალო ეს პოსტი?")) onRemovePost(p.id); }} aria-label={t("action.delete")} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.likeSoft, color: C.like }}><Trash2 size={16} /></button>
         </div>
       ))}</div>}
 
@@ -640,7 +640,7 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
             <Pic src={l.image} grad={GRADS[hashIdx(l.id, GRADS.length)]} round={10} style={{ width: 46, height: 46 }} />
             <div className="flex-1 min-w-0"><div className="font-bold text-[13px] truncate" style={{ color: C.ink }}>{l.title}</div><div className="text-[12px]" style={{ color: C.accent, fontWeight: 700 }}>{(l.price || 0).toLocaleString()}₾</div><Mono style={{ fontSize: 11, color: C.faint }} className="truncate block">{USERS[l.sellerId] ? USERS[l.sellerId].name.split(" ")[0] : "—"}</Mono></div>
             <button onClick={() => { const v = window.prompt("ახალი სახელი:", l.title); if (v && v.trim() && v.trim() !== l.title) onEditListing(l.id, { title: v.trim() }); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.accentSoft, color: C.accentText }}><Pencil size={16} /></button>
-            <button onClick={() => { if (window.confirm("წავშალო ეს განცხადება?")) onDeleteListing(l.id); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.likeSoft, color: C.like }}><Trash2 size={16} /></button>
+            <button onClick={() => { if (window.confirm("წავშალო ეს განცხადება?")) onDeleteListing(l.id); }} aria-label={t("action.delete")} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.likeSoft, color: C.like }}><Trash2 size={16} /></button>
           </div>
         )); })()}</div>}
         {cseg === "threads" && <div className="space-y-2">{(() => { const items = (threads || []).filter(t => !ql || (t.title || "").toLowerCase().includes(ql)); return items.length === 0 ? <Empty icon={MessageSquare} t="ცარიელია" s="" /> : items.map(t => (
@@ -651,7 +651,7 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
             <button onClick={() => onSetThreadPinned(t.id, !t.pinned)} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={t.pinned ? { width: 38, height: 38, backgroundImage: GBRAND, color: "#fff" } : { width: 38, height: 38, background: C.surfaceMuted, color: C.ink2 }}><Pin size={16} /></button>
             <button onClick={() => onSetThreadLocked(t.id, !t.locked)} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.surfaceMuted, color: t.locked ? C.like : C.ink2 }}><Lock size={16} /></button>
             <button onClick={() => { const v = window.prompt("ახალი სათაური:", t.title); if (v && v.trim() && v.trim() !== t.title) onEditThread(t.id, { title: v.trim() }); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.accentSoft, color: C.accentText }}><Pencil size={16} /></button>
-            <button onClick={() => { if (window.confirm("წავშალო ეს თემა?")) onDeleteThread(t.id); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.likeSoft, color: C.like }}><Trash2 size={16} /></button>
+            <button onClick={() => { if (window.confirm("წავშალო ეს თემა?")) onDeleteThread(t.id); }} aria-label={t("action.delete")} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.likeSoft, color: C.like }}><Trash2 size={16} /></button>
           </div>
         )); })()}</div>}
         {cseg === "reels" && <div className="space-y-2">{(() => { const items = (reels || []).filter(r => !ql || (r.caption || "").toLowerCase().includes(ql)); return items.length === 0 ? <Empty icon={Film} t="ცარიელია" s="" /> : items.map(r => (
@@ -659,7 +659,7 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
             {bulkMode && <button onClick={() => toggleSelected(r.id)} className="rounded-full flex items-center justify-center shrink-0" style={{ width: 22, height: 22, border: `2px solid ${selected.has(r.id) ? C.accent : C.line}`, background: selected.has(r.id) ? C.accent : "transparent" }}>{selected.has(r.id) && <Check size={14} color="#fff" />}</button>}
             <Pic src={r.image} grad={GRADS[hashIdx(r.id, GRADS.length)]} round={10} style={{ width: 46, height: 46 }} />
             <div className="flex-1 min-w-0"><div className="text-[13px] line-clamp-1" style={{ color: C.ink }}>{r.caption || "(უსათაურო)"}</div><Mono style={{ fontSize: 11, color: C.faint }} className="truncate block">{USERS[r.authorId] ? USERS[r.authorId].name.split(" ")[0] : "—"} · ❤ {r.likes || 0}</Mono></div>
-            <button onClick={() => { if (window.confirm("წავშალო ეს Reel?")) onDeleteReel(r.id); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.likeSoft, color: C.like }}><Trash2 size={16} /></button>
+            <button onClick={() => { if (window.confirm("წავშალო ეს Reel?")) onDeleteReel(r.id); }} aria-label={t("action.delete")} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.likeSoft, color: C.like }}><Trash2 size={16} /></button>
           </div>
         )); })()}</div>}
         {cseg === "groups" && <div className="space-y-2">{(() => { const items = (groups || []).filter(g => !ql || (g.name || "").toLowerCase().includes(ql)); return items.length === 0 ? <Empty icon={Users} t="ცარიელია" s="" /> : items.map(g => (
@@ -668,7 +668,7 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
             <Pic src={g.cover} grad={GRADS[hashIdx(g.id, GRADS.length)]} round={10} style={{ width: 46, height: 46 }} />
             <div className="flex-1 min-w-0"><div className="font-bold text-[13px] truncate" style={{ color: C.ink }}>{g.name}</div><Mono style={{ fontSize: 11, color: C.faint }} className="truncate block">{g.members} წევრი · {g.cat || "—"}</Mono></div>
             <button onClick={() => { const v = window.prompt("ახალი სახელი:", g.name); if (v && v.trim() && v.trim() !== g.name) onEditGroup(g.id, { name: v.trim() }); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.accentSoft, color: C.accentText }}><Pencil size={16} /></button>
-            <button onClick={() => { if (window.confirm("წავშალო ეს ჯგუფი?")) onDeleteGroup(g.id); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.likeSoft, color: C.like }}><Trash2 size={16} /></button>
+            <button onClick={() => { if (window.confirm("წავშალო ეს ჯგუფი?")) onDeleteGroup(g.id); }} aria-label={t("action.delete")} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.likeSoft, color: C.like }}><Trash2 size={16} /></button>
           </div>
         )); })()}</div>}
         {cseg === "events" && <div className="space-y-2">{(() => { const items = (events || []).filter(e => !ql || (e.title || "").toLowerCase().includes(ql)); return items.length === 0 ? <Empty icon={MapPin} t="ცარიელია" s="" /> : items.map(e => (
@@ -677,7 +677,7 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
             <Pic src={e.cover} grad={GRADS[hashIdx(e.id, GRADS.length)]} round={10} style={{ width: 46, height: 46 }} />
             <div className="flex-1 min-w-0"><div className="font-bold text-[13px] truncate" style={{ color: C.ink }}>{e.title}</div><Mono style={{ fontSize: 11, color: C.faint }} className="truncate block">{e.going} მონაწილე · {e.location || "—"}</Mono></div>
             <button onClick={() => { const v = window.prompt("ახალი სახელი:", e.title); if (v && v.trim() && v.trim() !== e.title) onEditEvent(e.id, { title: v.trim() }); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.accentSoft, color: C.accentText }}><Pencil size={16} /></button>
-            <button onClick={() => { if (window.confirm("წავშალო ეს ივენთი?")) onDeleteEvent(e.id); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.likeSoft, color: C.like }}><Trash2 size={16} /></button>
+            <button onClick={() => { if (window.confirm("წავშალო ეს ივენთი?")) onDeleteEvent(e.id); }} aria-label={t("action.delete")} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.likeSoft, color: C.like }}><Trash2 size={16} /></button>
           </div>
         )); })()}</div>}
         {cseg === "films" && <div className="space-y-2">{(() => { const items = (films || []).filter(f => !ql || (f.title || "").toLowerCase().includes(ql)); return items.length === 0 ? <Empty icon={Clapperboard} t="ცარიელია" s="" /> : items.map(f => (
@@ -686,7 +686,7 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
             <Pic src={f.poster} grad={GRADS[hashIdx(f.id, GRADS.length)]} round={10} style={{ width: 46, height: 46 }} />
             <div className="flex-1 min-w-0"><div className="font-bold text-[13px] truncate" style={{ color: C.ink }}>{f.title}</div><Mono style={{ fontSize: 11, color: C.faint }} className="truncate block">{[f.year, f.genre].filter(Boolean).join(" · ")}</Mono></div>
             <button onClick={() => { const v = window.prompt("ახალი სახელი:", f.title); if (v && v.trim() && v.trim() !== f.title) onEditFilm(f.id, { title: v.trim() }); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.accentSoft, color: C.accentText }}><Pencil size={16} /></button>
-            <button onClick={() => { if (window.confirm("წავშალო ეს ფილმი?")) onDeleteFilm(f.id); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.likeSoft, color: C.like }}><Trash2 size={16} /></button>
+            <button onClick={() => { if (window.confirm("წავშალო ეს ფილმი?")) onDeleteFilm(f.id); }} aria-label={t("action.delete")} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.likeSoft, color: C.like }}><Trash2 size={16} /></button>
           </div>
         )); })()}</div>}
         {cseg === "songs" && <div className="space-y-2">{(() => { const items = (songs || []).filter(s => !ql || (s.title || "").toLowerCase().includes(ql)); return items.length === 0 ? <Empty icon={Music} t="ცარიელია" s="" /> : items.map(s => (
@@ -695,7 +695,7 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
             <Pic src={s.cover} grad={GRADS[hashIdx(s.id, GRADS.length)]} round={10} style={{ width: 46, height: 46 }} />
             <div className="flex-1 min-w-0"><div className="font-bold text-[13px] truncate" style={{ color: C.ink }}>{s.title}</div><Mono style={{ fontSize: 11, color: C.faint }} className="truncate block">{s.artist || "უცნობი"} · {s.plays || 0} მოსმენა</Mono></div>
             <button onClick={() => { const v = window.prompt("ახალი სახელი:", s.title); if (v && v.trim() && v.trim() !== s.title) onEditSong(s.id, { title: v.trim() }); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.accentSoft, color: C.accentText }}><Pencil size={16} /></button>
-            <button onClick={() => { if (window.confirm("წავშალო ეს სიმღერა?")) onDeleteSong(s.id); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.likeSoft, color: C.like }}><Trash2 size={16} /></button>
+            <button onClick={() => { if (window.confirm("წავშალო ეს სიმღერა?")) onDeleteSong(s.id); }} aria-label={t("action.delete")} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.likeSoft, color: C.like }}><Trash2 size={16} /></button>
           </div>
         )); })()}</div>}
         {bulkMode && selected.size > 0 && <div className="fixed bottom-0 inset-x-0 z-30 md:static px-4 py-3 flex items-center gap-3" style={{ background: C.surface, borderTop: `1px solid ${C.line}`, paddingBottom: "calc(var(--mz-nav, 64px) + 0.6rem)" }}>
@@ -704,19 +704,24 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
           <button onClick={onBulkDelete} className="px-3.5 py-2 rounded-xl text-[13px] font-bold text-white flex items-center gap-1.5" style={{ background: C.like }}><Trash2 size={14} /> წაშლა</button>
         </div>}
       </div>}
-      {delUser && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-6" style={{ background: "rgba(0,0,0,.6)" }} onClick={() => setDelUser(null)}>
-          <div className="w-full max-w-xs rounded-3xl p-5 text-center" style={{ background: C.paper, animation: "pop .2s ease both" }} onClick={e => e.stopPropagation()}>
-            <div className="rounded-full mx-auto flex items-center justify-center mb-3" style={{ width: 52, height: 52, background: C.likeSoft }}><Trash2 size={24} style={{ color: C.like }} /></div>
-            <div className="font-bold text-[16px]" style={{ color: C.ink }}>{delUser.name}-ის წაშლა?</div>
-            <div className="text-[13px] mt-1 mb-4" style={{ color: C.muted, lineHeight: 1.5 }}>სამუდამოა — ყველა პოსტი, reel, მესიჯი წაიშლება. @{delUser.username}</div>
-            <div className="flex gap-2">
-              <button onClick={() => setDelUser(null)} className="flex-1 py-2.5 rounded-xl text-[14px] font-bold" style={{ background: C.surfaceMuted, color: C.ink }}>გაუქმება</button>
-              <button onClick={() => { onDeleteUser(delUser.id); setDelUser(null); }} className="flex-1 py-2.5 rounded-xl text-[14px] font-bold text-white" style={{ background: C.like }}>წაშლა</button>
-            </div>
-          </div>
+      {delUser && <DeleteUserDialog user={delUser} onCancel={() => setDelUser(null)} onConfirm={() => { onDeleteUser(delUser.id); setDelUser(null); }} />}
+    </div>
+  );
+}
+
+function DeleteUserDialog({ user, onCancel, onConfirm }) {
+  const ref = useModalA11y(onCancel);
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-6" style={{ background: "rgba(0,0,0,.6)" }} onClick={onCancel}>
+      <div ref={ref} tabIndex={-1} role="alertdialog" aria-modal="true" aria-label={`${user.name}-ის წაშლა?`} className="w-full max-w-xs rounded-3xl p-5 text-center" style={{ background: C.paper, animation: "pop .2s ease both", outline: "none" }} onClick={e => e.stopPropagation()}>
+        <div className="rounded-full mx-auto flex items-center justify-center mb-3" style={{ width: 52, height: 52, background: C.likeSoft }}><Trash2 size={24} style={{ color: C.like }} /></div>
+        <div className="font-bold text-[16px]" style={{ color: C.ink }}>{user.name}-ის წაშლა?</div>
+        <div className="text-[13px] mt-1 mb-4" style={{ color: C.muted, lineHeight: 1.5 }}>სამუდამოა — ყველა პოსტი, reel, მესიჯი წაიშლება. @{user.username}</div>
+        <div className="flex gap-2">
+          <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-[14px] font-bold" style={{ background: C.surfaceMuted, color: C.ink }}>გაუქმება</button>
+          <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl text-[14px] font-bold text-white" style={{ background: C.like }}>წაშლა</button>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -860,7 +865,7 @@ export function SettingsView({ settings, setSettings, meProfile, setMeProfile, m
               return sorted.map(id => { const cu = USERS[id]; const on = (closeFriends || []).includes(id); return (
                 <div key={id} className="px-4 py-2.5 flex items-center gap-3" style={{ borderBottom: `1px solid ${C.lineSoft}` }}>
                   <Avatar id={id} size={38} />
-                  <div className="flex-1 min-w-0 active:opacity-60" onClick={() => { onClose(); onOpenProfile && onOpenProfile(id); }}><div className="text-[14px] font-bold truncate" style={{ color: C.ink }}>{cu.name}</div><div className="text-[12px]" style={{ color: C.faint }}>@{cu.handle}</div></div>
+                  <button className="flex-1 min-w-0 text-left active:opacity-60" style={{ background: "none", border: "none", padding: 0, font: "inherit" }} onClick={() => { onClose(); onOpenProfile && onOpenProfile(id); }}><div className="text-[14px] font-bold truncate" style={{ color: C.ink }}>{cu.name}</div><div className="text-[12px]" style={{ color: C.faint }}>@{cu.handle}</div></button>
                   <button onClick={() => onToggleCloseFriend(id)} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 34, height: 34, background: on ? "#1f8f4e" : C.surfaceMuted, border: on ? "none" : `1px solid ${C.line}` }}><Star size={17} style={{ color: on ? "#fff" : C.faint }} fill={on ? "#fff" : "none"} /></button>
                 </div>); });
             })()}
@@ -872,13 +877,13 @@ export function SettingsView({ settings, setSettings, meProfile, setMeProfile, m
                 {(blockedIds || []).map(id => { const bu = USERS[id]; return (
                   <div key={"b" + id} className="px-4 py-3 flex items-center gap-3" style={{ borderBottom: `1px solid ${C.lineSoft}` }}>
                     <Avatar id={id} size={38} />
-                    <div className="flex-1 min-w-0 active:opacity-60" onClick={() => { onClose(); onOpenProfile && onOpenProfile(id); }}><div className="text-[14px] font-bold truncate" style={{ color: C.ink }}>{bu.name}</div><div className="text-[12px]" style={{ color: "#e05656" }}>🚫 დაბლოკილი</div></div>
+                    <button className="flex-1 min-w-0 text-left active:opacity-60" style={{ background: "none", border: "none", padding: 0, font: "inherit" }} onClick={() => { onClose(); onOpenProfile && onOpenProfile(id); }}><div className="text-[14px] font-bold truncate" style={{ color: C.ink }}>{bu.name}</div><div className="text-[12px]" style={{ color: "#e05656" }}>🚫 დაბლოკილი</div></button>
                     <button onClick={() => onUnblock(id)} className="px-3.5 py-2 rounded-xl text-[13px] font-bold shrink-0 active:scale-95" style={{ background: C.surfaceMuted, color: C.ink }}>განბლოკვა</button>
                   </div>); })}
                 {(mutedIds || []).map(id => { const mt = USERS[id]; return (
                   <div key={"m" + id} className="px-4 py-3 flex items-center gap-3" style={{ borderBottom: `1px solid ${C.lineSoft}` }}>
                     <Avatar id={id} size={38} />
-                    <div className="flex-1 min-w-0 active:opacity-60" onClick={() => { onClose(); onOpenProfile && onOpenProfile(id); }}><div className="text-[14px] font-bold truncate" style={{ color: C.ink }}>{mt.name}</div><div className="text-[12px]" style={{ color: C.muted }}>🔇 გაჩუმებული</div></div>
+                    <button className="flex-1 min-w-0 text-left active:opacity-60" style={{ background: "none", border: "none", padding: 0, font: "inherit" }} onClick={() => { onClose(); onOpenProfile && onOpenProfile(id); }}><div className="text-[14px] font-bold truncate" style={{ color: C.ink }}>{mt.name}</div><div className="text-[12px]" style={{ color: C.muted }}>🔇 გაჩუმებული</div></button>
                     <button onClick={() => onUnmute(id)} className="px-3.5 py-2 rounded-xl text-[13px] font-bold shrink-0 active:scale-95" style={{ background: C.surfaceMuted, color: C.ink }}>აღდგენა</button>
                   </div>); })}
               </>}
@@ -1002,7 +1007,7 @@ export function SearchView({ posts, onOpenProfile, onTag, onClose, runSearch, on
       <div className="w-full max-w-[600px] flex flex-col" style={{ height: "100dvh", borderLeft: `1px solid ${C.line}`, borderRight: `1px solid ${C.line}` }}>
         <div className="flex items-center gap-2 px-3 py-2.5 shrink-0" style={{ background: C.surface, borderBottom: `1px solid ${C.line}` }}>
           <button onClick={onClose} className="active:scale-90" style={{ color: C.ink2 }}><ArrowLeft size={22} /></button>
-          <div className="flex-1 flex items-center gap-2 px-3.5 py-2.5 rounded-full" style={{ background: C.surfaceMuted, border: `1px solid ${C.line}` }}><Search size={18} style={{ color: C.faint }} /><input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder={t("search.placeholder")} className="flex-1 bg-transparent text-[15px] outline-none" style={{ color: C.ink }} />{q && <button onClick={() => setQ("")} style={{ color: C.faint }}><X size={18} /></button>}</div>
+          <div className="flex-1 flex items-center gap-2 px-3.5 py-2.5 rounded-full" style={{ background: C.surfaceMuted, border: `1px solid ${C.line}` }}><Search size={18} style={{ color: C.faint }} /><input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder={t("search.placeholder")} className="flex-1 bg-transparent text-[15px] outline-none" style={{ color: C.ink }} />{q && <button onClick={() => setQ("")} aria-label={t("a11y.close")} style={{ color: C.faint }}><X size={18} /></button>}</div>
         </div>
         <div className="flex-1 overflow-y-auto">
           {searching && <div className="flex justify-center items-center py-8"><div style={{ width: 26, height: 26, border: `3px solid ${C.lineSoft}`, borderTopColor: C.accent, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} /></div>}

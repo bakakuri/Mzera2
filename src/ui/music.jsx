@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import {
   X, Plus, Pencil, Trash2, Play, Pause, Upload, Music,
-  C, SH, card, DISPLAY, GBRAND, Mono, GRADS, hashIdx, Pic, Title, Chips, Empty, MUSIC_GENRES, ME, t, UploadProgress,
+  C, SH, card, DISPLAY, GBRAND, Mono, GRADS, hashIdx, Pic, Title, Chips, Empty, MUSIC_GENRES, ME, t, UploadProgress, useModalA11y,
 } from "./core";
 
 function ConfirmDialog({ title, msg, confirmText = t("action.delete"), onCancel, onConfirm }) {
+  const ref = useModalA11y(onCancel);
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-6" style={{ background: "rgba(6,7,12,.6)", backdropFilter: "blur(4px)" }} onClick={onCancel}>
-      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-[360px] rounded-3xl p-6 text-center" style={{ background: C.surface, boxShadow: SH.pop }}>
+      <div ref={ref} tabIndex={-1} role="alertdialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()} className="w-full max-w-[360px] rounded-3xl p-6 text-center" style={{ background: C.surface, boxShadow: SH.pop, outline: "none" }}>
         <div className="rounded-full flex items-center justify-center mx-auto mb-3.5" style={{ width: 60, height: 60, background: C.like + "1f" }}><Trash2 size={28} style={{ color: C.like }} /></div>
         <div className="text-[18px] font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{title}</div>
         <div className="text-[14px] mt-1.5" style={{ color: C.muted, lineHeight: 1.5 }}>{msg}</div>

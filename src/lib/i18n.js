@@ -25,9 +25,15 @@ const readStoredLang = () => {
 // state) so even the pre-login AuthScreen respects a previously chosen
 // language, before any session/settings object exists.
 export let LANG = readStoredLang();
+// keeps the <html lang> attribute in sync with the in-app switcher — without
+// this, a screen reader keeps applying Georgian pronunciation rules to
+// English/Russian content after the user switches, mispronouncing everything.
+const syncDocumentLang = (l) => { try { if (typeof document !== "undefined") document.documentElement.lang = l; } catch (e) {} };
+syncDocumentLang(LANG);
 export function setLang(l) {
   LANG = LANGS.some(([k]) => k === l) ? l : "ka";
   try { if (typeof localStorage !== "undefined") localStorage.setItem("mz_lang", LANG); } catch (e) {}
+  syncDocumentLang(LANG);
 }
 
 export const DICT = {
@@ -258,6 +264,13 @@ export const DICT = {
   "profile.unblock": { ka: "განბლოკვა", en: "Unblock", ru: "Разблокировать" },
   "profile.block": { ka: "დაბლოკვა", en: "Block", ru: "Заблокировать" },
   "profile.viewers": { ka: "ვიზიტორები", en: "Visitors", ru: "Посетители" },
+  "a11y.avatarAltSuffix": { ka: "-ის პროფილის ფოტო", en: "'s profile picture", ru: " — фото профиля" },
+  "a11y.close": { ka: "დახურვა", en: "Close", ru: "Закрыть" },
+  "a11y.back": { ka: "უკან", en: "Back", ru: "Назад" },
+  "a11y.menu": { ka: "მენიუ", en: "Menu", ru: "Меню" },
+  "a11y.moreOptions": { ka: "მეტი პარამეტრი", en: "More options", ru: "Ещё" },
+  "a11y.save": { ka: "შენახვა", en: "Save", ru: "Сохранить" },
+  "a11y.unsave": { ka: "შენახვის მოხსნა", en: "Remove from saved", ru: "Убрать из сохранённого" },
   "profile.noViewersYet": { ka: "ჯერ არავის უნახავს შენი პროფილი.", en: "No one has viewed your profile yet.", ru: "Пока никто не смотрел ваш профиль." },
 
   "profile.tabPhotos": { ka: "ფოტოები", en: "Photos", ru: "Фото" },

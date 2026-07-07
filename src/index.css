@@ -14,6 +14,18 @@ body {
   overscroll-behavior-y: none;
 }
 
+/* Tailwind's outline-none (used throughout on inputs/buttons to drop the
+   default browser ring for a cleaner look) removed focus indication for
+   keyboard users entirely, with nothing put back in its place. :focus-visible
+   only fires for keyboard/programmatic focus, not mouse clicks, so this
+   restores visible focus without bringing back the "ring on every tap" look
+   mouse/touch users didn't want. One ring color for both themes (a saturated
+   purple reads clearly against both a near-white and a near-black surface). */
+:focus-visible {
+  outline: 2px solid #6750F2;
+  outline-offset: 2px;
+}
+
 @keyframes spin { to { transform: rotate(360deg); } }
 .no-scrollbar::-webkit-scrollbar{display:none}
 .no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}

@@ -9,16 +9,16 @@ import { t, setLang, LANG, LANGS } from "../lib/i18n";
 export const PAL = {
   light: {
     paper: "#F3F5F9", surface: "#FFFFFF", surfaceMuted: "#F4F6FA", elev: "#FFFFFF",
-    ink: "#11131A", ink2: "#363A45", muted: "#697080", faint: "#98A0B0",
+    ink: "#11131A", ink2: "#363A45", muted: "#697080", faint: "#5B6472",
     line: "#E6E9F0", lineSoft: "#EFF1F6",
     accent: "#6750F2", accentSoft: "#ECEAFE", accentText: "#4F39E0",
-    cyan: "#00A6F0", like: "#F2456A", likeSoft: "#FFE8ED", online: "#16C784", star: "#F5A623",
+    cyan: "#0078AD", like: "#C71F44", likeSoft: "#FFE8ED", online: "#0F875A", star: "#A36907",
     grid: "rgba(103,80,242,.06)",
     mapBase: "#E9EDE8", mapBlock: "#DCE2DB", mapRoad: "#FFFFFF", mapRiver: "#BFE3F5", mapPark: "#D2E7CE",
   },
   dark: {
     paper: "#0A0C13", surface: "#13161F", surfaceMuted: "#1A1E29", elev: "#181C26",
-    ink: "#F1F4F9", ink2: "#C5CAD6", muted: "#878D9C", faint: "#565D6E",
+    ink: "#F1F4F9", ink2: "#C5CAD6", muted: "#878D9C", faint: "#7A818F",
     line: "#242A39", lineSoft: "#1B202D",
     accent: "#8B7CFF", accentSoft: "#241F45", accentText: "#A99CFF",
     cyan: "#35C5FF", like: "#FF5C7C", likeSoft: "#3A1722", online: "#22E08F", star: "#FBBF24",
@@ -139,12 +139,12 @@ export const MUSIC_GENRES = ["ყველა", "პოპ", "რეპი", "�
 
 /* ─────────────────────────  PRIMITIVES  ───────────────────────── */
 
-export function Pic({ src, grad, style, className = "", round = 0, w, fit = "cover" }) {
+export function Pic({ src, grad, style, className = "", round = 0, w, fit = "cover", alt = "" }) {
   const [on, setOn] = useState(false); const [err, setErr] = useState(false); const [fb, setFb] = useState(false);
   const finalSrc = (w && !fb && src) ? tx(src, w) : src;
   return (
     <div className={"overflow-hidden " + className} style={{ borderRadius: round, background: grad ? `linear-gradient(135deg, ${grad[0]}, ${grad[1]})` : C.surfaceMuted, ...style }}>
-      <img src={finalSrc} alt="" loading="lazy" onLoad={() => setOn(true)} onError={() => { if (w && !fb) setFb(true); else setErr(true); }} className="w-full h-full" style={{ objectFit: fit, opacity: err ? 0 : on ? 1 : 0, transition: "opacity .55s ease" }} />
+      <img src={finalSrc} alt={alt} loading="lazy" onLoad={() => setOn(true)} onError={() => { if (w && !fb) setFb(true); else setErr(true); }} className="w-full h-full" style={{ objectFit: fit, opacity: err ? 0 : on ? 1 : 0, transition: "opacity .55s ease" }} />
     </div>
   );
 }
@@ -153,9 +153,10 @@ export function Avatar({ id, size = 40, ring = false, story = false, seen = fals
   const u = USERS[id]; const [a, b] = GRADS[hashIdx(id, GRADS.length)];
   const [fb, setFb] = useState(false);
   const src = (!fb && (thumb || u.avatar)) || null;
+  const avatarAlt = (u.name || "") + t("a11y.avatarAltSuffix");
   const inner = src
-    ? <img src={src} onError={() => setFb(true)} alt="" loading="lazy" style={{ width: size, height: size, objectFit: fit, background: fit === "contain" ? `linear-gradient(140deg, ${a}, ${b})` : undefined }} className="rounded-full select-none shrink-0" draggable={false} />
-    : <div style={{ width: size, height: size, background: `linear-gradient(140deg, ${a}, ${b})`, color: "#fff", fontWeight: 700, fontSize: size * 0.4, fontFamily: DISPLAY }} className="rounded-full flex items-center justify-center select-none shrink-0">{(u.name || "?").trim()[0] || "?"}</div>;
+    ? <img src={src} onError={() => setFb(true)} alt={avatarAlt} loading="lazy" style={{ width: size, height: size, objectFit: fit, background: fit === "contain" ? `linear-gradient(140deg, ${a}, ${b})` : undefined }} className="rounded-full select-none shrink-0" draggable={false} />
+    : <div role="img" aria-label={avatarAlt} style={{ width: size, height: size, background: `linear-gradient(140deg, ${a}, ${b})`, color: "#fff", fontWeight: 700, fontSize: size * 0.4, fontFamily: DISPLAY }} className="rounded-full flex items-center justify-center select-none shrink-0">{(u.name || "?").trim()[0] || "?"}</div>;
   if (!ring) return inner;
   return <div className="rounded-full p-[2.5px] shrink-0" style={{ background: story ? (seen ? C.line : (closeFriends ? "linear-gradient(135deg,#1f8f4e,#3ddc7f)" : "conic-gradient(from 210deg, #6750F2, #00B4FF, #E85FB0, #6750F2)")) : "transparent" }}><div className="rounded-full p-[2px]" style={{ background: C.surface }}>{inner}</div></div>;
 }
@@ -165,6 +166,27 @@ export const Dot = ({ size = 11 }) => <span className="rounded-full" style={{ wi
 export const Name = ({ id, className = "" }) => { const u = USERS[id]; return <span className={"inline-flex items-center gap-1 " + className}><span style={{ color: C.ink }} className="font-bold truncate">{u.name}</span>{u.verified && <ShieldCheck size={14} style={{ color: C.accent }} className="shrink-0" />}</span>; };
 
 export const Handle = ({ h, t, className = "" }) => <Mono className={className} style={{ color: C.faint, fontSize: "0.82em", letterSpacing: "-0.02em" }}>@{h}{t ? " · " + t : ""}</Mono>;
+
+// Minimal modal accessibility: Escape closes it, focus moves into the dialog
+// on open, and returns to whatever triggered it on close — none of this
+// existed for any modal/sheet in the app before. Doesn't do a full focus
+// trap (Tab can still escape to the page behind an overlay-covered backdrop),
+// but covers the two things that matter most for a dialog this simple:
+// keyboard dismissal and not stranding focus when it closes.
+export function useModalA11y(onClose) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const prevFocused = document.activeElement;
+    if (ref.current) ref.current.focus();
+    const onKey = (e) => { if (e.key === "Escape") onClose && onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      if (prevFocused && prevFocused.focus) prevFocused.focus();
+    };
+  }, []);
+  return ref;
+}
 
 export function IconBtn({ children, onClick, active, badge }) {
   return <button onClick={onClick} className="relative rounded-full transition active:scale-90 hover:opacity-60" style={{ width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", color: active ? C.accent : C.ink2 }}>{children}{badge > 0 && <span className="absolute top-0 right-0 rounded-full flex items-center justify-center" style={{ minWidth: 17, height: 17, padding: "0 4px", background: C.like, color: "#fff", border: `2px solid ${C.surface}`, fontFamily: MONO, fontSize: 10, fontWeight: 700 }}>{badge > 9 ? "9+" : badge}</span>}</button>;

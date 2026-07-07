@@ -223,7 +223,7 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
               {searchQ.trim() && <Mono style={{ fontSize: 12, color: C.faint }}>{searchMatches.length ? (searchIdx + 1) + "/" + searchMatches.length : "0"}</Mono>}
               <button onClick={() => goMatch(-1)} disabled={!searchMatches.length} className="active:scale-90" style={{ color: searchMatches.length ? C.ink2 : C.faint }}><ChevronUp size={18} /></button>
               <button onClick={() => goMatch(1)} disabled={!searchMatches.length} className="active:scale-90" style={{ color: searchMatches.length ? C.ink2 : C.faint }}><ChevronDown size={18} /></button>
-              <button onClick={() => { setChatSearchOpen(false); setSearchQ(""); }} className="active:scale-90" style={{ color: C.faint }}><X size={18} /></button>
+              <button onClick={() => { setChatSearchOpen(false); setSearchQ(""); }} aria-label={t("a11y.close")} className="active:scale-90" style={{ color: C.faint }}><X size={18} /></button>
             </div>
           )}
           {pinnedMsg && (
@@ -233,7 +233,7 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
                 <div className="text-[11px] font-bold" style={{ color: C.accent }}>{t("chat.pinnedMessage")}</div>
                 <div className="text-[13px] truncate" style={{ color: C.ink2 }}>{pinnedMsg.type === "text" ? pinnedMsg.text : pinnedMsg.type === "image" ? t("msg.photo") : pinnedMsg.type === "voice" ? t("msg.voice") : pinnedMsg.type === "doc" ? t("chat.docWord") : t("msg.location")}</div>
               </div>
-              <button onClick={(e) => { e.stopPropagation(); onUnpinMessage && onUnpinMessage(cv.id); }} className="shrink-0 active:scale-90" style={{ color: C.faint }}><X size={16} /></button>
+              <button onClick={(e) => { e.stopPropagation(); onUnpinMessage && onUnpinMessage(cv.id); }} aria-label={t("chat.unpin")} className="shrink-0 active:scale-90" style={{ color: C.faint }}><X size={16} /></button>
             </button>
           )}
 
@@ -304,7 +304,7 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
                 <div className="text-[12px] font-bold" style={{ color: C.accent }}>{editing ? t("chat.editing") : `${t("chat.replyAction")}${replyTo.fromMe ? " — " + t("chat.you") : (USERS[replyTo.from] ? " — " + USERS[replyTo.from].name.split(" ")[0] : "")}`}</div>
                 <div className="text-[13px] truncate" style={{ color: C.muted }}>{pv}</div>
               </div>
-              <button onClick={() => { setReplyTo(null); setEditing(null); setDraft(""); }} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 30, height: 30, color: C.ink2, background: C.surfaceMuted }}><X size={16} /></button>
+              <button onClick={() => { setReplyTo(null); setEditing(null); setDraft(""); }} aria-label={t("a11y.close")} className="rounded-full flex items-center justify-center active:scale-90" style={{ width: 30, height: 30, color: C.ink2, background: C.surfaceMuted }}><X size={16} /></button>
             </div>
           ); })()}
 
@@ -402,7 +402,7 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
         {photoPreview && (
           <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "rgba(0,0,0,.92)" }}>
             <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}>
-              <button onClick={cancelPhotoPreview} disabled={progress != null} className="active:scale-90" style={{ color: "#fff" }}><X size={24} /></button>
+              <button onClick={cancelPhotoPreview} disabled={progress != null} aria-label={t("a11y.close")} className="active:scale-90" style={{ color: "#fff" }}><X size={24} /></button>
             </div>
             <div className="flex-1 flex items-center justify-center p-4 min-h-0">
               <img src={photoPreview.url} alt="" className="max-w-full max-h-full object-contain" style={{ borderRadius: 16 }} />
@@ -448,7 +448,7 @@ export function Messages({ convos, openId, setOpenId, onSend, onReply, onEditMsg
           <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-full" style={{ background: C.surfaceMuted, border: `1px solid ${C.line}` }}>
             <Search size={16} style={{ color: C.faint }} />
             <input value={listQ} onChange={e => setListQ(e.target.value)} placeholder={t("chat.searchConvos")} className="flex-1 bg-transparent outline-none text-[14px]" style={{ color: C.ink }} />
-            {listQ && <button onClick={() => setListQ("")} style={{ color: C.faint }}><X size={16} /></button>}
+            {listQ && <button onClick={() => setListQ("")} aria-label={t("a11y.close")} style={{ color: C.faint }}><X size={16} /></button>}
           </div>
         </div>
       </div>
