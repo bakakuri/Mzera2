@@ -1376,3 +1376,39 @@ export const languages = {
     return data || [];
   },
 };
+
+export const albums = {
+  list: async (ownerId) => {
+    const { data, error } = await need().from("photo_albums").select("*").eq("owner_id", ownerId).order("created_at", { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+  create: async (name) => {
+    const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;
+    const { data, error } = await sb.from("photo_albums").insert({ owner_id: uid, name }).select().single();
+    if (error) throw error;
+    return data;
+  },
+  rename: async (id, name) => { const { error } = await need().from("photo_albums").update({ name }).eq("id", id); if (error) throw error; },
+  remove: async (id) => { const { error } = await need().from("photo_albums").delete().eq("id", id); if (error) throw error; },
+  photos: async (ownerId) => {
+    const { data, error } = await need().from("album_photos").select("*").eq("owner_id", ownerId).order("position", { ascending: true }).order("created_at", { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+  addPhoto: async (image, albumId) => {
+    const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;
+    const { data, error } = await sb.from("album_photos").insert({ owner_id: uid, album_id: albumId || null, image }).select().single();
+    if (error) throw error;
+    return data;
+  },
+  movePhoto: async (photoId, albumId) => { const { error } = await need().from("album_photos").update({ album_id: albumId || null }).eq("id", photoId); if (error) throw error; },
+  reorderPhotos: async (updates) => {
+    // updates: [{ id, position }] — applied as individual updates (no bulk-upsert
+    // shortcut here since only `position` changes, not the other columns)
+    const sb = need();
+    await Promise.all(updates.map(u => sb.from("album_photos").update({ position: u.position }).eq("id", u.id)));
+  },
+  removePhoto: async (photoId) => { const { error } = await need().from("album_photos").delete().eq("id", photoId); if (error) throw error; },
+  setCover: async (albumId, image) => { const { error } = await need().from("photo_albums").update({ cover: image }).eq("id", albumId); if (error) throw error; },
+};

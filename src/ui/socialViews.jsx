@@ -67,7 +67,144 @@ export function SuggestedPeople({ people, isFollowing, onToggle, onDismiss, onOp
   );
 }
 
-export function Profile({ userId, posts, savedPosts, reels, xp, meProfile, following, followerCounts, onToggleFollow, onMessage, onOpenList, onSettings, flash, onBack, onTag, onLike, onReact, onSave, onComment, onPollVote, onReport, onRemove, onOpenProfile, isAdmin, onUploadAvatar, onUploadCover, onOpenReels, onAddReel, onReelDelete, onReelEdit, onEditPost, onDeletePost, onEditComment, onDeleteComment, blocked, muted, onBlock, onUnblock, onMute, onUnmute, closeFriend, onToggleCloseFriend, collections, onCreateCollection, onAssignCollection }) {
+// Standalone uploaded photos + folders — separate from post images (those
+// live under the "Posts" tab). Drag a photo tile onto a folder to file it
+// (Pointer Events, so the same code path handles mouse and touch); a plain
+// tap without movement opens the fullscreen viewer instead of starting a drag.
+function AlbumsGrid({ isMe, albums, photos, onCreateAlbum, onRenameAlbum, onDeleteAlbum, onUploadPhoto, onMovePhoto, onReorderPhotos, onDeletePhoto, flash }) {
+  const [openAlbum, setOpenAlbum] = useState(null);
+  const [viewer, setViewer] = useState(null);
+  const [movePicker, setMovePicker] = useState(false);
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const [dragState, setDragState] = useState(null);
+  const [overId, setOverId] = useState(null);
+  const drag = useRef({ id: null, active: false, startX: 0, startY: 0 });
+
+  const shownPhotos = openAlbum ? photos.filter(p => p.album_id === openAlbum.id) : photos.filter(p => !p.album_id);
+
+  const onPointerDownTile = (e, photo) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    drag.current = { id: photo.id, active: false, startX: e.clientX, startY: e.clientY };
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+  };
+  const onPointerMoveTile = (e) => {
+    const d = drag.current; if (!d.id) return;
+    const dx = e.clientX - d.startX, dy = e.clientY - d.startY;
+    if (!d.active && Math.hypot(dx, dy) > 10) d.active = true;
+    if (!d.active) return;
+    setDragState({ id: d.id, x: e.clientX, y: e.clientY });
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const folderEl = el && el.closest && el.closest("[data-album-drop]");
+    const tileEl = el && el.closest && el.closest("[data-photo-tile]");
+    if (folderEl) setOverId("album:" + folderEl.getAttribute("data-album-drop"));
+    else if (tileEl && tileEl.getAttribute("data-photo-tile") !== String(d.id)) setOverId("photo:" + tileEl.getAttribute("data-photo-tile"));
+    else setOverId(null);
+  };
+  const onPointerUpTile = (e, photo) => {
+    const d = drag.current;
+    if (d.active && overId) {
+      if (overId.startsWith("album:")) onMovePhoto(photo.id, overId.slice(6));
+      else {
+        const otherId = overId.slice(6);
+        const other = shownPhotos.find(p => String(p.id) === otherId);
+        if (other) onReorderPhotos([{ id: photo.id, position: other.position || 0 }, { id: other.id, position: photo.position || 0 }]);
+      }
+    } else if (!d.active) setViewer(photo);
+    drag.current = { id: null, active: false, startX: 0, startY: 0 };
+    setDragState(null); setOverId(null);
+  };
+
+  const doUpload = async (e) => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    setUploadBusy(true);
+    try { await onUploadPhoto(f, openAlbum ? openAlbum.id : null); } catch (err) { flash && flash(t("toast.uploadFailed")); }
+    setUploadBusy(false); e.target.value = "";
+  };
+  const createAlbum = () => { const name = window.prompt(t("album.namePrompt")); if (name && name.trim()) onCreateAlbum(name.trim()); };
+  const renameAlbum = (a) => { const name = window.prompt(t("album.namePrompt"), a.name); if (name && name.trim() && name.trim() !== a.name) onRenameAlbum(a.id, name.trim()); };
+  const deleteAlbum = (a) => { if (window.confirm(t("album.deleteConfirm"))) onDeleteAlbum(a.id); };
+  const closeViewer = () => { setViewer(null); setMovePicker(false); };
+  const deletePhoto = (p) => { if (window.confirm(t("album.deletePhotoConfirm"))) { onDeletePhoto(p.id); closeViewer(); } };
+  const movePhotoTo = (albumId) => { if (viewer) onMovePhoto(viewer.id, albumId); closeViewer(); };
+
+  return (
+    <div className="pt-1">
+      {!openAlbum && (albums.length > 0 || isMe) && (
+        <div className="flex gap-3 overflow-x-auto no-scrollbar px-3 pb-3">
+          {isMe && <button onClick={createAlbum} className="flex flex-col items-center gap-1.5 shrink-0 active:scale-95"><div className="rounded-2xl flex items-center justify-center" style={{ width: 62, height: 62, border: `2px dashed ${C.line}`, color: C.muted }}><Plus size={22} /></div><span className="text-[11px]" style={{ color: C.muted }}>{t("album.new")}</span></button>}
+          {albums.map(a => {
+            const count = photos.filter(p => p.album_id === a.id).length;
+            return (
+              <div key={a.id} className="flex flex-col items-center gap-1 shrink-0" style={{ width: 62 }}>
+                <button data-album-drop={a.id} onClick={() => setOpenAlbum(a)} className="rounded-2xl overflow-hidden relative active:scale-95 transition" style={{ width: 62, height: 62, background: C.surfaceMuted, boxShadow: overId === "album:" + a.id ? `0 0 0 2.5px ${C.accent}` : "none" }}>
+                  {a.cover ? <img src={a.cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div className="w-full h-full flex items-center justify-center"><ImageIcon size={20} style={{ color: C.faint }} /></div>}
+                </button>
+                <span className="text-[11px] truncate w-full text-center" style={{ color: C.ink2 }}>{a.name}</span>
+                <span className="text-[10px]" style={{ color: C.faint }}>{count}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {openAlbum && (
+        <div className="flex items-center gap-2.5 px-3 pb-3">
+          <button onClick={() => setOpenAlbum(null)} className="active:scale-90"><ArrowLeft size={20} style={{ color: C.ink }} /></button>
+          <span className="font-bold text-[14.5px] flex-1 truncate" style={{ color: C.ink }}>{openAlbum.name}</span>
+          {isMe && <button onClick={() => renameAlbum(openAlbum)} className="active:scale-90" style={{ color: C.faint }}><Pencil size={16} /></button>}
+          {isMe && <button onClick={() => { deleteAlbum(openAlbum); setOpenAlbum(null); }} className="active:scale-90" style={{ color: C.faint }}><Trash2 size={16} /></button>}
+        </div>
+      )}
+      {isMe && (
+        <div className="px-3 pb-3">
+          <label className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-bold cursor-pointer active:scale-[.98]" style={{ background: C.surfaceMuted, color: C.ink2 }}>
+            <input type="file" accept="image/*" hidden disabled={uploadBusy} onChange={doUpload} />
+            <Upload size={15} /> {uploadBusy ? t("word.loading") : t("album.uploadPhoto")}
+          </label>
+        </div>
+      )}
+      {shownPhotos.length ? (
+        <div className="grid grid-cols-3 gap-1 px-1">
+          {shownPhotos.map(p => (
+            <div key={p.id} data-photo-tile={p.id}
+              onPointerDown={e => onPointerDownTile(e, p)} onPointerMove={onPointerMoveTile} onPointerUp={e => onPointerUpTile(e, p)} onPointerCancel={() => { drag.current = { id: null, active: false, startX: 0, startY: 0 }; setDragState(null); setOverId(null); }}
+              className="relative overflow-hidden" style={{ aspectRatio: "1", borderRadius: 10, touchAction: "none", opacity: dragState && dragState.id === p.id ? 0.3 : 1, boxShadow: overId === "photo:" + p.id ? `0 0 0 2.5px ${C.accent}` : "none" }}>
+              <Pic src={p.image} grad={GRADS[hashIdx(p.id, GRADS.length)]} w={400} round={10} style={{ aspectRatio: "1" }} />
+            </div>
+          ))}
+        </div>
+      ) : <Empty icon={Camera} t={t("album.emptyTitle")} s={openAlbum ? t("album.emptyAlbumSub") : t("album.emptyUnsortedSub")} />}
+      {dragState && (() => { const p = photos.find(ph => ph.id === dragState.id); return p ? (
+        <div className="fixed pointer-events-none z-[90]" style={{ left: dragState.x - 36, top: dragState.y - 36, width: 72, height: 72, borderRadius: 12, overflow: "hidden", boxShadow: "0 10px 26px -6px rgba(0,0,0,.5)", transform: "scale(1.08)" }}>
+          <Pic src={p.image} grad={GRADS[hashIdx(p.id, GRADS.length)]} w={200} round={12} style={{ width: "100%", height: "100%" }} />
+        </div>
+      ) : null; })()}
+      {viewer && (
+        <div className="fixed inset-0 z-[85] flex flex-col" style={{ background: "rgba(6,7,12,.94)" }} onClick={closeViewer}>
+          <div className="flex items-center justify-end gap-4 px-4 py-3" onClick={e => e.stopPropagation()}>
+            {isMe && <button onClick={() => setMovePicker(true)} className="active:scale-90" style={{ color: "#fff" }}><CornerUpLeft size={20} /></button>}
+            {isMe && <button onClick={() => deletePhoto(viewer)} className="active:scale-90" style={{ color: "#fff" }}><Trash2 size={20} /></button>}
+            <button onClick={closeViewer} className="active:scale-90" style={{ color: "#fff" }}><X size={22} /></button>
+          </div>
+          <div className="flex-1 flex items-center justify-center px-4" onClick={e => e.stopPropagation()}>
+            <img src={viewer.image} alt="" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: 8 }} />
+          </div>
+          {movePicker && (
+            <div className="fixed inset-0 z-[95] flex items-end" style={{ background: "rgba(0,0,0,.5)" }} onClick={() => setMovePicker(false)}>
+              <div className="w-full rounded-t-3xl pb-6 pt-2" style={{ background: C.paper, maxWidth: 600, margin: "0 auto" }} onClick={e => e.stopPropagation()}>
+                <div className="mx-auto rounded-full mb-2" style={{ width: 38, height: 4, background: C.line }} />
+                <div className="px-5 pb-2 pt-1 text-[13px] font-bold" style={{ color: C.ink }}>{t("album.moveTo")}</div>
+                <button onClick={() => movePhotoTo(null)} className="w-full text-left px-5 py-3 text-[15px]" style={{ color: C.ink }}>{t("album.unsorted")}</button>
+                {albums.filter(a => !openAlbum || a.id !== openAlbum.id).map(a => <button key={a.id} onClick={() => movePhotoTo(a.id)} className="w-full text-left px-5 py-3 text-[15px]" style={{ color: C.ink }}>{a.name}</button>)}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function Profile({ userId, posts, savedPosts, reels, xp, meProfile, following, followerCounts, onToggleFollow, onMessage, onOpenList, onSettings, flash, onBack, onTag, onLike, onReact, onSave, onComment, onPollVote, onReport, onRemove, onOpenProfile, isAdmin, onUploadAvatar, onUploadCover, onOpenReels, onAddReel, onReelDelete, onReelEdit, onEditPost, onDeletePost, onEditComment, onDeleteComment, blocked, muted, onBlock, onUnblock, onMute, onUnmute, closeFriend, onToggleCloseFriend, collections, onCreateCollection, onAssignCollection, albums, albumPhotos, onCreateAlbum, onRenameAlbum, onDeleteAlbum, onUploadAlbumPhoto, onMoveAlbumPhoto, onReorderAlbumPhotos, onDeleteAlbumPhoto }) {
   const u = USERS[userId]; const isMe = userId === ME; const [tab, setTab] = useState("grid"); const [sel, setSel] = useState(null); const [editReel, setEditReel] = useState(null); const [editCap, setEditCap] = useState("");
   const [menuOpen, setMenuOpen] = useState(false); const [qrOpen, setQrOpen] = useState(false); const [selCol, setSelCol] = useState(null); const [assignFor, setAssignFor] = useState(null); const [avatarView, setAvatarView] = useState(false);
   const [avatarProgress, setAvatarProgress] = useState(null); const [coverProgress, setCoverProgress] = useState(null);
@@ -79,7 +216,7 @@ export function Profile({ userId, posts, savedPosts, reels, xp, meProfile, follo
   const [viewerCount, setViewerCount] = useState(0);
   useEffect(() => { if (userId !== ME) return; let on = true; profilesApi.viewersCount().then(c => { if (on) setViewerCount(c); }).catch(() => {}); return () => { on = false; }; }, [userId]);
   const dispName = isMe && meProfile ? meProfile.name : u.name; const dispBio = isMe && meProfile ? meProfile.bio : u.bio;
-  const mine = posts.filter(p => p.authorId === userId && !p.hidden && !p.groupId); const photos = mine.filter(p => p.image);
+  const mine = posts.filter(p => p.authorId === userId && !p.hidden && !p.groupId);
   const savedMap = {}; (savedPosts || []).concat(posts.filter(p => p.savedByMe)).forEach(p => { if (p.savedByMe && !p.hidden) savedMap[p.id] = p; }); const saved = Object.values(savedMap);
   const savedReels = (reels || []).filter(r => r.savedByMe);
   const myReels = (reels || []).filter(r => r.authorId === userId);
@@ -166,7 +303,7 @@ export function Profile({ userId, posts, savedPosts, reels, xp, meProfile, follo
         })()}
       </div>
       <div className="flex mt-5" style={{ borderBottom: `1px solid ${C.line}` }}>{[["grid", t("profile.tabPhotos")], ["reels", "Reels"], ["posts", t("profile.tabPosts")], ...(isMe ? [["saved", t("profile.tabSaved")]] : [])].map(([k, l]) => <button key={k} onClick={() => setTab(k)} className="flex-1 py-3 text-sm font-bold transition" style={{ color: tab === k ? C.accent : C.faint, borderBottom: tab === k ? `2px solid ${C.accent}` : "2px solid transparent" }}>{l}</button>)}</div>
-      {tab === "grid" && (photos.length ? <div className="grid grid-cols-3 gap-1 px-1 pt-1">{photos.map(p => <button key={p.id} onClick={() => setSel(p.id)} className="relative active:opacity-80 overflow-hidden" style={{ aspectRatio: "1", borderRadius: 10 }}><Pic src={p.image} grad={GRADS[hashIdx(p.id, GRADS.length)]} w={400} round={10} style={{ aspectRatio: "1" }} />{p.likes > 0 && <span className="absolute bottom-1 left-1 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full" style={{ background: "rgba(0,0,0,.55)", color: "#fff" }}><Heart size={10} fill="#fff" /><Mono style={{ fontSize: 10 }}>{p.likes}</Mono></span>}</button>)}</div> : <Empty icon={Camera} t={t("profile.noPostsYet")} s={t("profile.sharedPostsHere")} />)}
+      {tab === "grid" && <AlbumsGrid isMe={isMe} albums={albums || []} photos={albumPhotos || []} onCreateAlbum={onCreateAlbum} onRenameAlbum={onRenameAlbum} onDeleteAlbum={onDeleteAlbum} onUploadPhoto={onUploadAlbumPhoto} onMovePhoto={onMoveAlbumPhoto} onReorderPhotos={onReorderAlbumPhotos} onDeletePhoto={onDeleteAlbumPhoto} flash={flash} />}
       {tab === "posts" && <div className="space-y-4 px-3 pt-4">{mine.length ? mine.map(p => <PostCard key={p.id} post={p} onLike={onLike} onReact={onReact} onSave={onSave} onComment={onComment} onPollVote={onPollVote} onTag={onTag} onReport={onReport} onRemove={onRemove} onOpenProfile={onOpenProfile} isAdmin={isAdmin} onEdit={onEditPost} onDelete={onDeletePost} onEditComment={onEditComment} onDeleteComment={onDeleteComment} />) : <Empty icon={ImageIcon} t={t("profile.noPosts")} s="" />}</div>}
       {tab === "reels" && ((gridReels.length || isMe) ? <div className="pt-1">
         {isMe && gridReels.length > 0 && <div className="grid grid-cols-3 gap-2 px-3 pb-3">

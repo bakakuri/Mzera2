@@ -1766,6 +1766,52 @@ create trigger trg_notify_profile_view after insert on public.profile_views
   for each row execute function public.notify_on_profile_view();
 
 -- ============================================================================
+--  PHOTO ALBUMS — standalone uploaded photos (not posts), organized into
+--  optional folders. album_id = null means the photo sits in the owner's
+--  default "unsorted" bucket. Deleting an album sets its photos' album_id
+--  back to null (set null, not cascade) so photos are never lost, only
+--  unfiled — matches how most photo apps handle folder deletion.
+-- ============================================================================
+create table if not exists public.photo_albums (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references public.profiles(id) on delete cascade,
+  name text not null,
+  cover text,
+  created_at timestamptz not null default now()
+);
+create index if not exists photo_albums_owner_idx on public.photo_albums(owner_id, created_at desc);
+
+alter table public.photo_albums enable row level security;
+drop policy if exists photo_albums_read on public.photo_albums;
+create policy photo_albums_read on public.photo_albums for select using (true);
+drop policy if exists photo_albums_insert on public.photo_albums;
+create policy photo_albums_insert on public.photo_albums for insert with check (auth.uid() = owner_id);
+drop policy if exists photo_albums_update on public.photo_albums;
+create policy photo_albums_update on public.photo_albums for update using (auth.uid() = owner_id);
+drop policy if exists photo_albums_delete on public.photo_albums;
+create policy photo_albums_delete on public.photo_albums for delete using (auth.uid() = owner_id);
+
+create table if not exists public.album_photos (
+  id uuid primary key default gen_random_uuid(),
+  album_id uuid references public.photo_albums(id) on delete set null,
+  owner_id uuid not null references public.profiles(id) on delete cascade,
+  image text not null,
+  position int not null default 0,
+  created_at timestamptz not null default now()
+);
+create index if not exists album_photos_owner_idx on public.album_photos(owner_id, album_id, position);
+
+alter table public.album_photos enable row level security;
+drop policy if exists album_photos_read on public.album_photos;
+create policy album_photos_read on public.album_photos for select using (true);
+drop policy if exists album_photos_insert on public.album_photos;
+create policy album_photos_insert on public.album_photos for insert with check (auth.uid() = owner_id);
+drop policy if exists album_photos_update on public.album_photos;
+create policy album_photos_update on public.album_photos for update using (auth.uid() = owner_id);
+drop policy if exists album_photos_delete on public.album_photos;
+create policy album_photos_delete on public.album_photos for delete using (auth.uid() = owner_id);
+
+-- ============================================================================
 --  REALTIME (live chat / notifications / presence)
 -- ============================================================================
 do $$ begin
