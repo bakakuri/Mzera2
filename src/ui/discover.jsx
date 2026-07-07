@@ -288,7 +288,7 @@ export function MapView({ onMessage, onMenu, onOpenProfile, sharing, myPos, myAc
   );
 }
 
-export function Reels({ reels, onLike, onSave, onView, onOpenProfile, onMenu, flash, onCreate, onComments, sentinelRef, hasMore, loadingMore, pendingOpen, clearPending }) {
+export function Reels({ reels, onLike, onSave, onView, onOpenProfile, onMenu, flash, onCreate, onComments, onReport, sentinelRef, hasMore, loadingMore, pendingOpen, clearPending }) {
   const [muted, setMuted] = useState(true); const [activeIdx, setActiveIdx] = useState(0); const scrollRef = useRef(null);
   const [mode, setMode] = useState("foryou"); const [soundView, setSoundView] = useState(null);
   const onScroll = (e) => { const el = e.currentTarget; const i = Math.round(el.scrollTop / el.clientHeight); if (i !== activeIdx) setActiveIdx(i); };
@@ -305,7 +305,7 @@ export function Reels({ reels, onLike, onSave, onView, onOpenProfile, onMenu, fl
   return (
     <div className="relative" style={{ height: "100dvh", background: "#000" }}>
       <div ref={scrollRef} onScroll={onScroll} className="no-scrollbar overflow-y-scroll h-full" style={{ scrollSnapType: "y mandatory" }}>
-        {displayReels.map((r, i) => <ReelCard key={r.id} r={r} onLike={onLike} onSave={onSave} onView={onView} onOpenProfile={onOpenProfile} flash={flash} onComments={onComments} onSound={setSoundView} muted={muted} onToggleMute={() => setMuted(m => !m)} priority={Math.abs(i - activeIdx) <= 1} />)}
+        {displayReels.map((r, i) => <ReelCard key={r.id} r={r} onLike={onLike} onSave={onSave} onView={onView} onOpenProfile={onOpenProfile} flash={flash} onComments={onComments} onReport={onReport} onSound={setSoundView} muted={muted} onToggleMute={() => setMuted(m => !m)} priority={Math.abs(i - activeIdx) <= 1} />)}
         {hasMore && mode === "recent" && <div ref={sentinelRef} style={{ height: 1 }} />}
         {loadingMore && <div className="absolute inset-x-0 flex justify-center" style={{ bottom: 90, zIndex: 6, pointerEvents: "none" }}><div style={{ width: 24, height: 24, border: "3px solid rgba(255,255,255,.25)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} /></div>}
       </div>

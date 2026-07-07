@@ -669,7 +669,7 @@ grant execute on function public.notify_level_up(int) to authenticated;
 -- ============================================================================
 create table if not exists public.reports (
   id          uuid primary key default gen_random_uuid(),
-  type        text not null,  -- post | user | story
+  type        text not null,  -- post | user | story | reel
   target_id   uuid not null,
   reason      text,
   reporter_id uuid references public.profiles(id) on delete set null,

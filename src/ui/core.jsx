@@ -987,7 +987,7 @@ export const FEELINGS = [["😊", "ბედნიერი"], ["😍", "შე�
 
 export const SOUNDS = ["ორიგინალი ხმა", "Trending Beat 🔥", "Lo-Fi Chill 🎧", "Epic Cinematic 🎬", "Funny Moment 😂", "Sad Violin 🎻", "Hype Trap 🎵", "Acoustic Guitar 🎸", "Party Vibes 🎉", "ქართული ჰიტი 🇬🇪", "Dramatic 🎭", "Slow Motion 🌙"];
 
-export function ReelCard({ r, onLike, onSave, onOpenProfile, flash, onComments, muted, onToggleMute, onView, onSound, priority = true }) {
+export function ReelCard({ r, onLike, onSave, onOpenProfile, flash, onComments, muted, onToggleMute, onView, onSound, onReport, priority = true }) {
   const u = USERS[r.authorId]; const [pop, setPop] = useState(false); const lastTap = useRef(0);
   const videoRef = useRef(null); const tapTimer = useRef(null);
   const rootRef = useRef(null); const viewed = useRef(false); const viewTimer = useRef(null);
@@ -1032,6 +1032,7 @@ export function ReelCard({ r, onLike, onSave, onOpenProfile, flash, onComments, 
         <button onClick={() => onComments && onComments(r)} className="flex flex-col items-center gap-1 active:scale-90" style={{ color: "#fff" }}><MessageCircle size={32} style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,.4))" }} /><Mono className="text-xs font-bold" style={{ textShadow: "0 1px 3px rgba(0,0,0,.6)" }}>{r.comments}</Mono></button>
         <button onClick={() => onSave(r.id)} className="flex flex-col items-center gap-1 active:scale-90" style={{ color: r.savedByMe ? C.star : "#fff" }}><Bookmark size={31} fill={r.savedByMe ? C.star : "none"} style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,.4))" }} /></button>
         <button onClick={() => { const url = typeof location !== "undefined" ? location.origin : "https://mzera2.vercel.app"; if (navigator.share) { navigator.share({ title: "mzera", text: r.caption || t("reel.shareText"), url }).catch(() => {}); } else if (navigator.clipboard) { navigator.clipboard.writeText(url).then(() => flash && flash(t("link.copied"))).catch(() => flash && flash(t("link.prefix") + url)); } else { flash && flash(t("link.prefix") + url); } }} className="flex flex-col items-center gap-1 active:scale-90" style={{ color: "#fff" }}><Send size={31} style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,.4))" }} /><Mono className="text-xs font-bold" style={{ textShadow: "0 1px 3px rgba(0,0,0,.6)" }}>{r.shares}</Mono></button>
+        {onReport && r.authorId !== ME && <button onClick={() => { if (window.confirm(t("reel.reportConfirm"))) onReport("reel", r.id); }} aria-label={t("post.report")} className="flex flex-col items-center gap-1 active:scale-90" style={{ color: "#fff" }}><Flag size={28} style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,.4))" }} /></button>}
       </div>
       <div className="absolute left-3 right-16 text-white" style={{ bottom: 100 }}>
         <button onClick={() => onOpenProfile(u.id)} className="flex items-center gap-1.5 mb-2"><span className="font-bold text-[15px]" style={{ fontFamily: DISPLAY }}>@{u.handle}</span>{u.verified && <ShieldCheck size={14} />}</button>
