@@ -39,36 +39,41 @@ export function Drawer({ open, onClose, nav, onNav, onCreate, flash, tab, mode, 
 const NAVSTRIP_HUES = [265, 205, 172, 28, 330, 150, 10, 235, 45, 190];
 
 export function NavStrip({ nav, onNav, onCreate, flash, tab, xp, onSettings, onSignOut }) {
-  const me = USERS[ME]; const { lvl } = levelInfo(xp);
+  const { lvl } = levelInfo(xp);
   const extras = [{ label: t("drawer.saved"), icon: Bookmark, act: () => onNav("profile") }, { label: t("drawer.settings"), icon: Settings, act: () => onSettings() }, { label: t("drawer.help"), icon: HelpCircle, act: () => flash(t("drawer.helpSoon")) }, { label: t("drawer.signout"), icon: LogOut, act: () => onSignOut(), danger: true }];
   const tiles = [...nav.map(n => ({ key: n.key, label: n.label, icon: n.icon, badge: n.badge, act: () => n.key === "create" ? onCreate() : onNav(n.key) })), ...extras.map(e => ({ key: e.label, label: e.label, icon: e.icon, danger: e.danger, act: e.act }))];
+  // fades the tile row into the card's own background at both edges, instead
+  // of a hard cut, so the strip visibly hints that there's more to scroll to.
+  const edgeFade = { WebkitMaskImage: "linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%)", maskImage: "linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%)" };
 
   return (
-    <div className="flex overflow-x-auto no-scrollbar gap-3 px-3 py-2" style={{ scrollSnapType: "x proximity" }}>
-      <button onClick={() => onNav("profile")} className="relative flex flex-col items-center gap-1 shrink-0 active:scale-95" style={{ width: 56, scrollSnapAlign: "start" }}>
-        <div className="rounded-full p-[2px]" style={{ width: 44, height: 44, backgroundImage: GBRAND }}>
-          <div className="rounded-full" style={{ width: "100%", height: "100%", padding: 2, background: C.surface }}><Avatar id={ME} size={36} /></div>
-        </div>
-        <span className="text-[10.5px] leading-tight text-center font-bold whitespace-nowrap" style={{ color: tab === "profile" ? C.accent : C.ink2 }}>{t("nav.you")} · Lv{lvl}</span>
-      </button>
-      {tiles.map((tl, i) => {
-        const hue = NAVSTRIP_HUES[i % NAVSTRIP_HUES.length];
-        const isTab = tab === tl.key;
-        return (
-          <button
-            key={tl.key}
-            onClick={tl.act}
-            className="relative flex flex-col items-center gap-1 shrink-0 active:scale-95"
-            style={{ width: 56, scrollSnapAlign: "start" }}
-          >
-            <div className="relative rounded-2xl flex items-center justify-center" style={{ width: 44, height: 44, background: tl.danger ? C.like + "1f" : `hsla(${hue},75%,55%,${isTab ? 0.24 : 0.13})`, boxShadow: isTab ? `0 0 0 2px hsla(${hue},75%,55%,.55)` : "none" }}>
-              <tl.icon size={19} style={{ color: tl.danger ? C.like : `hsl(${hue},70%,42%)` }} />
-              {tl.badge > 0 && <span className="absolute -top-1 -right-1 rounded-full text-white flex items-center justify-center" style={{ minWidth: 15, height: 15, padding: "0 3px", background: C.like, fontFamily: MONO, fontSize: 9, fontWeight: 700 }}>{tl.badge}</span>}
-            </div>
-            <span className="text-[10.5px] leading-tight text-center font-bold whitespace-nowrap" style={{ color: tl.danger ? C.like : isTab ? C.accent : C.ink2 }}>{tl.label}</span>
-          </button>
-        );
-      })}
+    <div className="mx-3 mt-2 overflow-hidden" style={{ ...card(), borderRadius: 22 }}>
+      <div className="flex overflow-x-auto no-scrollbar gap-3 px-3.5 py-2.5" style={{ scrollSnapType: "x proximity", ...edgeFade }}>
+        <button onClick={() => onNav("profile")} className="relative flex flex-col items-center gap-1 shrink-0 active:scale-95" style={{ width: 56, scrollSnapAlign: "start" }}>
+          <div className="rounded-full p-[2px]" style={{ width: 44, height: 44, backgroundImage: GBRAND }}>
+            <div className="rounded-full" style={{ width: "100%", height: "100%", padding: 2, background: C.surface }}><Avatar id={ME} size={36} /></div>
+          </div>
+          <span className="text-[10.5px] leading-tight text-center font-bold whitespace-nowrap" style={{ color: tab === "profile" ? C.accent : C.ink2 }}>{t("nav.you")} · Lv{lvl}</span>
+        </button>
+        {tiles.map((tl, i) => {
+          const hue = NAVSTRIP_HUES[i % NAVSTRIP_HUES.length];
+          const isTab = tab === tl.key;
+          return (
+            <button
+              key={tl.key}
+              onClick={tl.act}
+              className="relative flex flex-col items-center gap-1 shrink-0 active:scale-95"
+              style={{ width: 56, scrollSnapAlign: "start" }}
+            >
+              <div className="relative rounded-2xl flex items-center justify-center" style={{ width: 44, height: 44, background: tl.danger ? C.like + "1f" : `hsla(${hue},75%,55%,${isTab ? 0.24 : 0.13})`, boxShadow: isTab ? `0 0 0 2px hsla(${hue},75%,55%,.55)` : "none" }}>
+                <tl.icon size={19} style={{ color: tl.danger ? C.like : `hsl(${hue},70%,42%)` }} />
+                {tl.badge > 0 && <span className="absolute -top-1 -right-1 rounded-full text-white flex items-center justify-center" style={{ minWidth: 15, height: 15, padding: "0 3px", background: C.like, fontFamily: MONO, fontSize: 9, fontWeight: 700 }}>{tl.badge}</span>}
+              </div>
+              <span className="text-[10.5px] leading-tight text-center font-bold whitespace-nowrap" style={{ color: tl.danger ? C.like : isTab ? C.accent : C.ink2 }}>{tl.label}</span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
