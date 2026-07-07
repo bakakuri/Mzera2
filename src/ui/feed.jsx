@@ -316,7 +316,7 @@ export function PostCard({ post, onLike, onReact, onSave, onComment, onPollVote,
 
 /* ─────────────────────────  STORIES  ───────────────────────── */
 
-export function StoryViewer({ story, onClose, onDone, flash }) {
+export function StoryViewer({ story, onClose, onDone, flash, onReport }) {
   const [idx, setIdx] = useState(0); const [prog, setProg] = useState(0); const items = story.items;
   const cur = items[idx]; const sid = cur && cur.id;
   const [paused, setPaused] = useState(false); const pausedRef = useRef(false); useEffect(() => { pausedRef.current = paused; }, [paused]);
@@ -336,7 +336,7 @@ export function StoryViewer({ story, onClose, onDone, flash }) {
         {items[idx].text && <div className="absolute inset-x-5" style={{ top: "42%" }}><div className="text-center text-white font-bold" style={{ fontSize: 27, fontFamily: DISPLAY, textShadow: "0 2px 10px rgba(0,0,0,.7)", lineHeight: 1.2 }}>{items[idx].text}</div></div>}
         <div className="absolute top-0 inset-x-0 p-3" style={{ background: "linear-gradient(180deg, rgba(0,0,0,.45), transparent)" }}>
           <div className="flex gap-1 mb-3">{items.map((_, i) => <div key={i} className="flex-1 h-[3px] rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,.35)" }}><div className="h-full rounded-full" style={{ background: "#fff", width: i < idx ? "100%" : i === idx ? prog + "%" : "0%" }} /></div>)}</div>
-          <div className="flex items-center gap-2.5"><Avatar id={u.id} size={34} /><span className="text-white font-bold text-sm flex-1">{u.name.split(" ")[0]} <Mono className="opacity-70 font-normal">· 2{t("time.hour")}</Mono></span>{cur && cur.closeFriends && <span className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold shrink-0" style={{ background: "#1f8f4e", color: "#fff" }}><Star size={11} /> {t("word.closeFriend")}</span>}<button onClick={onClose} className="text-white active:scale-90"><X size={26} /></button></div>
+          <div className="flex items-center gap-2.5"><Avatar id={u.id} size={34} /><span className="text-white font-bold text-sm flex-1">{u.name.split(" ")[0]} <Mono className="opacity-70 font-normal">· 2{t("time.hour")}</Mono></span>{cur && cur.closeFriends && <span className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold shrink-0" style={{ background: "#1f8f4e", color: "#fff" }}><Star size={11} /> {t("word.closeFriend")}</span>}{onReport && story.authorId !== ME && <button onClick={() => { setPaused(true); if (sid && window.confirm(t("story.reportConfirm"))) onReport("story", sid); setPaused(false); }} aria-label={t("post.report")} className="text-white active:scale-90"><Flag size={20} /></button>}<button onClick={onClose} aria-label={t("a11y.close")} className="text-white active:scale-90"><X size={26} /></button></div>
         </div>
         <button className="absolute left-0 top-0 w-1/3 h-full" onClick={() => setIdx(i => Math.max(0, i - 1))} />
         <button className="absolute right-0 top-0 w-1/3 h-full" onClick={() => idx < items.length - 1 ? setIdx(i => i + 1) : (onDone(story.id), onClose())} />

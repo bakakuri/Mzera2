@@ -381,6 +381,7 @@ export const DICT = {
   "post.hide": { ka: "დამალვა", en: "Hide", ru: "Скрыть" },
   "post.seeLess": { ka: "ნაკლები ვაჩვენე", en: "See less", ru: "Показывать реже" },
   "post.report": { ka: "დაარეპორტე", en: "Report", ru: "Пожаловаться" },
+  "story.reportConfirm": { ka: "დაარეპორტო ეს story?", en: "Report this story?", ru: "Пожаловаться на эту историю?" },
   "post.adminDelete": { ka: "წაშლა (admin)", en: "Delete (admin)", ru: "Удалить (админ)" },
   "post.deletedPlaceholder": { ka: "🚫 ეს პოსტი წაშლილია", en: "🚫 This post was deleted", ru: "🚫 Этот пост удалён" },
   "poll.vote": { ka: "ხმა", en: "vote", ru: "голос" },

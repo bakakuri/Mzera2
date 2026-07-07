@@ -534,7 +534,7 @@ export default function App() {
       {games.chessOpen && <Suspense fallback={null}><ChessGame onExit={() => games.setChessOpen(false)} /></Suspense>}
       <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)} nav={NAV} onNav={goTab} onCreate={() => { setDrawerOpen(false); setCreateOpen(true); }} flash={(t) => { setDrawerOpen(false); flash(t); }} tab={tab} mode={mode} setMode={setMode} xp={xp} followers={followerCounts[ME] != null ? followerCounts[ME] : (USERS[ME] ? USERS[ME].followers : 0)} following={following.length} onSettings={() => { setDrawerOpen(false); setSettingsOpen(true); }} onSignOut={() => { setDrawerOpen(false); authApi.signOut().catch(dbErr("გასვლა")); }} />
       {createOpen && <CreateSheet onClose={() => setCreateOpen(false)} onPost={onPost} live={live} taggable={following} myGroups={groups.groups.filter(g => g.joined)} onGroupPost={groups.onGroupPost} onUpload={(f, onProgress) => uploadImage(f, "posts", onProgress)} onUploadVideo={(f, onProgress) => storageApi.upload(f, "posts", onProgress)} />}
-      {stories.story && <StoryViewer story={stories.story} onClose={() => stories.setStoryId(null)} onDone={stories.markSeen} flash={flash} />}
+      {stories.story && <StoryViewer story={stories.story} onClose={() => stories.setStoryId(null)} onDone={stories.markSeen} flash={flash} onReport={admin.onReport} />}
       {listView && (listView.type === "viewers"
         ? <ProfileViewers onOpenProfile={openProfile} onClose={() => setListView(null)} />
         : <FollowList view={listView} following={following} onToggleFollow={toggleFollow} onOpenProfile={openProfile} onClose={() => setListView(null)} />)}
