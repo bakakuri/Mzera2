@@ -315,6 +315,17 @@ function CheckList({ results }) {
 
 export function Admin({ reports, posts, allUsers, userCount, postCount, online, stats, dailyTrends, onResolve, onRemovePost, onSetVerified, onSetAdmin, onOpenProfile, onBanUser, onGrantXp, onSetXp, onDeleteUser, onBroadcast, pendingPublic, onReviewPublic, listings, threads, reels, onDeleteListing, onDeleteThread, onDeleteReel, onEditListing, onEditThread, onSetThreadPinned, onSetThreadLocked, groups, events, films, songs, onEditGroup, onDeleteGroup, onEditEvent, onDeleteEvent, onEditFilm, onDeleteFilm, onEditSong, onDeleteSong, langEnabled, langProgress, onToggleLanguages }) {
   const [seg, setSeg] = useState("reports"); const [q, setQ] = useState(""); const [cseg, setCseg] = useState("listings"); const [confirm, setConfirm] = useState(null); const [bcast, setBcast] = useState(""); const [delUser, setDelUser] = useState(null);
+  const [bulkMode, setBulkMode] = useState(false); const [selected, setSelected] = useState(() => new Set());
+  const toggleCseg = (k) => { setCseg(k); setSelected(new Set()); };
+  const toggleSelected = (id) => setSelected(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  const bulkDeleteFns = { listings: onDeleteListing, threads: onDeleteThread, reels: onDeleteReel, groups: onDeleteGroup, events: onDeleteEvent, films: onDeleteFilm, songs: onDeleteSong };
+  const onBulkDelete = () => {
+    if (selected.size === 0) return;
+    if (!window.confirm(`წავშალო ${selected.size} ჩანაწერი?`)) return;
+    const fn = bulkDeleteFns[cseg];
+    selected.forEach(id => fn(id));
+    setSelected(new Set());
+  };
   const [checks, setChecks] = useState(null);
   const [bChecks, setBChecks] = useState(null);
   const [bChecking, setBChecking] = useState(false);
@@ -481,10 +492,14 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
         </div>
       ))}</div>}
 
-      {seg === "content" && <div className="px-3">
-        <div className="flex gap-1 p-1 rounded-2xl mb-3 overflow-x-auto no-scrollbar" style={{ background: C.surfaceMuted }}>{[["listings", "განცხადებები"], ["threads", "თემები"], ["reels", "Reels"], ["groups", "ჯგუფები"], ["events", "ივენთები"], ["films", "ფილმები"], ["songs", "მუსიკა"]].map(([k, l]) => <button key={k} onClick={() => setCseg(k)} className="py-2 px-3 rounded-xl text-[12px] font-bold transition whitespace-nowrap" style={cseg === k ? { background: C.surface, color: C.accent, boxShadow: SH.card } : { color: C.muted }}>{l}</button>)}</div>
+      {seg === "content" && <div className="px-3 pb-16">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="flex-1 flex gap-1 p-1 rounded-2xl overflow-x-auto no-scrollbar" style={{ background: C.surfaceMuted }}>{[["listings", "განცხადებები"], ["threads", "თემები"], ["reels", "Reels"], ["groups", "ჯგუფები"], ["events", "ივენთები"], ["films", "ფილმები"], ["songs", "მუსიკა"]].map(([k, l]) => <button key={k} onClick={() => toggleCseg(k)} className="py-2 px-3 rounded-xl text-[12px] font-bold transition whitespace-nowrap" style={cseg === k ? { background: C.surface, color: C.accent, boxShadow: SH.card } : { color: C.muted }}>{l}</button>)}</div>
+          <button onClick={() => { setBulkMode(v => !v); setSelected(new Set()); }} className="px-3 py-2 rounded-xl text-[12px] font-bold shrink-0" style={bulkMode ? { backgroundImage: GBRAND, color: "#fff" } : { background: C.surfaceMuted, color: C.muted }}>მონიშვნა</button>
+        </div>
         {cseg === "listings" && <div className="space-y-2">{(() => { const items = (listings || []).filter(l => !ql || (l.title || "").toLowerCase().includes(ql)); return items.length === 0 ? <Empty icon={ShoppingBag} t="ცარიელია" s="" /> : items.map(l => (
           <div key={l.id} className="p-3 flex items-center gap-3" style={card()}>
+            {bulkMode && <button onClick={() => toggleSelected(l.id)} className="rounded-full flex items-center justify-center shrink-0" style={{ width: 22, height: 22, border: `2px solid ${selected.has(l.id) ? C.accent : C.line}`, background: selected.has(l.id) ? C.accent : "transparent" }}>{selected.has(l.id) && <Check size={14} color="#fff" />}</button>}
             <Pic src={l.image} grad={GRADS[hashIdx(l.id, GRADS.length)]} round={10} style={{ width: 46, height: 46 }} />
             <div className="flex-1 min-w-0"><div className="font-bold text-[13px] truncate" style={{ color: C.ink }}>{l.title}</div><div className="text-[12px]" style={{ color: C.accent, fontWeight: 700 }}>{(l.price || 0).toLocaleString()}₾</div><Mono style={{ fontSize: 11, color: C.faint }} className="truncate block">{USERS[l.sellerId] ? USERS[l.sellerId].name.split(" ")[0] : "—"}</Mono></div>
             <button onClick={() => { const v = window.prompt("ახალი სახელი:", l.title); if (v && v.trim() && v.trim() !== l.title) onEditListing(l.id, { title: v.trim() }); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.accentSoft, color: C.accentText }}><Pencil size={16} /></button>
@@ -493,6 +508,7 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
         )); })()}</div>}
         {cseg === "threads" && <div className="space-y-2">{(() => { const items = (threads || []).filter(t => !ql || (t.title || "").toLowerCase().includes(ql)); return items.length === 0 ? <Empty icon={MessageSquare} t="ცარიელია" s="" /> : items.map(t => (
           <div key={t.id} className="p-3 flex items-center gap-3" style={card()}>
+            {bulkMode && <button onClick={() => toggleSelected(t.id)} className="rounded-full flex items-center justify-center shrink-0" style={{ width: 22, height: 22, border: `2px solid ${selected.has(t.id) ? C.accent : C.line}`, background: selected.has(t.id) ? C.accent : "transparent" }}>{selected.has(t.id) && <Check size={14} color="#fff" />}</button>}
             <div className="rounded-xl flex items-center justify-center shrink-0" style={{ width: 40, height: 40, background: catColor(t.cat) + "1f" }}><MessageSquare size={18} style={{ color: catColor(t.cat) }} /></div>
             <div className="flex-1 min-w-0"><div className="font-bold text-[13px] truncate" style={{ color: C.ink }}>{t.title}</div><div className="text-[12px] line-clamp-1" style={{ color: C.muted }}>{t.body}</div><Mono style={{ fontSize: 11, color: C.faint }} className="truncate block">{USERS[t.authorId] ? USERS[t.authorId].name.split(" ")[0] : "—"}</Mono></div>
             <button onClick={() => onSetThreadPinned(t.id, !t.pinned)} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={t.pinned ? { width: 38, height: 38, backgroundImage: GBRAND, color: "#fff" } : { width: 38, height: 38, background: C.surfaceMuted, color: C.ink2 }}><Pin size={16} /></button>
@@ -503,6 +519,7 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
         )); })()}</div>}
         {cseg === "reels" && <div className="space-y-2">{(() => { const items = (reels || []).filter(r => !ql || (r.caption || "").toLowerCase().includes(ql)); return items.length === 0 ? <Empty icon={Film} t="ცარიელია" s="" /> : items.map(r => (
           <div key={r.id} className="p-3 flex items-center gap-3" style={card()}>
+            {bulkMode && <button onClick={() => toggleSelected(r.id)} className="rounded-full flex items-center justify-center shrink-0" style={{ width: 22, height: 22, border: `2px solid ${selected.has(r.id) ? C.accent : C.line}`, background: selected.has(r.id) ? C.accent : "transparent" }}>{selected.has(r.id) && <Check size={14} color="#fff" />}</button>}
             <Pic src={r.image} grad={GRADS[hashIdx(r.id, GRADS.length)]} round={10} style={{ width: 46, height: 46 }} />
             <div className="flex-1 min-w-0"><div className="text-[13px] line-clamp-1" style={{ color: C.ink }}>{r.caption || "(უსათაურო)"}</div><Mono style={{ fontSize: 11, color: C.faint }} className="truncate block">{USERS[r.authorId] ? USERS[r.authorId].name.split(" ")[0] : "—"} · ❤ {r.likes || 0}</Mono></div>
             <button onClick={() => { if (window.confirm("წავშალო ეს Reel?")) onDeleteReel(r.id); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.likeSoft, color: C.like }}><Trash2 size={16} /></button>
@@ -510,6 +527,7 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
         )); })()}</div>}
         {cseg === "groups" && <div className="space-y-2">{(() => { const items = (groups || []).filter(g => !ql || (g.name || "").toLowerCase().includes(ql)); return items.length === 0 ? <Empty icon={Users} t="ცარიელია" s="" /> : items.map(g => (
           <div key={g.id} className="p-3 flex items-center gap-3" style={card()}>
+            {bulkMode && <button onClick={() => toggleSelected(g.id)} className="rounded-full flex items-center justify-center shrink-0" style={{ width: 22, height: 22, border: `2px solid ${selected.has(g.id) ? C.accent : C.line}`, background: selected.has(g.id) ? C.accent : "transparent" }}>{selected.has(g.id) && <Check size={14} color="#fff" />}</button>}
             <Pic src={g.cover} grad={GRADS[hashIdx(g.id, GRADS.length)]} round={10} style={{ width: 46, height: 46 }} />
             <div className="flex-1 min-w-0"><div className="font-bold text-[13px] truncate" style={{ color: C.ink }}>{g.name}</div><Mono style={{ fontSize: 11, color: C.faint }} className="truncate block">{g.members} წევრი · {g.cat || "—"}</Mono></div>
             <button onClick={() => { const v = window.prompt("ახალი სახელი:", g.name); if (v && v.trim() && v.trim() !== g.name) onEditGroup(g.id, { name: v.trim() }); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.accentSoft, color: C.accentText }}><Pencil size={16} /></button>
@@ -518,6 +536,7 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
         )); })()}</div>}
         {cseg === "events" && <div className="space-y-2">{(() => { const items = (events || []).filter(e => !ql || (e.title || "").toLowerCase().includes(ql)); return items.length === 0 ? <Empty icon={MapPin} t="ცარიელია" s="" /> : items.map(e => (
           <div key={e.id} className="p-3 flex items-center gap-3" style={card()}>
+            {bulkMode && <button onClick={() => toggleSelected(e.id)} className="rounded-full flex items-center justify-center shrink-0" style={{ width: 22, height: 22, border: `2px solid ${selected.has(e.id) ? C.accent : C.line}`, background: selected.has(e.id) ? C.accent : "transparent" }}>{selected.has(e.id) && <Check size={14} color="#fff" />}</button>}
             <Pic src={e.cover} grad={GRADS[hashIdx(e.id, GRADS.length)]} round={10} style={{ width: 46, height: 46 }} />
             <div className="flex-1 min-w-0"><div className="font-bold text-[13px] truncate" style={{ color: C.ink }}>{e.title}</div><Mono style={{ fontSize: 11, color: C.faint }} className="truncate block">{e.going} მონაწილე · {e.location || "—"}</Mono></div>
             <button onClick={() => { const v = window.prompt("ახალი სახელი:", e.title); if (v && v.trim() && v.trim() !== e.title) onEditEvent(e.id, { title: v.trim() }); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.accentSoft, color: C.accentText }}><Pencil size={16} /></button>
@@ -526,6 +545,7 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
         )); })()}</div>}
         {cseg === "films" && <div className="space-y-2">{(() => { const items = (films || []).filter(f => !ql || (f.title || "").toLowerCase().includes(ql)); return items.length === 0 ? <Empty icon={Clapperboard} t="ცარიელია" s="" /> : items.map(f => (
           <div key={f.id} className="p-3 flex items-center gap-3" style={card()}>
+            {bulkMode && <button onClick={() => toggleSelected(f.id)} className="rounded-full flex items-center justify-center shrink-0" style={{ width: 22, height: 22, border: `2px solid ${selected.has(f.id) ? C.accent : C.line}`, background: selected.has(f.id) ? C.accent : "transparent" }}>{selected.has(f.id) && <Check size={14} color="#fff" />}</button>}
             <Pic src={f.poster} grad={GRADS[hashIdx(f.id, GRADS.length)]} round={10} style={{ width: 46, height: 46 }} />
             <div className="flex-1 min-w-0"><div className="font-bold text-[13px] truncate" style={{ color: C.ink }}>{f.title}</div><Mono style={{ fontSize: 11, color: C.faint }} className="truncate block">{[f.year, f.genre].filter(Boolean).join(" · ")}</Mono></div>
             <button onClick={() => { const v = window.prompt("ახალი სახელი:", f.title); if (v && v.trim() && v.trim() !== f.title) onEditFilm(f.id, { title: v.trim() }); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.accentSoft, color: C.accentText }}><Pencil size={16} /></button>
@@ -534,12 +554,18 @@ export function Admin({ reports, posts, allUsers, userCount, postCount, online, 
         )); })()}</div>}
         {cseg === "songs" && <div className="space-y-2">{(() => { const items = (songs || []).filter(s => !ql || (s.title || "").toLowerCase().includes(ql)); return items.length === 0 ? <Empty icon={Music} t="ცარიელია" s="" /> : items.map(s => (
           <div key={s.id} className="p-3 flex items-center gap-3" style={card()}>
+            {bulkMode && <button onClick={() => toggleSelected(s.id)} className="rounded-full flex items-center justify-center shrink-0" style={{ width: 22, height: 22, border: `2px solid ${selected.has(s.id) ? C.accent : C.line}`, background: selected.has(s.id) ? C.accent : "transparent" }}>{selected.has(s.id) && <Check size={14} color="#fff" />}</button>}
             <Pic src={s.cover} grad={GRADS[hashIdx(s.id, GRADS.length)]} round={10} style={{ width: 46, height: 46 }} />
             <div className="flex-1 min-w-0"><div className="font-bold text-[13px] truncate" style={{ color: C.ink }}>{s.title}</div><Mono style={{ fontSize: 11, color: C.faint }} className="truncate block">{s.artist || "უცნობი"} · {s.plays || 0} მოსმენა</Mono></div>
             <button onClick={() => { const v = window.prompt("ახალი სახელი:", s.title); if (v && v.trim() && v.trim() !== s.title) onEditSong(s.id, { title: v.trim() }); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.accentSoft, color: C.accentText }}><Pencil size={16} /></button>
             <button onClick={() => { if (window.confirm("წავშალო ეს სიმღერა?")) onDeleteSong(s.id); }} className="rounded-full flex items-center justify-center active:scale-90 shrink-0" style={{ width: 38, height: 38, background: C.likeSoft, color: C.like }}><Trash2 size={16} /></button>
           </div>
         )); })()}</div>}
+        {bulkMode && selected.size > 0 && <div className="fixed bottom-0 inset-x-0 z-30 md:static px-4 py-3 flex items-center gap-3" style={{ background: C.surface, borderTop: `1px solid ${C.line}`, paddingBottom: "calc(var(--mz-nav, 64px) + 0.6rem)" }}>
+          <span className="text-[13px] font-bold flex-1" style={{ color: C.ink }}>მონიშნულია {selected.size}</span>
+          <button onClick={() => setSelected(new Set())} className="px-3.5 py-2 rounded-xl text-[13px] font-bold" style={{ background: C.surfaceMuted, color: C.ink2 }}>გაუქმება</button>
+          <button onClick={onBulkDelete} className="px-3.5 py-2 rounded-xl text-[13px] font-bold text-white flex items-center gap-1.5" style={{ background: C.like }}><Trash2 size={14} /> წაშლა</button>
+        </div>}
       </div>}
       {delUser && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-6" style={{ background: "rgba(0,0,0,.6)" }} onClick={() => setDelUser(null)}>
