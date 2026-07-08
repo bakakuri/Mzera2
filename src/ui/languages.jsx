@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-  ArrowLeft, BookOpen, GraduationCap, Shuffle, Volume2, CheckCircle2, XCircle, Trophy, Languages as LanguagesIcon, ChevronRight,
+  ArrowLeft, BookOpen, GraduationCap, Shuffle, Volume2, Headphones, CheckCircle2, XCircle, Trophy, Languages as LanguagesIcon, ChevronRight,
   C, SH, GBRAND, DISPLAY, MONO, Mono, Title, Empty, Avatar, Name, ME, t,
 } from "./core";
 import { WDB, wordLevels } from "../data/langWords";
@@ -80,6 +80,7 @@ const EX_KINDS = [
   ["fill", "lang.exerciseFill", XCircle],
   ["scramble", "lang.exerciseScramble", Shuffle],
   ["listen", "lang.exerciseListen", Volume2],
+  ["listenSentence", "lang.exerciseListenSentence", Headphones],
 ];
 
 function ExercisePicker({ onPick }) {
@@ -105,9 +106,10 @@ function ExerciseRunner({ kind, lang, level, genExercise, onAnswer, onExit }) {
     setResult(ok); setTotal((n) => n + 1); if (ok) setScore((s) => s + 1);
     onAnswer(lang, q.word, ok, kind);
   };
+  const correctOption = q && (kind === "listenSentence" ? q.word.ext : q.word.t);
   const pickOption = (opt) => {
     if (!q || result !== null) return;
-    const ok = opt === q.word.t;
+    const ok = opt === correctOption;
     setResult(ok); setTotal((n) => n + 1); if (ok) setScore((s) => s + 1);
     onAnswer(lang, q.word, ok, kind);
   };
@@ -124,11 +126,13 @@ function ExerciseRunner({ kind, lang, level, genExercise, onAnswer, onExit }) {
         {kind === "fill" && (<><div className="text-[14px]" style={{ color: C.muted }}>{q.word.t}</div><div className="text-[26px] font-extrabold mt-1.5" style={{ color: C.ink, fontFamily: MONO, letterSpacing: 2 }}>{q.masked}</div></>)}
         {kind === "scramble" && (<><div className="text-[14px]" style={{ color: C.muted }}>{q.word.t}</div><div className="text-[26px] font-extrabold mt-1.5" style={{ color: C.ink, fontFamily: MONO, letterSpacing: 3 }}>{q.scrambled}</div></>)}
         {kind === "listen" && (<><button onClick={() => speakWord(q.word.w, lang)} className="mx-auto flex items-center gap-2 px-5 py-3 rounded-full font-bold text-white active:scale-95" style={{ backgroundImage: GBRAND, boxShadow: SH.glow }}><Volume2 size={18} /> {t("lang.playAudio")}</button></>)}
+        {kind === "listenSentence" && (<><button onClick={() => speakWord(q.word.ex, lang)} className="mx-auto flex items-center gap-2 px-5 py-3 rounded-full font-bold text-white active:scale-95" style={{ backgroundImage: GBRAND, boxShadow: SH.glow }}><Headphones size={18} /> {t("lang.playAudio")}</button></>)}
       </div>
-      {kind === "multi" ? (
+      {(kind === "multi" || kind === "listenSentence") ? (
         <div className="space-y-2">
+          {kind === "listenSentence" && <div className="mb-1 text-[13px] text-center" style={{ color: C.muted }}>{t("lang.listenSentencePrompt")}</div>}
           {q.options.map((opt, i) => {
-            const isCorrect = opt === q.word.t;
+            const isCorrect = opt === correctOption;
             const isPicked = result !== null && input === opt;
             return <button key={i} onClick={() => { setInput(opt); pickOption(opt); }} disabled={result !== null}
               className="w-full text-left px-4 py-3.5 rounded-2xl text-[15px] font-semibold transition"
@@ -146,7 +150,8 @@ function ExerciseRunner({ kind, lang, level, genExercise, onAnswer, onExit }) {
       )}
       {result !== null && (
         <div className="mt-4 text-center">
-          <div className="text-[15px] font-bold" style={{ color: result ? C.online : C.like }}>{result ? t("lang.correctAnswer") : t("lang.incorrectAnswer") + " — " + q.word.w}</div>
+          {kind === "listenSentence" && <div className="text-[13.5px] italic mb-2" style={{ color: C.ink2 }}>"{q.word.ex}"</div>}
+          <div className="text-[15px] font-bold" style={{ color: result ? C.online : C.like }}>{result ? t("lang.correctAnswer") : t("lang.incorrectAnswer") + " — " + (kind === "listenSentence" ? q.word.ext : q.word.w)}</div>
           <button onClick={next} className="mt-3 px-6 py-2.5 rounded-full font-bold text-white active:scale-95" style={{ backgroundImage: GBRAND }}>{t("lang.nextQuestion")}</button>
         </div>
       )}

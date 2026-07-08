@@ -3,7 +3,7 @@ import { languagesApi, hasSupabase, profilesApi, mergeProfile } from "../ui/core
 
 export const LEARN_LANGS = ["english", "german", "spanish", "french"];
 const LANG_CODE = { english: "en-US", german: "de-DE", spanish: "es-ES", french: "fr-FR" };
-const XP_REWARD = { flashcard: 10, multi: 15, fill: 20, scramble: 20, listen: 25 };
+const XP_REWARD = { flashcard: 10, multi: 15, fill: 20, scramble: 20, listen: 25, listenSentence: 30 };
 
 const lsGet = (k) => { try { return typeof localStorage !== "undefined" ? localStorage.getItem(k) : null; } catch (e) { return null; } };
 const lsSet = (k, v) => { try { if (typeof localStorage !== "undefined") localStorage.setItem(k, v); } catch (e) {} };
@@ -98,7 +98,7 @@ export function useLanguages({ session, gainXp }) {
 
   const genExercise = (kind, lang, lvl) => {
     const ws = wordsForLevel(lang, lvl);
-    if (ws.length < 4 && kind === "multi") return null;
+    if (ws.length < 4 && (kind === "multi" || kind === "listenSentence")) return null;
     const word = nextFlashcard(lang, lvl) || rnd(ws);
     if (!word) return null;
     if (kind === "multi") {
@@ -115,6 +115,12 @@ export function useLanguages({ session, gainXp }) {
     }
     if (kind === "scramble") return { kind, word, scrambled: scrambleLetters(word.w) };
     if (kind === "listen") return { kind, word };
+    if (kind === "listenSentence") {
+      // tests comprehension of the full example sentence via TTS, not just the
+      // isolated word — the correct choice is the sentence's Georgian translation.
+      const wrong = ws.filter((w) => w.id !== word.id).sort(() => Math.random() - 0.5).slice(0, 3).map((w) => w.ext);
+      return { kind, word, options: shuffle([word.ext, ...wrong]) };
+    }
     return null;
   };
 
