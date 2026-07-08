@@ -218,7 +218,7 @@ function LeaderboardView({ lang, board, loading, onOpenProfile }) {
 
 export function LanguagesPage({
   learnLang, setLearnLang, level, setLevel, enabled, wordsReady,
-  wordsForLevel, availableLevels, masteredCount, totalCount,
+  wordsForLevel, availableLevels, masteredCount, totalCount, dueCount,
   nextFlashcard, onFlashcardKnow, onFlashcardDontKnow,
   genExercise, onExerciseAnswer,
   board, boardLoading, loadBoard, onOpenProfile,
@@ -250,6 +250,7 @@ export function LanguagesPage({
               </div>
               <button onClick={() => setLearnLang(null)} className="text-[12.5px] font-bold shrink-0" style={{ color: C.accent }}>{t("lang.switchLanguage")}</button>
             </div>
+            {dueCount() > 0 && <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl mb-4" style={{ background: C.accentSoft }}><span style={{ fontSize: 16 }}>⏰</span><span className="text-[13px] font-bold" style={{ color: C.accentText }}>{dueCount()} {t("lang.dueForReview")}</span></div>}
             <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-4">
               <button onClick={() => setLevel("all")} className="px-3.5 py-1.5 rounded-full text-[13px] font-semibold whitespace-nowrap" style={level === "all" ? { backgroundImage: GBRAND, color: "#fff" } : { background: C.surfaceMuted, color: C.muted }}>{t("lang.allLevels")}</button>
               {availableLevels(learnLang).map((lvl) => <button key={lvl} onClick={() => setLevel(lvl)} className="px-3.5 py-1.5 rounded-full text-[13px] font-semibold whitespace-nowrap" style={level === lvl ? { backgroundImage: GBRAND, color: "#fff" } : { background: C.surfaceMuted, color: C.muted }}>{lvl}</button>)}

@@ -1396,14 +1396,14 @@ export const push = {
 export const languages = {
   progress: async (lang) => {
     const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;
-    const { data, error } = await sb.from("lang_word_progress").select("word_id,mastery,updated_at").eq("user_id", uid).eq("lang", lang);
+    const { data, error } = await sb.from("lang_word_progress").select("word_id,mastery,updated_at,next_review").eq("user_id", uid).eq("lang", lang);
     if (error) throw error;
-    return Object.fromEntries((data || []).map(r => [r.word_id, { mastery: r.mastery, ts: new Date(r.updated_at).getTime() }]));
+    return Object.fromEntries((data || []).map(r => [r.word_id, { mastery: r.mastery, ts: new Date(r.updated_at).getTime(), nextReview: r.next_review }]));
   },
-  saveProgress: async (lang, wordId, mastery) => {
+  saveProgress: async (lang, wordId, mastery, nextReview) => {
     const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;
     const { error } = await sb.from("lang_word_progress").upsert(
-      { user_id: uid, lang, word_id: wordId, mastery, updated_at: new Date().toISOString() },
+      { user_id: uid, lang, word_id: wordId, mastery, updated_at: new Date().toISOString(), next_review: nextReview },
       { onConflict: "user_id,lang,word_id" }
     );
     if (error) throw error;

@@ -60,13 +60,23 @@ export function useLanguages({ session, gainXp }) {
 
   const masteredCount = (lang) => Object.values(progress).filter((p) => p.mastery >= 100).length;
   const totalCount = (lang) => allWords(lang).length;
+  // words already seen at least once whose scheduled review has come due —
+  // separate from "unseen", which is always available as new material
+  const dueCount = () => Object.values(progress).filter((p) => !p.nextReview || new Date(p.nextReview).getTime() <= Date.now()).length;
+
+  // spaced repetition: the review interval grows with mastery (a mastered
+  // word still comes back eventually, just less often) instead of a word
+  // that hit 100% never being shown again.
+  const reviewIntervalDays = (mastery) => mastery >= 100 ? 21 : mastery >= 80 ? 10 : mastery >= 60 ? 5 : mastery >= 40 ? 2 : mastery >= 20 ? 1 : 0;
+  const isDue = (w) => { const p = progress[w.id]; if (!p) return true; if (!p.nextReview) return true; return new Date(p.nextReview).getTime() <= Date.now(); };
 
   const bumpMastery = (lang, wordId, delta, xp) => {
     setProgress((p) => {
       const cur = (p[wordId] && p[wordId].mastery) || 0;
       const next = Math.max(0, Math.min(100, cur + delta));
-      if (hasSupabase && session) languagesApi.saveProgress(lang, wordId, next).catch(() => {});
-      return { ...p, [wordId]: { mastery: next, ts: Date.now() } };
+      const nextReview = new Date(Date.now() + reviewIntervalDays(next) * 86400000).toISOString();
+      if (hasSupabase && session) languagesApi.saveProgress(lang, wordId, next, nextReview).catch(() => {});
+      return { ...p, [wordId]: { mastery: next, ts: Date.now(), nextReview } };
     });
     if (xp) gainXp(xp);
   };
@@ -76,9 +86,11 @@ export function useLanguages({ session, gainXp }) {
     if (!ws.length) return null;
     const unseen = ws.filter((w) => !progress[w.id]);
     if (unseen.length) return rnd(unseen.slice(0, Math.max(5, unseen.length)));
-    const rest = ws.filter((w) => ((progress[w.id] && progress[w.id].mastery) || 0) < 100);
-    if (!rest.length) return null;
-    return rest.slice().sort((a, b) => ((progress[a.id] && progress[a.id].mastery) || 0) - ((progress[b.id] && progress[b.id].mastery) || 0))[0];
+    const due = ws.filter(isDue);
+    if (due.length) return due.slice().sort((a, b) => ((progress[a.id] && progress[a.id].mastery) || 0) - ((progress[b.id] && progress[b.id].mastery) || 0))[0];
+    // nothing due yet — fall back to whichever word was reviewed longest ago
+    // rather than dead-ending the exercise flow with "nothing to practice".
+    return ws.slice().sort((a, b) => ((progress[a.id] && progress[a.id].ts) || 0) - ((progress[b.id] && progress[b.id].ts) || 0))[0];
   };
 
   const onFlashcardKnow = (lang, wordId) => bumpMastery(lang, wordId, 25, XP_REWARD.flashcard);
@@ -121,7 +133,7 @@ export function useLanguages({ session, gainXp }) {
 
   return {
     learnLang, setLearnLang, progress, level, setLevel, enabled, wordsReady: !!wordsMod,
-    wordsForLevel, availableLevels, masteredCount, totalCount,
+    wordsForLevel, availableLevels, masteredCount, totalCount, dueCount,
     nextFlashcard, onFlashcardKnow, onFlashcardDontKnow,
     genExercise, onExerciseAnswer,
     board, boardLoading, loadBoard,

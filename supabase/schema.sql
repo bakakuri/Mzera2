@@ -1688,6 +1688,12 @@ create table if not exists public.lang_word_progress (
   primary key (user_id, lang, word_id)
 );
 create index if not exists lang_word_progress_user_idx on public.lang_word_progress(user_id, lang);
+-- spaced repetition: previously a word that hit 100% mastery never resurfaced
+-- for review again. next_review is set client-side to a growing interval
+-- (bigger the higher the mastery) each time a word is answered, and the word
+-- picker in useLanguages.js now prioritizes whatever's due over ignoring
+-- fully-mastered words outright.
+alter table public.lang_word_progress add column if not exists next_review timestamptz not null default now();
 
 alter table public.lang_word_progress enable row level security;
 -- read is public (like film_watch) so a cross-user leaderboard/admin view can

@@ -810,6 +810,7 @@ export const DICT = {
   "lang.continue": { ka: "გაგრძელება", en: "Continue", ru: "Продолжить" },
   "lang.start": { ka: "დაწყება", en: "Start", ru: "Начать" },
   "lang.wordsMasteredOf": { ka: "ნასწავლია", en: "mastered", ru: "выучено" },
+  "lang.dueForReview": { ka: "სიტყვა გასამეორებელია", en: "words due for review", ru: "слов на повторение" },
   "lang.flashcards": { ka: "ბარათები", en: "Flashcards", ru: "Карточки" },
   "lang.exercises": { ka: "სავარჯიშოები", en: "Exercises", ru: "Упражнения" },
   "lang.grammar": { ka: "გრამატიკა", en: "Grammar", ru: "Грамматика" },
