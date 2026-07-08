@@ -198,14 +198,10 @@ export default function App() {
   const openReports = admin.reports.filter(r => r.status === "open").length;
 
   const uploadImage = async (file, folder = "posts", onProgress) => await storageApi.upload(await compressImage(file), folder, onProgress);
-  // a photo added to an album (or to the default unsorted bucket) is also a
-  // wall post with just an image — mirrors how Facebook/Instagram surface
-  // "added a new photo" on the feed instead of only filing it silently away.
   const onUploadAlbumPhoto = async (file, albumId, onProgress) => {
     const url = await uploadImage(file, "albums", onProgress);
     await albums.onUploadPhoto(url, albumId);
     gainXp(5);
-    postsApi.create({ images: [url] }).then(feed.reloadFeed).catch(dbErr("პოსტი"));
   };
   const onChangeCover = async (file, onProgress) => { if (!file) return; const url = await storageApi.upload(await compressImage(file, 1600, 0.78), "covers", onProgress); await profilesApi.update(ME, { cover_url: url }); USERS[ME] = { ...USERS[ME], cover: url }; setMeProfile(p => ({ ...p, cover: url })); flash("ქოვერი განახლდა ✅"); };
   const onChangeAvatar = async (file, onProgress) => { if (!file) return; const url = await storageApi.upload(await compressImage(file, 640, 0.8), "avatars", onProgress); await profilesApi.update(ME, { avatar_url: url }); USERS[ME] = { ...USERS[ME], avatar: url }; setMeProfile(p => ({ ...p, avatar: url })); flash("პროფილის ფოტო განახლდა ✅"); };
