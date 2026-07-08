@@ -1,6 +1,6 @@
 import { createPortal } from "react-dom";
 import {
-  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Gamepad2, Clapperboard, Music, Languages, Globe, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, levelInfo, kfmt, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, getFilters, STORY_STICKERS, setTheme, setME, POST_BGS, FEELINGS, UploadProgress, t, LANG, useModalA11y } from "./core";
+  useState, useEffect, useRef, Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Gamepad2, Clapperboard, Music, Languages, Globe, authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, quizzesApi, hasSupabase, PAL, DARK, C, GBRAND, SH, card, DISPLAY, BODY, MONO, Mono, GRADS, hashIdx, img, catColor, FALLBACK_USER, _users, USERS, ME, fmtN, computeTrends, REPLIES, MARKET_CATS, FORUM_CATS, Pic, Avatar, Dot, Name, Handle, IconBtn, Pill, Wordmark, Title, Chips, renderText, Empty, ThemeToggle, REACTIONS, StoryRow, MiniPost, NewThread, Stars, Checkout, NewListing, GroupAvatar, waveOf, dl, VoiceMsg, DocMsg, EMOJIS, EmojiPanel, PeoplePicker, convMembers, convIsGroup, msgPreview, FollowBtn, FollowList, timeAgo, mergeProfile, mapDbPost, msgClock, mapDbMsg, toDbMsg, mapDbNotif, resolveImg, hydrateAuthors, mapDbStories, mapDbReel, mapDbThread, mapDbListing, mapDbReview, mapDbGroup, mapDbEvent, ConfigError, LoadingScreen, AuthScreen, HighlightCreate, HighlightView, ReelComments, pushNotif, ensureNotifPerm, levelInfo, kfmt, ReelCard, ReelCreate, GroupPost, MiniMap, Switch, SettingsSection, SettingsRow, getFilters, STORY_STICKERS, setTheme, setME, POST_BGS, FEELINGS, UploadProgress, t, LANG, useModalA11y } from "./core";
 
 export function Lightbox({ images, start, onClose }) {
   const [idx, setIdx] = useState(start || 0);
@@ -147,6 +147,89 @@ export function FeedReelsRow({ reels, onOpen }) {
   );
 }
 
+function QuizPlayer({ quiz, onClose, onSubmitted }) {
+  const modalRef = useModalA11y(onClose);
+  const [questions, setQuestions] = useState(null);
+  const [answers, setAnswers] = useState({});
+  const [result, setResult] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [loadErr, setLoadErr] = useState("");
+  useEffect(() => { let c = false; quizzesApi.questions(quiz.id).then(qs => { if (!c) setQuestions(qs); }).catch(() => { if (!c) setLoadErr(t("quiz.loadFailed")); }); return () => { c = true; }; }, [quiz.id]);
+  const allAnswered = questions && questions.every(q => answers[q.idx] != null);
+  const submit = async () => {
+    if (!allAnswered || submitting) return;
+    setSubmitting(true);
+    try {
+      const arr = questions.map(q => answers[q.idx]);
+      const r = await quizzesApi.submit(quiz.id, arr);
+      setResult(r);
+      onSubmitted && onSubmitted(r);
+    } catch (e) { setLoadErr(t("quiz.submitFailed")); }
+    setSubmitting(false);
+  };
+  return (
+    <div className="fixed inset-0 z-[65] flex sm:items-center justify-center items-end" style={{ background: "rgba(6,7,12,.55)", backdropFilter: "blur(4px)" }} onClick={onClose}>
+      <div ref={modalRef} tabIndex={-1} role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} className="w-full sm:max-w-[520px] sm:rounded-3xl rounded-t-3xl max-h-[90vh] overflow-y-auto" style={{ background: C.surface, boxShadow: SH.pop, outline: "none" }}>
+        <div className="flex items-center justify-between px-4 py-3.5 sticky top-0 z-10" style={{ background: C.surface, borderBottom: `1px solid ${C.lineSoft}` }}><button onClick={onClose} aria-label={t("a11y.close")} style={{ color: C.muted }}><X size={22} /></button><span className="font-bold truncate px-2" style={{ color: C.ink, fontFamily: DISPLAY }}>{quiz.title}</span><div style={{ width: 22 }} /></div>
+        <div className="p-4">
+          {loadErr && <div className="px-3 py-2.5 rounded-xl text-[13px] font-semibold mb-3" style={{ background: C.like + "1a", color: C.like }}>{loadErr}</div>}
+          {quiz.description && !result && <div className="text-[14px] mb-3" style={{ color: C.ink2 }}>{quiz.description}</div>}
+          {!questions && !loadErr && <div className="flex justify-center py-10"><div style={{ width: 26, height: 26, border: `3px solid ${C.lineSoft}`, borderTopColor: C.accent, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} /></div>}
+          {questions && !result && <div className="space-y-4">
+            {questions.map((q, qi) => (
+              <div key={q.id}>
+                <div className="text-[15px] font-bold mb-2" style={{ color: C.ink }}>{qi + 1}. {q.text}</div>
+                <div className="space-y-1.5">
+                  {q.options.map((o, oi) => { const sel = answers[q.idx] === oi; return (
+                    <button key={oi} onClick={() => setAnswers(a => ({ ...a, [q.idx]: oi }))} aria-pressed={sel} className="w-full text-left px-3.5 py-2.5 rounded-xl text-[14px] font-semibold transition active:scale-[.99]" style={{ border: `1.5px solid ${sel ? C.accent : C.line}`, background: sel ? C.accentSoft : C.surface, color: sel ? C.accentText : C.ink2 }}>{o}</button>
+                  ); })}
+                </div>
+              </div>
+            ))}
+            <button disabled={!allAnswered || submitting} onClick={submit} className="w-full py-3.5 rounded-2xl font-bold text-white active:scale-[.98]" style={{ backgroundImage: GBRAND, boxShadow: SH.glow, opacity: (allAnswered && !submitting) ? 1 : 0.4 }}>{submitting ? t("word.loading") : t("quiz.submit")}</button>
+          </div>}
+          {result && questions && <div>
+            <div className="text-center py-4">
+              <div className="text-[34px] font-bold" style={{ color: C.accent, fontFamily: DISPLAY }}>{result.score}/{result.total}</div>
+              <div className="text-[14px] mt-1" style={{ color: C.muted }}>{t("quiz.yourScore")}</div>
+            </div>
+            <div className="space-y-3">
+              {questions.map((q, qi) => (
+                <div key={q.id}>
+                  <div className="text-[14px] font-bold mb-1.5 flex items-center gap-1.5" style={{ color: C.ink }}>{result.corrects[qi] ? <Check size={16} style={{ color: C.online }} /> : <X size={16} style={{ color: C.like }} />}{qi + 1}. {q.text}</div>
+                  <div className="text-[13px] pl-6" style={{ color: C.muted }}>{t("quiz.yourAnswerPre")}{q.options[answers[q.idx]]}</div>
+                </div>
+              ))}
+            </div>
+            <button onClick={onClose} className="w-full mt-4 py-3 rounded-2xl font-bold" style={{ background: C.surfaceMuted, color: C.ink }}>{t("action.done")}</button>
+          </div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QuizCard({ quiz }) {
+  const [open, setOpen] = useState(false);
+  const [myAttempt, setMyAttempt] = useState(undefined);
+  useEffect(() => { let c = false; quizzesApi.myAttempt(quiz.id).then(a => { if (!c) setMyAttempt(a || null); }).catch(() => { if (!c) setMyAttempt(null); }); return () => { c = true; }; }, [quiz.id]);
+  return (
+    <div className="mx-4 mb-3 rounded-2xl p-4" style={{ background: C.accentSoft, border: `1px solid ${C.accent}33` }}>
+      <div className="flex items-center gap-2 mb-1"><HelpCircle size={18} style={{ color: C.accent }} /><span className="text-[15px] font-bold" style={{ color: C.ink, fontFamily: DISPLAY }}>{quiz.title}</span></div>
+      {quiz.description && <div className="text-[13px] mb-3" style={{ color: C.ink2 }}>{quiz.description}</div>}
+      {myAttempt ? (
+        <div className="flex items-center justify-between">
+          <div className="text-[13px] font-semibold" style={{ color: C.accentText }}>{t("quiz.yourScorePre")}{myAttempt.score}/{myAttempt.total}</div>
+          <button onClick={() => setOpen(true)} className="px-4 py-2 rounded-xl text-sm font-bold text-white active:scale-95" style={{ backgroundImage: GBRAND }}>{t("quiz.retake")}</button>
+        </div>
+      ) : (
+        <button onClick={() => setOpen(true)} className="w-full py-2.5 rounded-xl text-sm font-bold text-white active:scale-[.98]" style={{ backgroundImage: GBRAND, boxShadow: SH.glow }}>{t("quiz.take")}</button>
+      )}
+      {open && <QuizPlayer quiz={quiz} onClose={() => setOpen(false)} onSubmitted={(r) => setMyAttempt({ score: r.score, total: r.total })} />}
+    </div>
+  );
+}
+
 export function PostCard({ post, onLike, onReact, onSave, onComment, onPollVote, onTag, onReport, onRemove, onOpenProfile, isAdmin, onEdit, onDelete, onEditComment, onDeleteComment, onLikeComment, onRepost, onReactors, onHide, onSeeLess, onFavorite, isFavorite, highlightCommentId }) {
   const [open, setOpen] = useState(() => !!highlightCommentId); const [menu, setMenu] = useState(false); const [draft, setDraft] = useState(""); const [pop, setPop] = useState(false);
   const [csort, setCsort] = useState("top"); const [replyTo, setReplyTo] = useState(null); const [replyName, setReplyName] = useState(""); const cInRef = useRef(null);
@@ -227,6 +310,7 @@ export function PostCard({ post, onLike, onReact, onSave, onComment, onPollVote,
         ); })}
         <Mono className="text-[12px]" style={{ color: C.faint }}>{total} {t("poll.vote")}{post.poll.voted != null ? t("poll.youVoted") : ""}</Mono>
       </div>}
+      {post.quiz && <QuizCard quiz={post.quiz} />}
       {post.text && !bgPost && !post.image && !(post.images && post.images.length) && !post.video && !post.poll && !post.shared && <LinkPreview text={post.text} />}
       {post.video ? <video src={post.video} controls playsInline preload="metadata" className="w-full" style={{ maxHeight: 540, background: "#000" }} /> : (post.images && post.images.length > 0 && <PostImages images={post.images} pid={post.id} />)}
       <div className="flex items-center gap-1 px-3 pt-2.5 pb-1.5">
@@ -358,8 +442,11 @@ export function StoryViewer({ story, onClose, onDone, flash, onReport }) {
 
 /* ─────────────────────────  CREATE POST  ───────────────────────── */
 
+const newQuizQuestion = () => ({ text: "", options: ["", ""], correctIdx: 0 });
+
 export function CreateSheet({ onClose, onPost, live, taggable, myGroups, onGroupPost, onUpload, onUploadVideo }) {
   const [text, setText] = useState(""); const [pics, setPics] = useState([]); const [poll, setPoll] = useState(null); const [schedAt, setSchedAt] = useState(""); const [wantPublic, setWantPublic] = useState(false);
+  const [quiz, setQuiz] = useState(null);
   const [bg, setBg] = useState(null); const [feeling, setFeeling] = useState(null); const [loc, setLoc] = useState(""); const [tagged, setTagged] = useState([]); const [panel, setPanel] = useState(null);
   const [vid, setVid] = useState(null); const [vidProgress, setVidProgress] = useState(null); const vidRef = useRef(null); const [targetGroup, setTargetGroup] = useState(null);
   const fileRef = useRef(null); const [imgProgress, setImgProgress] = useState(null);
@@ -377,10 +464,21 @@ export function CreateSheet({ onClose, onPost, live, taggable, myGroups, onGroup
     setImgProgress(null); e.target.value = "";
   };
   const validPoll = poll && poll.filter(o => o.trim()).length >= 2;
-  const useBg = bg && !pics.length && !poll && !vid;
-  const can = text.trim() || pics.length || validPoll || vid;
-  const submit = () => { if (targetGroup && onGroupPost) { onGroupPost(targetGroup, { text: text.trim(), images: (pics && pics.length) ? pics.map(resolveImg) : null, poll: validPoll ? { options: poll.filter(o => o.trim()).map(t => ({ text: t.trim(), votes: 0 })), voted: null } : null, video: vid, bg: useBg ? bg : null, feeling, location: loc.trim() || null, tagged }); onClose(); return; } onPost(text.trim(), poll ? [] : pics, validPoll ? { options: poll.filter(o => o.trim()).map(t => ({ text: t.trim(), votes: 0 })), voted: null } : null, schedAt ? new Date(schedAt).toISOString() : null, wantPublic, { bg: useBg ? bg : null, feeling, location: loc.trim() || null, tagged, video: vid }); };
+  const validQuiz = quiz && quiz.title.trim() && quiz.questions.length > 0 && quiz.questions.every(q => q.text.trim() && q.options.filter(o => o.trim()).length >= 2 && (q.options[q.correctIdx] || "").trim());
+  const useBg = bg && !pics.length && !poll && !vid && !quiz;
+  const can = text.trim() || pics.length || validPoll || vid || validQuiz;
+  const quizPayload = () => ({ title: quiz.title.trim(), description: quiz.description.trim() || null, questions: quiz.questions.map(q => { const kept = q.options.map((o, i) => ({ o: o.trim(), i })).filter(x => x.o); const correctPos = kept.findIndex(x => x.i === q.correctIdx); return { text: q.text.trim(), options: kept.map(x => x.o), correctIdx: correctPos >= 0 ? correctPos : 0 }; }) });
+  const submit = () => { if (targetGroup && onGroupPost) { onGroupPost(targetGroup, { text: text.trim(), images: (pics && pics.length) ? pics.map(resolveImg) : null, poll: validPoll ? { options: poll.filter(o => o.trim()).map(t => ({ text: t.trim(), votes: 0 })), voted: null } : null, quiz: validQuiz ? quizPayload() : null, video: vid, bg: useBg ? bg : null, feeling, location: loc.trim() || null, tagged }); onClose(); return; } onPost(text.trim(), poll ? [] : pics, validPoll ? { options: poll.filter(o => o.trim()).map(t => ({ text: t.trim(), votes: 0 })), voted: null } : null, schedAt ? new Date(schedAt).toISOString() : null, wantPublic, { bg: useBg ? bg : null, feeling, location: loc.trim() || null, tagged, video: vid, quiz: validQuiz ? quizPayload() : null }); };
   const setOpt = (i, v) => setPoll(p => p.map((o, j) => j === i ? v : o));
+  const setQTitle = (v) => setQuiz(q => ({ ...q, title: v }));
+  const setQDesc = (v) => setQuiz(q => ({ ...q, description: v }));
+  const setQText = (qi, v) => setQuiz(q => ({ ...q, questions: q.questions.map((qq, i) => i === qi ? { ...qq, text: v } : qq) }));
+  const setQOpt = (qi, oi, v) => setQuiz(q => ({ ...q, questions: q.questions.map((qq, i) => i === qi ? { ...qq, options: qq.options.map((o, j) => j === oi ? v : o) } : qq) }));
+  const addQOpt = (qi) => setQuiz(q => ({ ...q, questions: q.questions.map((qq, i) => i === qi && qq.options.length < 4 ? { ...qq, options: [...qq.options, ""] } : qq) }));
+  const removeQOpt = (qi, oi) => setQuiz(q => ({ ...q, questions: q.questions.map((qq, i) => i === qi && qq.options.length > 2 ? { ...qq, options: qq.options.filter((_, j) => j !== oi), correctIdx: qq.correctIdx >= oi ? Math.max(0, qq.correctIdx - 1) : qq.correctIdx } : qq) }));
+  const setQCorrect = (qi, oi) => setQuiz(q => ({ ...q, questions: q.questions.map((qq, i) => i === qi ? { ...qq, correctIdx: oi } : qq) }));
+  const addQuestion = () => setQuiz(q => q.questions.length < 5 ? { ...q, questions: [...q.questions, newQuizQuestion()] } : q);
+  const removeQuestion = (qi) => setQuiz(q => q.questions.length > 1 ? { ...q, questions: q.questions.filter((_, i) => i !== qi) } : q);
   const modalRef = useModalA11y(onClose);
   return (
     <div className="fixed inset-0 z-[60] flex sm:items-center justify-center items-end" style={{ background: "rgba(6,7,12,.55)", backdropFilter: "blur(4px)" }} onClick={onClose}>
@@ -393,23 +491,46 @@ export function CreateSheet({ onClose, onPost, live, taggable, myGroups, onGroup
           {poll.map((o, i) => <div key={i} className="flex items-center gap-2"><input value={o} onChange={e => setOpt(i, e.target.value)} placeholder={`${t("compose.pollOption")} ${i + 1}`} className="flex-1 px-3.5 py-2.5 rounded-xl outline-none text-[14px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />{poll.length > 2 && <button onClick={() => setPoll(p => p.filter((_, j) => j !== i))} aria-label={t("a11y.remove")} style={{ color: C.faint }}><X size={18} /></button>}</div>)}
           {poll.length < 4 && <button onClick={() => setPoll(p => [...p, ""])} className="flex items-center gap-1.5 text-sm font-semibold px-1 py-1" style={{ color: C.accent }}><Plus size={16} /> {t("compose.addOption")}</button>}
         </div>}
+        {quiz && <div className="px-4 pb-2 space-y-3">
+          <input value={quiz.title} onChange={e => setQTitle(e.target.value)} placeholder={t("quiz.titlePh")} className="w-full px-3.5 py-2.5 rounded-xl outline-none text-[15px] font-bold" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
+          <input value={quiz.description} onChange={e => setQDesc(e.target.value)} placeholder={t("quiz.descPh")} className="w-full px-3.5 py-2.5 rounded-xl outline-none text-[14px]" style={{ background: C.surfaceMuted, color: C.ink, border: `1px solid ${C.line}` }} />
+          {quiz.questions.map((q, qi) => (
+            <div key={qi} className="rounded-2xl p-3 space-y-2" style={{ background: C.surfaceMuted, border: `1px solid ${C.line}` }}>
+              <div className="flex items-center gap-2">
+                <input value={q.text} onChange={e => setQText(qi, e.target.value)} placeholder={`${t("quiz.questionPh")} ${qi + 1}`} className="flex-1 px-3 py-2 rounded-lg outline-none text-[14px] font-semibold" style={{ background: C.surface, color: C.ink, border: `1px solid ${C.line}` }} />
+                {quiz.questions.length > 1 && <button onClick={() => removeQuestion(qi)} aria-label={t("a11y.remove")} style={{ color: C.faint }}><X size={18} /></button>}
+              </div>
+              {q.options.map((o, oi) => (
+                <div key={oi} className="flex items-center gap-2">
+                  <button onClick={() => setQCorrect(qi, oi)} aria-label={t("quiz.markCorrect")} aria-pressed={q.correctIdx === oi} className="shrink-0 rounded-full flex items-center justify-center" style={{ width: 24, height: 24, border: `2px solid ${q.correctIdx === oi ? C.online : C.line}`, background: q.correctIdx === oi ? C.online : "transparent" }}>{q.correctIdx === oi && <Check size={14} color="#fff" />}</button>
+                  <input value={o} onChange={e => setQOpt(qi, oi, e.target.value)} placeholder={`${t("compose.pollOption")} ${oi + 1}`} className="flex-1 px-3 py-2 rounded-lg outline-none text-[14px]" style={{ background: C.surface, color: C.ink, border: `1px solid ${C.line}` }} />
+                  {q.options.length > 2 && <button onClick={() => removeQOpt(qi, oi)} aria-label={t("a11y.remove")} style={{ color: C.faint }}><X size={16} /></button>}
+                </div>
+              ))}
+              {q.options.length < 4 && <button onClick={() => addQOpt(qi)} className="flex items-center gap-1.5 text-[13px] font-semibold px-1" style={{ color: C.accent }}><Plus size={14} /> {t("compose.addOption")}</button>}
+              <div className="text-[11.5px]" style={{ color: C.faint }}>{t("quiz.markCorrectHint")}</div>
+            </div>
+          ))}
+          {quiz.questions.length < 5 && <button onClick={addQuestion} className="flex items-center gap-1.5 text-sm font-semibold px-1 py-1" style={{ color: C.accent }}><Plus size={16} /> {t("quiz.addQuestion")}</button>}
+        </div>}
         <div className="px-4 pb-5 pt-1">
           {uploadErr && <div className="mb-3 px-3 py-2 rounded-xl text-[12.5px] font-semibold" style={{ background: C.like + "1a", color: C.like }}>{uploadErr}</div>}
           {(imgProgress != null || vidProgress != null) && <div className="mb-3"><UploadProgress pct={imgProgress != null ? imgProgress : vidProgress} label={t("word.loading")} /></div>}
           <div className="flex gap-2 mb-3">
-            <button onClick={() => { setPoll(null); setVid(null); }} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition" style={(!poll && !vid) ? { background: C.accentSoft, color: C.accentText } : { background: C.surfaceMuted, color: C.muted }}><ImageIcon size={17} /> {t("compose.photo")}</button>
+            <button onClick={() => { setPoll(null); setVid(null); setQuiz(null); }} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition" style={(!poll && !vid && !quiz) ? { background: C.accentSoft, color: C.accentText } : { background: C.surfaceMuted, color: C.muted }}><ImageIcon size={17} /> {t("compose.photo")}</button>
             <button onClick={() => vidRef.current && vidRef.current.click()} disabled={vidUp} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition" style={vid ? { background: C.accentSoft, color: C.accentText } : { background: C.surfaceMuted, color: C.muted }}><Film size={17} /> {vidUp ? "…" : t("word.video")}</button>
-            <button onClick={() => { setPoll(poll ? null : ["", ""]); setPics([]); setVid(null); }} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition" style={poll ? { background: C.accentSoft, color: C.accentText } : { background: C.surfaceMuted, color: C.muted }}><TrendingUp size={17} /> {t("compose.poll")}</button>
+            <button onClick={() => { setPoll(poll ? null : ["", ""]); setPics([]); setVid(null); setQuiz(null); }} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition" style={poll ? { background: C.accentSoft, color: C.accentText } : { background: C.surfaceMuted, color: C.muted }}><TrendingUp size={17} /> {t("compose.poll")}</button>
+            <button onClick={() => { setQuiz(quiz ? null : { title: "", description: "", questions: [newQuizQuestion()] }); setPics([]); setVid(null); setPoll(null); }} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition" style={quiz ? { background: C.accentSoft, color: C.accentText } : { background: C.surfaceMuted, color: C.muted }}><HelpCircle size={17} /> {t("quiz.title")}</button>
           </div>
           <input ref={vidRef} type="file" accept="video/*" hidden onChange={pickVideo} />
           {vid && <div className="relative rounded-2xl overflow-hidden mb-1" style={{ background: "#000" }}><video src={vid} controls playsInline className="w-full" style={{ maxHeight: 300 }} /><button onClick={() => setVid(null)} aria-label={t("a11y.remove")} className="absolute top-2 right-2 rounded-full p-1.5" style={{ background: "rgba(0,0,0,.6)", color: "#fff" }}><X size={15} /></button></div>}
-          {!poll && !vid && <div className="space-y-2.5">
+          {!poll && !vid && !quiz && <div className="space-y-2.5">
             <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={pickFile} />
             <button onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading || pics.length >= 6} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition active:scale-[.98]" style={{ background: C.accentSoft, color: C.accentText, opacity: pics.length >= 6 ? 0.5 : 1 }}>{uploading ? t("word.loading") : pics.length >= 6 ? t("compose.maxPhotos") : <><Upload size={16} /> {pics.length ? `${t("compose.morePhotosPre")}${pics.length}${t("compose.morePhotosPost")}` : t("compose.uploadPhotos")}</>}</button>
           </div>}
           {(feeling || loc.trim() || tagged.length > 0) && <div className="flex flex-wrap gap-1.5 mt-2.5">{feeling && <span className="px-2.5 py-1 rounded-full text-[12px] font-semibold flex items-center gap-1" style={{ background: C.surfaceMuted, color: C.ink2 }}>{feeling}<button onClick={() => setFeeling(null)} aria-label={t("a11y.remove")}><X size={11} /></button></span>}{tagged.length > 0 && <span className="px-2.5 py-1 rounded-full text-[12px] font-semibold flex items-center gap-1" style={{ background: C.surfaceMuted, color: C.ink2 }}>👥 {tagged.length} {t("compose.taggedCount")}<button onClick={() => setTagged([])} aria-label={t("a11y.remove")}><X size={11} /></button></span>}{loc.trim() && <span className="px-2.5 py-1 rounded-full text-[12px] font-semibold flex items-center gap-1" style={{ background: C.surfaceMuted, color: C.ink2 }}>📍 {loc}<button onClick={() => setLoc("")} aria-label={t("a11y.remove")}><X size={11} /></button></span>}</div>}
           <div className="grid grid-cols-4 gap-1.5 mt-2.5">
-            <button onClick={() => setPanel(panel === "bg" ? null : "bg")} disabled={!!pics.length || !!poll} className="flex flex-col items-center gap-1 py-2 rounded-xl text-[11px] font-bold transition" style={{ background: (bg || panel === "bg") ? C.accentSoft : C.surfaceMuted, color: (bg || panel === "bg") ? C.accentText : C.muted, opacity: (pics.length || poll) ? 0.4 : 1 }}><span style={{ fontSize: 16 }}>🎨</span> {t("compose.bg")}</button>
+            <button onClick={() => setPanel(panel === "bg" ? null : "bg")} disabled={!!pics.length || !!poll || !!quiz} className="flex flex-col items-center gap-1 py-2 rounded-xl text-[11px] font-bold transition" style={{ background: (bg || panel === "bg") ? C.accentSoft : C.surfaceMuted, color: (bg || panel === "bg") ? C.accentText : C.muted, opacity: (pics.length || poll || quiz) ? 0.4 : 1 }}><span style={{ fontSize: 16 }}>🎨</span> {t("compose.bg")}</button>
             <button onClick={() => setPanel(panel === "feel" ? null : "feel")} className="flex flex-col items-center gap-1 py-2 rounded-xl text-[11px] font-bold transition" style={{ background: (feeling || panel === "feel") ? C.accentSoft : C.surfaceMuted, color: (feeling || panel === "feel") ? C.accentText : C.muted }}><span style={{ fontSize: 16 }}>😊</span> {t("compose.feeling")}</button>
             <button onClick={() => setPanel(panel === "tag" ? null : "tag")} className="flex flex-col items-center gap-1 py-2 rounded-xl text-[11px] font-bold transition" style={{ background: (tagged.length || panel === "tag") ? C.accentSoft : C.surfaceMuted, color: (tagged.length || panel === "tag") ? C.accentText : C.muted }}><span style={{ fontSize: 16 }}>👥</span> {t("compose.tag")}</button>
             <button onClick={() => setPanel(panel === "loc" ? null : "loc")} className="flex flex-col items-center gap-1 py-2 rounded-xl text-[11px] font-bold transition" style={{ background: (loc.trim() || panel === "loc") ? C.accentSoft : C.surfaceMuted, color: (loc.trim() || panel === "loc") ? C.accentText : C.muted }}><span style={{ fontSize: 16 }}>📍</span> {t("compose.location")}</button>

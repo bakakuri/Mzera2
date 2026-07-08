@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, Image as ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, ChevronDown, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Phone, Video, PhoneOff, VideoOff, MicOff, Gamepad2, Clapperboard, Music, Languages, BookOpen, GraduationCap, Shuffle, CheckCircle2, XCircle, Gift, Calendar, RefreshCw, Pin, Forward, ChevronUp, Lock, Globe,
 } from "lucide-react";
-import { auth as authApi, profiles as profilesApi, posts as postsApi, reactions as reactionsApi, comments as commentsApi, follows as followsApi, chat as chatApi, notifications as notifsApi, storage as storageApi, stories as storiesApi, reels as reelsApi, market as marketApi, films as filmsApi, music as musicApi, groups as groupsApi, events as eventsApi, forum as forumApi, highlights as highlightsApi, presence as presenceApi, locations as locationsApi, polls as pollsApi, quests as questsApi, xp as xpApi, admin as adminApi, reports as reportsApi, push as pushApi, languages as languagesApi, albums as albumsApi } from "../lib/api";
+import { auth as authApi, profiles as profilesApi, posts as postsApi, reactions as reactionsApi, comments as commentsApi, follows as followsApi, chat as chatApi, notifications as notifsApi, storage as storageApi, stories as storiesApi, reels as reelsApi, market as marketApi, films as filmsApi, music as musicApi, groups as groupsApi, events as eventsApi, forum as forumApi, highlights as highlightsApi, presence as presenceApi, locations as locationsApi, polls as pollsApi, quizzes as quizzesApi, quests as questsApi, xp as xpApi, admin as adminApi, reports as reportsApi, push as pushApi, languages as languagesApi, albums as albumsApi } from "../lib/api";
 import { hasSupabase } from "../lib/supabase";
 import { t, setLang, LANG, LANGS } from "../lib/i18n";
 
@@ -601,10 +601,12 @@ export function mapDbPost(row) {
     const mine = votes.find(v => v.user_id === ME);
     poll = { options, voted: mine ? mine.option_idx : null };
   }
+  const quizRow = Array.isArray(row.quizzes) ? row.quizzes[0] : row.quizzes;
+  const quiz = row.has_quiz && quizRow ? { id: quizRow.id, title: quizRow.title, description: quizRow.description || "" } : null;
   return {
     id: row.id, authorId: row.author_id, time: timeAgo(row.created_at), createdAt: row.created_at,
     text: row.text || "", image: row.image_url || (Array.isArray(row.images) && row.images[0]) || null, images: (Array.isArray(row.images) && row.images.length) ? row.images : (row.image_url ? [row.image_url] : []), likes,
-    comments: [], shares: 0, likedByMe: false, savedByMe: false, reaction: null, poll, hidden: !!row.hidden, publicStatus: row.public_status || "none", edited: !!row.edited, bg: row.bg || null, feeling: row.feeling || null, location: row.location || null, tagged: Array.isArray(row.tagged) ? row.tagged : [], video: row.video_url || null, groupId: row.group_id || null,
+    comments: [], shares: 0, likedByMe: false, savedByMe: false, reaction: null, poll, quiz, hidden: !!row.hidden, publicStatus: row.public_status || "none", edited: !!row.edited, bg: row.bg || null, feeling: row.feeling || null, location: row.location || null, tagged: Array.isArray(row.tagged) ? row.tagged : [], video: row.video_url || null, groupId: row.group_id || null,
     shared: row.shared ? { id: row.shared.id, authorId: row.shared.author_id, text: row.shared.text || "", image: row.shared.image_url || (Array.isArray(row.shared.images) && row.shared.images[0]) || null, images: (Array.isArray(row.shared.images) && row.shared.images.length) ? row.shared.images : (row.shared.image_url ? [row.shared.image_url] : []), video: row.shared.video_url || null, bg: row.shared.bg || null, time: timeAgo(row.shared.created_at) } : null,
     sharedId: row.shared_post_id || null,
   };
@@ -1163,7 +1165,7 @@ export const STORY_STICKERS = ["❤️", "🔥", "😎", "✨", "🎉", "📍", 
 
 export { useState, useEffect, useRef };
 export { Home, Search, Compass, PlusSquare, Send, Bell, User, Shield, Heart, MessageCircle, MessageSquare, Bookmark, MoreHorizontal, X, ArrowLeft, Hash, TrendingUp, Check, Trash2, Flag, Camera, Settings, AlertTriangle, ImageIcon, MapPin, Map, Link2, ShieldCheck, Plus, Minus, Menu, LogOut, HelpCircle, ChevronRight, ChevronDown, Zap, Sun, Moon, ShoppingBag, Tag, Star, Eye, Navigation, Users, Film, Mic, Play, Pause, Smile, FileText, Download, UserPlus, Trophy, Upload, Volume2, VolumeX, Pencil, CornerUpLeft, Copy, Reply, Phone, Video, PhoneOff, VideoOff, MicOff, Gamepad2, Clapperboard, Music, Languages, BookOpen, GraduationCap, Shuffle, CheckCircle2, XCircle, Gift, Calendar, RefreshCw, Pin, Forward, ChevronUp, Lock, Globe };
-export { authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, filmsApi, musicApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, questsApi, xpApi, adminApi, reportsApi, pushApi, languagesApi, albumsApi };
+export { authApi, profilesApi, postsApi, reactionsApi, commentsApi, followsApi, chatApi, notifsApi, storageApi, storiesApi, reelsApi, marketApi, filmsApi, musicApi, groupsApi, eventsApi, forumApi, highlightsApi, presenceApi, locationsApi, pollsApi, quizzesApi, questsApi, xpApi, adminApi, reportsApi, pushApi, languagesApi, albumsApi };
 export { t, setLang, LANG, LANGS };
 export { hasSupabase };
 export function setTheme(d) { C = d ? PAL.dark : PAL.light; DARK = d; }

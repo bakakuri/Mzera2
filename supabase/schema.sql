@@ -2201,5 +2201,135 @@ drop policy if exists album_photos_read on public.album_photos;
 create policy album_photos_read on public.album_photos for select using (public.can_view_private_content(owner_id));
 
 -- ============================================================================
+--  QUIZZES — user-created quizzes attached to a post ("სოციალური და
+--  გასახარი": each member makes their own quiz, others take it and compare
+--  scores). Correct answers never reach the client before submission:
+--  quiz_questions itself is readable only by the quiz's own author (to edit
+--  it) — everyone else fetches question data through
+--  public.get_quiz_questions(), whose return signature deliberately omits
+--  correct_idx, and grading happens entirely inside
+--  public.submit_quiz_attempt() server-side.
+-- ============================================================================
+alter table public.posts add column if not exists has_quiz boolean not null default false;
+
+create table if not exists public.quizzes (
+  id          uuid primary key default gen_random_uuid(),
+  post_id     uuid not null unique references public.posts(id) on delete cascade,
+  author_id   uuid not null references public.profiles(id) on delete cascade,
+  title       text not null,
+  description text,
+  created_at  timestamptz not null default now()
+);
+
+create table if not exists public.quiz_questions (
+  id          uuid primary key default gen_random_uuid(),
+  quiz_id     uuid not null references public.quizzes(id) on delete cascade,
+  idx         int not null,
+  text        text not null,
+  options     jsonb not null,
+  correct_idx int not null
+);
+create index if not exists quiz_questions_quiz_idx on public.quiz_questions(quiz_id, idx);
+
+create table if not exists public.quiz_attempts (
+  id         uuid primary key default gen_random_uuid(),
+  quiz_id    uuid not null references public.quizzes(id) on delete cascade,
+  user_id    uuid not null references public.profiles(id) on delete cascade,
+  score      int not null,
+  total      int not null,
+  answers    jsonb,
+  created_at timestamptz not null default now(),
+  unique (quiz_id, user_id)
+);
+create index if not exists quiz_attempts_quiz_idx on public.quiz_attempts(quiz_id);
+
+alter table public.quizzes enable row level security;
+drop policy if exists quizzes_read on public.quizzes;
+create policy quizzes_read on public.quizzes for select using (true);
+drop policy if exists quizzes_insert on public.quizzes;
+create policy quizzes_insert on public.quizzes for insert with check (auth.uid() = author_id);
+drop policy if exists quizzes_update on public.quizzes;
+create policy quizzes_update on public.quizzes for update using (auth.uid() = author_id or public.is_admin());
+drop policy if exists quizzes_delete on public.quizzes;
+create policy quizzes_delete on public.quizzes for delete using (auth.uid() = author_id or public.is_admin());
+
+alter table public.quiz_questions enable row level security;
+drop policy if exists quiz_questions_read on public.quiz_questions;
+create policy quiz_questions_read on public.quiz_questions for select using (
+  auth.uid() = (select author_id from public.quizzes q where q.id = quiz_id) or public.is_admin()
+);
+drop policy if exists quiz_questions_insert on public.quiz_questions;
+create policy quiz_questions_insert on public.quiz_questions for insert with check (
+  auth.uid() = (select author_id from public.quizzes q where q.id = quiz_id)
+);
+drop policy if exists quiz_questions_update on public.quiz_questions;
+create policy quiz_questions_update on public.quiz_questions for update using (
+  auth.uid() = (select author_id from public.quizzes q where q.id = quiz_id)
+);
+drop policy if exists quiz_questions_delete on public.quiz_questions;
+create policy quiz_questions_delete on public.quiz_questions for delete using (
+  auth.uid() = (select author_id from public.quizzes q where q.id = quiz_id) or public.is_admin()
+);
+
+alter table public.quiz_attempts enable row level security;
+drop policy if exists quiz_attempts_read on public.quiz_attempts;
+create policy quiz_attempts_read on public.quiz_attempts for select using (
+  auth.uid() = user_id or auth.uid() = (select author_id from public.quizzes q where q.id = quiz_id) or public.is_admin()
+);
+
+create or replace function public.get_quiz_questions(qid uuid)
+returns table(id uuid, idx int, qtext text, options jsonb)
+language sql stable security definer set search_path = public as $$
+  select qq.id, qq.idx, qq.text, qq.options
+  from public.quiz_questions qq
+  where qq.quiz_id = qid
+  order by qq.idx;
+$$;
+grant execute on function public.get_quiz_questions(uuid) to authenticated;
+
+-- answers is a jsonb array of chosen option indices, positioned by each
+-- question's idx (e.g. [1,0,3]); total is derived from quiz_questions
+-- itself, not the submitted payload, so a client can't inflate its score by
+-- submitting a shorter/altered answers array.
+create or replace function public.submit_quiz_attempt(qid uuid, answers jsonb)
+returns table(score int, total int, corrects jsonb)
+language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  q record;
+  correct_count int := 0;
+  total_count int := 0;
+  correctness jsonb := '[]'::jsonb;
+  chosen int;
+begin
+  if uid is null then raise exception 'not authenticated'; end if;
+  for q in select idx, correct_idx from public.quiz_questions where quiz_id = qid order by idx loop
+    total_count := total_count + 1;
+    chosen := (answers ->> q.idx)::int;
+    if chosen = q.correct_idx then
+      correct_count := correct_count + 1;
+      correctness := correctness || to_jsonb(true);
+    else
+      correctness := correctness || to_jsonb(false);
+    end if;
+  end loop;
+  insert into public.quiz_attempts (quiz_id, user_id, score, total, answers)
+  values (qid, uid, correct_count, total_count, answers)
+  on conflict (quiz_id, user_id) do update set score = excluded.score, total = excluded.total, answers = excluded.answers, created_at = now();
+  return query select correct_count, total_count, correctness;
+end;
+$$;
+grant execute on function public.submit_quiz_attempt(uuid, jsonb) to authenticated;
+
+-- aggregate stats for the "how do you compare to others" social angle
+create or replace function public.quiz_stats(qid uuid)
+returns table(attempts bigint, avg_pct numeric)
+language sql stable security definer set search_path = public as $$
+  select count(*), coalesce(avg(score::numeric / nullif(total, 0) * 100), 0)
+  from public.quiz_attempts where quiz_id = qid;
+$$;
+grant execute on function public.quiz_stats(uuid) to authenticated;
+
+-- ============================================================================
 --  მზადაა! შემდეგი ნაბიჯები იხ. README.md
 -- ============================================================================

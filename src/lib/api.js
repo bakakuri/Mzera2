@@ -195,7 +195,7 @@ export const posts = {
   feed: async () => {
     const { data, error } = await need()
       .from("posts")
-      .select("*, author:profiles!posts_author_id_fkey(*), poll_options(idx,text), poll_votes(option_idx,user_id)")
+      .select("*, author:profiles!posts_author_id_fkey(*), poll_options(idx,text), poll_votes(option_idx,user_id), quizzes(id,title,description)")
       .order("created_at", { ascending: false })
       .limit(50);
     if (error) throw error;
@@ -204,7 +204,7 @@ export const posts = {
   feedPage: async (before, limit = 12) => {
     let q = need()
       .from("posts")
-      .select("*, author:profiles!posts_author_id_fkey(*), poll_options(idx,text), poll_votes(option_idx,user_id), shared:posts!posts_shared_post_id_fkey(*, author:profiles!posts_author_id_fkey(*))")
+      .select("*, author:profiles!posts_author_id_fkey(*), poll_options(idx,text), poll_votes(option_idx,user_id), quizzes(id,title,description), shared:posts!posts_shared_post_id_fkey(*, author:profiles!posts_author_id_fkey(*))")
       .order("created_at", { ascending: false })
       .limit(limit);
     if (before) q = q.lt("created_at", before);
@@ -216,7 +216,7 @@ export const posts = {
   },
   scheduledMine: async () => {
     const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;
-    const { data, error } = await sb.from("posts").select("*, author:profiles!posts_author_id_fkey(*), poll_options(idx,text), poll_votes(option_idx,user_id)").eq("author_id", uid).gt("scheduled_for", new Date().toISOString()).order("scheduled_for", { ascending: true });
+    const { data, error } = await sb.from("posts").select("*, author:profiles!posts_author_id_fkey(*), poll_options(idx,text), poll_votes(option_idx,user_id), quizzes(id,title,description)").eq("author_id", uid).gt("scheduled_for", new Date().toISOString()).order("scheduled_for", { ascending: true });
     if (error) throw error;
     return data;
   },
@@ -225,7 +225,7 @@ export const posts = {
   forGroup: async (gid) => {
     const { data, error } = await need()
       .from("posts")
-      .select("*, author:profiles!posts_author_id_fkey(*), poll_options(idx,text), poll_votes(option_idx,user_id), shared:posts!posts_shared_post_id_fkey(*, author:profiles!posts_author_id_fkey(*))")
+      .select("*, author:profiles!posts_author_id_fkey(*), poll_options(idx,text), poll_votes(option_idx,user_id), quizzes(id,title,description), shared:posts!posts_shared_post_id_fkey(*, author:profiles!posts_author_id_fkey(*))")
       .eq("group_id", gid)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -240,7 +240,7 @@ export const posts = {
   byHashtag: async (tag) => {
     const { data, error } = await need()
       .from("posts")
-      .select("*, author:profiles!posts_author_id_fkey(*), poll_options(idx,text), poll_votes(option_idx,user_id), shared:posts!posts_shared_post_id_fkey(*, author:profiles!posts_author_id_fkey(*))")
+      .select("*, author:profiles!posts_author_id_fkey(*), poll_options(idx,text), poll_votes(option_idx,user_id), quizzes(id,title,description), shared:posts!posts_shared_post_id_fkey(*, author:profiles!posts_author_id_fkey(*))")
       .is("group_id", null).is("scheduled_for", null)
       .ilike("text", "%#" + tag + "%")
       .order("created_at", { ascending: false })
@@ -251,7 +251,7 @@ export const posts = {
   byId: async (id) => {
     const { data, error } = await need()
       .from("posts")
-      .select("*, author:profiles!posts_author_id_fkey(*), poll_options(idx,text), poll_votes(option_idx,user_id), shared:posts!posts_shared_post_id_fkey(*, author:profiles!posts_author_id_fkey(*))")
+      .select("*, author:profiles!posts_author_id_fkey(*), poll_options(idx,text), poll_votes(option_idx,user_id), quizzes(id,title,description), shared:posts!posts_shared_post_id_fkey(*, author:profiles!posts_author_id_fkey(*))")
       .eq("id", id).maybeSingle();
     if (error) throw error;
     return data || null;
@@ -281,7 +281,7 @@ export const posts = {
     const t = "%#" + String(tag).replace(/[%#\s]/g, "") + "%";
     const { data, error } = await need()
       .from("posts")
-      .select("*, author:profiles!posts_author_id_fkey(*), poll_options(idx,text), poll_votes(option_idx,user_id)")
+      .select("*, author:profiles!posts_author_id_fkey(*), poll_options(idx,text), poll_votes(option_idx,user_id), quizzes(id,title,description)")
       .ilike("text", t)
       .order("created_at", { ascending: false })
       .limit(limit);
@@ -328,19 +328,25 @@ export const posts = {
     if (error) throw error;
     return data;
   },
-  create: async ({ text, imageUrl, images, poll, scheduled_for, public_status, shared_post_id, bg, feeling, location, tagged, video_url, group_id }) => {
+  create: async ({ text, imageUrl, images, poll, quiz, scheduled_for, public_status, shared_post_id, bg, feeling, location, tagged, video_url, group_id }) => {
     const sb = need();
     const uid = (await sb.auth.getUser()).data.user.id;
     const arr = (images && images.length) ? images : (imageUrl ? [imageUrl] : null);
     const { data, error } = await sb
       .from("posts")
-      .insert({ author_id: uid, text, image_url: arr ? arr[0] : null, images: arr, has_poll: !!poll, scheduled_for: scheduled_for || null, public_status: public_status || "none", shared_post_id: shared_post_id || null, bg: bg || null, feeling: feeling || null, location: location || null, tagged: (tagged && tagged.length) ? tagged : null, video_url: video_url || null, group_id: group_id || null })
+      .insert({ author_id: uid, text, image_url: arr ? arr[0] : null, images: arr, has_poll: !!poll, has_quiz: !!quiz, scheduled_for: scheduled_for || null, public_status: public_status || "none", shared_post_id: shared_post_id || null, bg: bg || null, feeling: feeling || null, location: location || null, tagged: (tagged && tagged.length) ? tagged : null, video_url: video_url || null, group_id: group_id || null })
       .select()
       .single();
     if (error) throw error;
     if (poll && data) {
       const rows = poll.options.map((o, idx) => ({ post_id: data.id, idx, text: o.text }));
       await sb.from("poll_options").insert(rows);
+    }
+    if (quiz && data) {
+      const { data: qz, error: qzErr } = await sb.from("quizzes").insert({ post_id: data.id, author_id: uid, title: quiz.title, description: quiz.description || null }).select().single();
+      if (qzErr) throw qzErr;
+      const qRows = quiz.questions.map((q, idx) => ({ quiz_id: qz.id, idx, text: q.text, options: q.options, correct_idx: q.correctIdx }));
+      await sb.from("quiz_questions").insert(qRows);
     }
     return data;
   },
@@ -403,6 +409,34 @@ export const polls = {
     const uid = (await sb.auth.getUser()).data.user.id;
     const { error } = await sb.from("poll_votes").insert({ post_id: postId, user_id: uid, option_idx: optionIdx });
     if (error) throw error;
+  },
+};
+
+// quiz-taking flow; quiz creation itself goes through posts.create({ quiz })
+// alongside the post. Correct answers are never fetched here — questions()
+// calls a security-definer RPC whose return signature has no correct_idx
+// column, and submit() grades server-side via another RPC.
+export const quizzes = {
+  questions: async (quizId) => {
+    const { data, error } = await need().rpc("get_quiz_questions", { qid: quizId });
+    if (error) throw error;
+    return (data || []).map(q => ({ id: q.id, idx: q.idx, text: q.qtext, options: q.options }));
+  },
+  submit: async (quizId, answers) => {
+    const { data, error } = await need().rpc("submit_quiz_attempt", { qid: quizId, answers });
+    if (error) throw error;
+    return data && data[0];
+  },
+  myAttempt: async (quizId) => {
+    const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;
+    const { data, error } = await sb.from("quiz_attempts").select("*").eq("quiz_id", quizId).eq("user_id", uid).maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+  stats: async (quizId) => {
+    const { data, error } = await need().rpc("quiz_stats", { qid: quizId });
+    if (error) throw error;
+    return data && data[0];
   },
 };
 
