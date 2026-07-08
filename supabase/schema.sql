@@ -1758,6 +1758,63 @@ end;
 $$;
 grant execute on function public.admin_lang_progress() to authenticated;
 
+-- one streak per user (not per-language — practicing any language you're
+-- learning counts toward the same daily streak, matching how the rest of
+-- this tab treats "learnLang" as just the current focus, not a hard silo).
+create table if not exists public.lang_streaks (
+  user_id         uuid primary key references public.profiles(id) on delete cascade,
+  current_streak  int not null default 0,
+  longest_streak  int not null default 0,
+  last_active     date,
+  updated_at      timestamptz not null default now()
+);
+alter table public.lang_streaks enable row level security;
+drop policy if exists lang_streaks_read on public.lang_streaks;
+create policy lang_streaks_read on public.lang_streaks for select using (auth.uid() = user_id);
+drop policy if exists lang_streaks_insert on public.lang_streaks;
+create policy lang_streaks_insert on public.lang_streaks for insert with check (auth.uid() = user_id);
+drop policy if exists lang_streaks_update on public.lang_streaks;
+create policy lang_streaks_update on public.lang_streaks for update using (auth.uid() = user_id);
+
+-- user-curated word collections ("my hard words" etc.) — practicing a list
+-- plugs into the existing flashcards/exercises machinery via a synthetic
+-- "list:<id>" level id (see wordsForLevel in useLanguages.js), so mastery,
+-- spaced repetition and XP all work on list words exactly like CEFR levels.
+create table if not exists public.lang_word_lists (
+  id         uuid primary key default gen_random_uuid(),
+  owner_id   uuid not null references public.profiles(id) on delete cascade,
+  lang       text not null,
+  name       text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists lang_word_lists_owner_idx on public.lang_word_lists(owner_id, lang);
+alter table public.lang_word_lists enable row level security;
+drop policy if exists lang_word_lists_select on public.lang_word_lists;
+create policy lang_word_lists_select on public.lang_word_lists for select using (auth.uid() = owner_id);
+drop policy if exists lang_word_lists_insert on public.lang_word_lists;
+create policy lang_word_lists_insert on public.lang_word_lists for insert with check (auth.uid() = owner_id);
+drop policy if exists lang_word_lists_update on public.lang_word_lists;
+create policy lang_word_lists_update on public.lang_word_lists for update using (auth.uid() = owner_id);
+drop policy if exists lang_word_lists_delete on public.lang_word_lists;
+create policy lang_word_lists_delete on public.lang_word_lists for delete using (auth.uid() = owner_id);
+
+create table if not exists public.lang_word_list_items (
+  list_id  uuid not null references public.lang_word_lists(id) on delete cascade,
+  word_id  text not null,
+  added_at timestamptz not null default now(),
+  primary key (list_id, word_id)
+);
+alter table public.lang_word_list_items enable row level security;
+drop policy if exists lang_word_list_items_select on public.lang_word_list_items;
+create policy lang_word_list_items_select on public.lang_word_list_items for select
+  using (exists (select 1 from public.lang_word_lists l where l.id = list_id and l.owner_id = auth.uid()));
+drop policy if exists lang_word_list_items_insert on public.lang_word_list_items;
+create policy lang_word_list_items_insert on public.lang_word_list_items for insert
+  with check (exists (select 1 from public.lang_word_lists l where l.id = list_id and l.owner_id = auth.uid()));
+drop policy if exists lang_word_list_items_delete on public.lang_word_list_items;
+create policy lang_word_list_items_delete on public.lang_word_list_items for delete
+  using (exists (select 1 from public.lang_word_lists l where l.id = list_id and l.owner_id = auth.uid()));
+
 -- ============================================================================
 --  PROFILE VIEWS — "who viewed your profile". Opening someone else's profile
 --  upserts one row per (viewer, profile) pair (a repeat visit just bumps

@@ -1427,6 +1427,54 @@ export const languages = {
     if (error) throw error;
     return data || [];
   },
+  getStreak: async () => {
+    const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;
+    const { data, error } = await sb.from("lang_streaks").select("current_streak,longest_streak,last_active").eq("user_id", uid).maybeSingle();
+    if (error) throw error;
+    return data ? { current: data.current_streak, longest: data.longest_streak, lastActive: data.last_active } : { current: 0, longest: 0, lastActive: null };
+  },
+  saveStreak: async (current, longest, lastActive) => {
+    const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;
+    const { error } = await sb.from("lang_streaks").upsert({ user_id: uid, current_streak: current, longest_streak: longest, last_active: lastActive, updated_at: new Date().toISOString() });
+    if (error) throw error;
+  },
+  // "friends" leaderboard: aggregated client-side from the same publicly-readable
+  // lang_word_progress rows the global leaderboard RPC reads, just filtered to a
+  // given set of user ids instead of everyone — no new RPC needed.
+  leaderboardFriends: async (lang, friendIds) => {
+    if (!friendIds || !friendIds.length) return [];
+    const { data, error } = await need().from("lang_word_progress").select("user_id,mastery").eq("lang", lang).in("user_id", friendIds);
+    if (error) throw error;
+    const byUser = {};
+    (data || []).forEach((r) => {
+      const u = byUser[r.user_id] || (byUser[r.user_id] = { mastered: 0, sum: 0, n: 0 });
+      u.n++; u.sum += r.mastery; if (r.mastery >= 100) u.mastered++;
+    });
+    return Object.entries(byUser).map(([user_id, v]) => ({ user_id, mastered: v.mastered, avg_mastery: v.n ? v.sum / v.n : 0 })).sort((a, b) => b.mastered - a.mastered).slice(0, 20);
+  },
+  lists: {
+    list: async (lang) => {
+      const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;
+      const { data, error } = await sb.from("lang_word_lists").select("*").eq("owner_id", uid).eq("lang", lang).order("created_at", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    create: async (lang, name) => {
+      const sb = need(); const uid = (await sb.auth.getUser()).data.user.id;
+      const { data, error } = await sb.from("lang_word_lists").insert({ owner_id: uid, lang, name }).select().single();
+      if (error) throw error;
+      return data;
+    },
+    rename: async (id, name) => { const { error } = await need().from("lang_word_lists").update({ name }).eq("id", id); if (error) throw error; },
+    remove: async (id) => { const { error } = await need().from("lang_word_lists").delete().eq("id", id); if (error) throw error; },
+    items: async (listId) => {
+      const { data, error } = await need().from("lang_word_list_items").select("word_id").eq("list_id", listId);
+      if (error) throw error;
+      return (data || []).map((r) => r.word_id);
+    },
+    addItem: async (listId, wordId) => { const { error } = await need().from("lang_word_list_items").insert({ list_id: listId, word_id: wordId }); if (error && error.code !== "23505") throw error; },
+    removeItem: async (listId, wordId) => { const { error } = await need().from("lang_word_list_items").delete().eq("list_id", listId).eq("word_id", wordId); if (error) throw error; },
+  },
 };
 
 export const albums = {
