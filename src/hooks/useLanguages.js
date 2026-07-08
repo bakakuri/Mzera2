@@ -166,8 +166,12 @@ export function useLanguages({ session, gainXp }) {
   const nextFlashcard = (lang, lvl) => {
     const ws = wordsForLevel(lang, lvl);
     if (!ws.length) return null;
+    // only rotate among the first few unseen words at a time — picking from the
+    // *entire* unseen pool (a leftover Math.max here) meant XP spread across
+    // hundreds of different words each session and none of them ever got
+    // practiced enough times in a row to reach 100% mastery.
     const unseen = ws.filter((w) => !progress[w.id]);
-    if (unseen.length) return rnd(unseen.slice(0, Math.max(5, unseen.length)));
+    if (unseen.length) return rnd(unseen.slice(0, Math.min(5, unseen.length)));
     const due = ws.filter(isDue);
     if (due.length) return due.slice().sort((a, b) => ((progress[a.id] && progress[a.id].mastery) || 0) - ((progress[b.id] && progress[b.id].mastery) || 0))[0];
     // nothing due yet — fall back to whichever word was reviewed longest ago

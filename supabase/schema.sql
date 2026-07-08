@@ -1601,6 +1601,13 @@ begin
     update public.profiles set xp = xp + 100 where id = ref_id;
     update public.profiles set xp = xp + 50 where id = new.id;
   end if;
+  -- profiles.verified already defaults to false, so every new account starts
+  -- out "pending verification" with no extra code needed — this just makes
+  -- sure an admin actually notices: one notification per admin, pointing at
+  -- the new user via from_id (Notifications' default click-through opens
+  -- their profile for review).
+  insert into public.notifications (user_id, type, from_id)
+  select id, 'new_user_pending', new.id from public.profiles where is_admin = true;
   return new;
 end; $$;
 

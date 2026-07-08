@@ -151,6 +151,8 @@ export const DICT = {
   "notif.publicApproved": { ka: "შენი საჯარო პოსტი დამტკიცდა ✅", en: "your public post was approved ✅", ru: "твой публичный пост одобрен ✅" },
   "notif.publicRejected": { ka: "შენი საჯარო პოსტი უარყოფილია ❌", en: "your public post was rejected ❌", ru: "твой публичный пост отклонён ❌" },
   "notif.announcement": { ka: "📢 განცხადება", en: "📢 Announcement", ru: "📢 Объявление" },
+  "notif.newUserPending": { ka: "ახალი მომხმარებელი ელოდება ვერიფიკაციას", en: "A new user is awaiting verification", ru: "Новый пользователь ожидает верификации" },
+  "notif.newUserPendingShort": { ka: "დარეგისტრირდა და ელოდება ვერიფიკაციას", en: "registered and is awaiting verification", ru: "зарегистрировался и ждёт верификации" },
   "notif.fallback": { ka: "ახალი აქტივობა", en: "New activity", ru: "Новая активность" },
   "notif.replied": { ka: "უპასუხა შენს კომენტარს 💬", en: "replied to your comment 💬", ru: "ответил(а) на твой комментарий 💬" },
   "notif.threadReplied": { ka: "უპასუხა შენს თემას ფორუმზე 💬", en: "replied to your forum thread 💬", ru: "ответил(а) на твою тему на форуме 💬" },
